@@ -1,0 +1,101 @@
+---
+title: "WHAP Viability Graphs Tables"
+author: "Therese Burns"
+date: "6/10/2021"
+output: html_document
+---
+This markdown will use g/m2 estimates and the viability analysis to create X number of graphs for each of the refuges.
+
+Inputs for this markdown include
+1) qdt_mass_g_m2_YYYY.txt files
+2) WHAP_Viability_20210610.csv 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(ggplot2)
+library(gcookbook)
+library(tidyverse)
+library(car)
+library(boot)
+library(emmeans)
+library(rsample)
+library(MASS)
+library(ggforce)
+library(knitr)
+library(kableExtra)
+```
+
+```{r}
+gm2_2019 <-read.csv("qdt_mass_g_m2_2019.txt")
+for (i in 1:length(unique(gm2_2019$LIT))) {
+  v_plot_2019 <- ggplot(data = gm2_2019 %>% arrange(LIT, tot_g_m2),
+                 aes(x = subunit_ID,
+                     y = tot_g_m2,
+                     ymin = CI80lwr,
+                     ymax = CI80upr,
+                     group = LIT)) +
+    ggtitle("2019")+
+    geom_pointrange()+
+    xlab('Subunit Name') + ylab("Total seed mass 80% CI (g/m^2)") +
+    geom_errorbar(aes(ymin = CI80lwr, ymax = CI80upr), width = 0.5, cex = 1) +
+    theme(plot.title = element_text(size = 16, face = "bold"),
+          #        axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.text.x = element_text(face = "bold"),
+          axis.title = element_text(size = 12, face = "bold"),
+          strip.text.y = element_text(hjust = 0, vjust = 1, angle = 180, face = "bold")) +
+    #  scale_y_log10() +
+    coord_flip() +
+    facet_wrap_paginate(~LIT,
+                        strip.position = "left",
+                        nrow = 1,
+                        ncol = 1,
+                        scales = "free_y",
+                        page = i)+
+  #    geom_rect(viability, mapping = aes(xmin = -Inf, xmax = Inf, ymin = b$Poor, ymax =b$Fair, alpha = .2, fill = "red") )
+    annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0, ymax = 85, alpha = .2, fill = "red")+
+    annotate("rect", xmin = -Inf, xmax = Inf, ymin = 85, ymax = 180, alpha = .2, fill = "yellow")+
+    annotate("rect", xmin = -Inf, xmax = Inf, ymin = 180, ymax = 300, alpha = .2, fill = "chartreuse")+
+    annotate("rect", xmin = -Inf, xmax = Inf, ymin = 300, ymax = Inf, alpha = .3, fill = "chartreuse3")
+  print(v_plot_2019)
+}
+
+
+```
+```{r}
+gm2_2020 <-read.csv("qdt_mass_g_m2_2020.txt")
+viability <-read.csv("WHAP_Viability_20210610.csv")
+for (i in 1:length(unique(gm2_2020$LIT))) {
+  v_plot <- ggplot(data = gm2_2020 %>% arrange(LIT, tot_g_m2),
+                 aes(x = subunit_ID,
+                     y = tot_g_m2,
+                     ymin = CI80lwr,
+                     ymax = CI80upr,
+                     group = LIT)) +
+    ggtitle("2020")+
+    geom_pointrange()+
+    xlab('Subunit Name') + ylab("Total seed mass 80% CI (g/m^2)") +
+    geom_errorbar(aes(ymin = CI80lwr, ymax = CI80upr), width = 0.5, cex = 1) +
+    theme(plot.title = element_text(size = 16, face = "bold"),
+          #        axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.text.x = element_text(face = "bold"),
+          axis.title = element_text(size = 12, face = "bold"),
+          strip.text.y = element_text(hjust = 0, vjust = 1, angle = 180, face = "bold")) +
+    #  scale_y_log10() +
+    coord_flip() +
+    facet_wrap_paginate(~LIT,
+                        strip.position = "left",
+                        nrow = 1,
+                        ncol = 1,
+                        scales = "free_y",
+                        page = i)+
+  #    geom_rect(viability, mapping = aes(xmin = -Inf, xmax = Inf, ymin = b$Poor, ymax =b$Fair, alpha = .2, fill = "red") )
+    annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0, ymax = 85, alpha = .2, fill = "red")+
+    annotate("rect", xmin = -Inf, xmax = Inf, ymin = 85, ymax = 180, alpha = .2, fill = "yellow")+
+    annotate("rect", xmin = -Inf, xmax = Inf, ymin = 180, ymax = 300, alpha = .2, fill = "chartreuse")+
+    annotate("rect", xmin = -Inf, xmax = Inf, ymin = 300, ymax = Inf, alpha = .3, fill = "chartreuse3")
+  print(v_plot)
+}
+```
+
