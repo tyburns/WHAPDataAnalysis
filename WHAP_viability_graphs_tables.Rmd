@@ -3,6 +3,8 @@ title: "WHAP Viability Graphs Tables"
 author: "Therese Burns"
 date: "6/10/2021"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 This markdown will use g/m2 estimates and the viability analysis to create X number of graphs for each of the refuges.
 
@@ -25,44 +27,66 @@ library(knitr)
 library(kableExtra)
 ```
 
-```{r}
+
+```{r viabilityClasses}
+
+viaClass <- read.csv("WHAP_Viability_20210610.csv") %>%
+  pivot_longer(cols = c(Poor, Fair, Good, Very_Good),
+               names_to = "class",
+               values_to = "lower_bound") %>%
+  pivot_wider(names_from = LIT,
+              values_from = lower_bound) %>%
+  mutate(class = fct_reorder(class, KRN, mean),
+         class_color = c("red", "yellow", "chartreuse", "chartreuse3"),
+         class = factor(class, ordered = TRUE))
+
+
+```
+
+
+```{r viabilityGraph2019}
+
+
 gm2_2019 <-read.csv("qdt_mass_g_m2_2019.txt")
-for (i in 1:length(unique(gm2_2019$LIT))) {
-  v_plot_2019 <- ggplot(data = gm2_2019 %>% arrange(LIT, tot_g_m2),
-                 aes(x = subunit_ID,
-                     y = tot_g_m2,
-                     ymin = CI80lwr,
-                     ymax = CI80upr,
-                     group = LIT)) +
-    ggtitle("2019")+
-    geom_pointrange()+
-    xlab('Subunit Name') + ylab("Total seed mass 80% CI (g/m^2)") +
+
+via_plots_2019 <- list()
+
+for (i in unique(gm2_2019$LIT)) { # this has to be modified if you want to cover more than one species
+  
+  data_i <- gm2_2019 %>% dplyr::filter(LIT == i)
+  
+  via_plots_2019[[i]] <- ggplot(data = data_i %>% arrange(tot_g_m2),
+                              aes(x = subunit_ID,
+                                  y = tot_g_m2)) +
+    ggtitle("2019") +
+    geom_point() +
+    xlab('Subunit Name') +
+    ylab("Total seed mass 80% CI (g/m^2)") +
     geom_errorbar(aes(ymin = CI80lwr, ymax = CI80upr), width = 0.5, cex = 1) +
     theme(plot.title = element_text(size = 16, face = "bold"),
-          #        axis.text.y = element_blank(),
           axis.ticks.y = element_blank(),
           axis.text.x = element_text(face = "bold"),
           axis.title = element_text(size = 12, face = "bold"),
           strip.text.y = element_text(hjust = 0, vjust = 1, angle = 180, face = "bold")) +
-    #  scale_y_log10() +
-    coord_flip() +
-    facet_wrap_paginate(~LIT,
-                        strip.position = "left",
-                        nrow = 1,
-                        ncol = 1,
-                        scales = "free_y",
-                        page = i)+
-  #    geom_rect(viability, mapping = aes(xmin = -Inf, xmax = Inf, ymin = b$Poor, ymax =b$Fair, alpha = .2, fill = "red") )
-    annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 85, alpha = .2, fill = "red")+
-    annotate("rect", xmin = -Inf, xmax = Inf, ymin = 85, ymax = 180, alpha = .2, fill = "yellow")+
-    annotate("rect", xmin = -Inf, xmax = Inf, ymin = 180, ymax = 300, alpha = .2, fill = "chartreuse")+
-    annotate("rect", xmin = -Inf, xmax = Inf, ymin = 300, ymax = Inf, alpha = .3, fill = "chartreuse3")
-  print(v_plot_2019)
+    geom_rect(data = viaClass, aes(NULL,
+                                   NULL,
+                                   xmin = -Inf,
+                                   xmax = Inf,
+                                   fill = class),
+              ymin = unlist(viaClass[, i]),
+              ymax = unlist(c(viaClass[-1, i], Inf))) +
+    scale_fill_manual(values = alpha(c("red", "yellow", "chartreuse", "chartreuse3"), 0.2)) +
+    coord_flip()
+  
+  print(via_plots_2019[[i]])
 }
 
 
 ```
-```{r}
+
+
+
+```{r viabilityGraph2020}
 gm2_2020 <-read.csv("qdt_mass_g_m2_2020.txt")
 viability <-read.csv("WHAP_Viability_20210610.csv")
 for (i in 1:length(unique(gm2_2020$LIT))) {
