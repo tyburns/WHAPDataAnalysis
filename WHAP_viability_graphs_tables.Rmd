@@ -53,7 +53,7 @@ for (i in 1:length(unique(gm2_2019$LIT))) {
                         scales = "free_y",
                         page = i)+
   #    geom_rect(viability, mapping = aes(xmin = -Inf, xmax = Inf, ymin = b$Poor, ymax =b$Fair, alpha = .2, fill = "red") )
-    annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0, ymax = 85, alpha = .2, fill = "red")+
+    annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 85, alpha = .2, fill = "red")+
     annotate("rect", xmin = -Inf, xmax = Inf, ymin = 85, ymax = 180, alpha = .2, fill = "yellow")+
     annotate("rect", xmin = -Inf, xmax = Inf, ymin = 180, ymax = 300, alpha = .2, fill = "chartreuse")+
     annotate("rect", xmin = -Inf, xmax = Inf, ymin = 300, ymax = Inf, alpha = .3, fill = "chartreuse3")
@@ -66,7 +66,7 @@ for (i in 1:length(unique(gm2_2019$LIT))) {
 gm2_2020 <-read.csv("qdt_mass_g_m2_2020.txt")
 viability <-read.csv("WHAP_Viability_20210610.csv")
 for (i in 1:length(unique(gm2_2020$LIT))) {
-  v_plot <- ggplot(data = gm2_2020 %>% arrange(LIT, tot_g_m2),
+  v_plot_2020 <- ggplot(data = gm2_2020 %>% arrange(LIT, tot_g_m2),
                  aes(x = subunit_ID,
                      y = tot_g_m2,
                      ymin = CI80lwr,
@@ -91,11 +91,11 @@ for (i in 1:length(unique(gm2_2020$LIT))) {
                         scales = "free_y",
                         page = i)+
   #    geom_rect(viability, mapping = aes(xmin = -Inf, xmax = Inf, ymin = b$Poor, ymax =b$Fair, alpha = .2, fill = "red") )
-    annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0, ymax = 85, alpha = .2, fill = "red")+
+    annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 85, alpha = .2, fill = "red")+
     annotate("rect", xmin = -Inf, xmax = Inf, ymin = 85, ymax = 180, alpha = .2, fill = "yellow")+
     annotate("rect", xmin = -Inf, xmax = Inf, ymin = 180, ymax = 300, alpha = .2, fill = "chartreuse")+
     annotate("rect", xmin = -Inf, xmax = Inf, ymin = 300, ymax = Inf, alpha = .3, fill = "chartreuse3")
-  print(v_plot)
+  print(v_plot_2020)
 }
 ```
 
