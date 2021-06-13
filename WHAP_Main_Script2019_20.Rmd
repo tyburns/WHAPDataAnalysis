@@ -661,7 +661,7 @@ class.bounds.g.m2 <- c(0, 50, 150, 250)
 
 # Total mass per m2 in each subunit.
 
-for (i in 1:length(unique(qdt_mass_g_m2$LIT))) {
+for (i in 1:length(unique(qdt_mass_g_m2$LIT))) { #This is an error. See Therese's script.
   plot <- ggplot(data = qdt_mass_g_m2 %>% arrange(LIT, tot_g_m2),
                  aes(x = subunit_ID,
                      y = tot_g_m2,
