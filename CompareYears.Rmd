@@ -1,0 +1,122 @@
+---
+title: "Compare subunits across years"
+author: "Emilio A. Laca"
+date: "6/12/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Task
+
+Create a graph for subunits within for each refuge that includes estimated means and CI for 2019 and 2020. Include all subunits surveyed in WHAP (ie keep units that were not surveyed in one of the years on the graph).
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(rmarkdown)
+library(tidyverse)
+
+```
+
+
+```{r prepData}
+
+# In the future, this chunk should join all years available or
+# use a file with all years that is automatically created at the server.
+
+gm2_2019 <-read.csv("qdt_mass_g_m2_2019.txt") %>%
+  dplyr::select(-X) %>%
+  mutate(year = 2019)
+  
+
+gm2_2020 <-read.csv("qdt_mass_g_m2_2020.txt") %>%
+  dplyr::select(-X) %>%
+  mutate(year = 2020)
+
+whap_su_years <- bind_rows(gm2_2019, gm2_2020) %>%
+  mutate(year = factor(year))
+
+viaClass <- read.csv("WHAP_Viability_20210610.csv") %>%
+  pivot_longer(cols = c(Poor, Fair, Good, Very_Good),
+               names_to = "class",
+               values_to = "lower_bound") %>%
+  pivot_wider(names_from = LIT,
+              values_from = lower_bound) %>%
+  mutate(class = fct_reorder(class, KRN, mean),
+         class_color = c("red", "yellow", "chartreuse", "chartreuse3"),
+         class = factor(class, ordered = TRUE))
+
+
+```
+
+
+
+
+
+```{r plotFunction}
+
+# The user can select what years and subunits to compare by providing vectors
+# with their names in the function call
+
+plot_years <- function(spp = c("total"),
+                       data = whap_su_years) {
+  # whap_su_years is a df containing the subunit estimates in all refuges all years
+  # it contains a column named year
+  # check that data has the correct format
+  
+  year_plots <- list()
+  
+  for (i in unique(data$LIT)) { # this has to be modified for more than one species
+    
+    data_i <- data %>% dplyr::filter(LIT == i)
+    
+    # in the future, use the spp argument to determine what will be plotted
+    
+    year_plots[[i]] <-
+                 ggplot(data = data_i %>% arrange(tot_g_m2),
+                        aes(x = subunit_ID,
+                            y = tot_g_m2,
+                            color = year)) +
+                 ggtitle("Comparison across years") +
+                 geom_point(size = 4) +
+                 xlab('Subunit Name') +
+                 ylab("Total seed mass 80% CI (g/m^2)") +
+                 geom_errorbar(aes(ymin = CI80lwr,
+                                   ymax = CI80upr),
+                               width = 0.5,
+                               cex = 1) +
+                 theme(plot.title = element_text(size = 16, face = "bold"),
+                       axis.ticks.y = element_blank(),
+                       axis.text.x = element_text(face = "bold"),
+                       axis.title = element_text(size = 12,
+                                                 face = "bold"),
+                       strip.text.y = element_text(hjust = 0,
+                                                   vjust = 1,
+                                                   angle = 180,
+                                                   face = "bold")) +
+                 geom_rect(data = viaClass,
+                           inherit.aes = FALSE,
+                           aes(NULL,
+                               NULL,
+                               xmin = -Inf,
+                               xmax = Inf,
+                               fill = class),
+                           ymin = unlist(viaClass[, i]),
+                           ymax = unlist(c(viaClass[-1, i], Inf))) +
+                 scale_fill_manual(values = alpha(c("red",
+                                                    "yellow",
+                                                    "chartreuse",
+                                                    "chartreuse3"),
+                                                  0.2)) +
+                 coord_flip()
+    print(year_plots[[i]])
+  }
+  return(year_plots)
+}
+
+
+
+
+```
+
