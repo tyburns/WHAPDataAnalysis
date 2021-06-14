@@ -16,6 +16,8 @@ gm2_2020 <-read.csv("qdt_mass_g_m2_2020.txt") %>%
     dplyr::select(-X) %>%
     mutate(year = 2020)
 
+# Create table with difference between years within units
+
 whap_su_years <- bind_rows(gm2_2019, gm2_2020) %>%
     mutate(year = factor(year)) %>%
     dplyr::select(LIT,
@@ -61,6 +63,75 @@ whap_su_years <- bind_rows(gm2_2019, gm2_2020) %>%
     dplyr::filter(rowSums(is.na(.)) != ncol(.) - 2)
 
 kable(whap_su_years,
-      digits = c(0, 2, 5, 0, 2, 5, 0, 2, 5),
+      digits = c(0, 0, 0, 2, 5, 0, 2, 5, 0, 2, 5),
       caption = "Differences mass 2020 - mass 2019 for all subunits measured in both years. Comparisons are made as single t-tests with an assumed df = 30.")
+
+
+
+# Create table with difference between years for the total seed mass per LIT
+# This calculation has to be updated to include the covariances among units within year.
+# I suspect there will be positive covariances caused by the use of the same estimates
+# of mass per area in each stratum for all subunits.
+
+# Caveat: the comparison between years within refuge only reflects the average of
+# those subunits that were measured in both years.
+
+whap_LIT_years <- bind_rows(gm2_2019, gm2_2020) %>%
+    mutate(year = factor(year)) %>%
+    dplyr::select(LIT,
+                  year,
+                  subunit_ID,
+                  area_ha,
+                  wg_g_m2,
+                  st_g_m2,
+                  tot_g_m2,
+                  wg_mass_m2_var,
+                  st_mass_m2_var,
+                  tot_mass_m2_var) %>%
+    pivot_wider(id_cols = c(LIT,
+                            subunit_ID),
+                names_from = year,
+                values_from = c(area_ha,
+                                wg_g_m2,
+                                st_g_m2,
+                                tot_g_m2,
+                                wg_mass_m2_var,
+                                st_mass_m2_var,
+                                tot_mass_m2_var)) %>%
+    dplyr::filter(!is.na(tot_g_m2_2019) & !is.na(tot_g_m2_2020)) %>%
+    group_by(LIT) %>%
+    nest() %>%
+    mutate(
+        st_g_m2_2019 = map(
+            data, ~ sum(.$st_g_m2_2019 * .$area_ha_2019) / sum(.$area_ha_2019)),
+        st_g_m2_2020 = map(
+            data, ~ sum(.$st_g_m2_2020 * .$area_ha_2020) / sum(.$area_ha_2020)),
+        
+        wg_g_m2_2019 = map(
+            data, ~ sum(.$wg_g_m2_2019 * .$area_ha_2019) / sum(.$area_ha_2019)),
+        wg_g_m2_2020 = map(
+            data, ~ sum(.$wg_g_m2_2020 * .$area_ha_2020) / sum(.$area_ha_2020)),
+        
+        tot_g_m2_2019 = map(
+            data, ~ sum(.$tot_g_m2_2019 * .$area_ha_2019) / sum(.$area_ha_2019)),
+        tot_g_m2_2020 = map(
+            data, ~ sum(.$tot_g_m2_2020 * .$area_ha_2020) / sum(.$area_ha_2020))
+    ) %>%
+    dplyr::select(LIT,
+                  st_g_m2_2019,
+                  st_g_m2_2020,
+                  wg_g_m2_2019,
+                  wg_g_m2_2020,
+                  tot_g_m2_2019,
+                  tot_g_m2_2020) %>%
+    unnest(c(st_g_m2_2019,
+             st_g_m2_2020,
+             wg_g_m2_2019,
+             wg_g_m2_2020,
+             tot_g_m2_2019, 
+             tot_g_m2_2020))
+
+kable(whap_LIT_years,
+      digits = rep(0, 7),
+      caption = "Average mass of seed heads over all subunits measured in both years. Comparisons WILL BE made as single t-tests with an assumed df = 30.")
 
