@@ -13,63 +13,74 @@ library(lme4)
 library(effects)
 
 
-act <- read.csv("WHAP2019_PP_20201002_MUs_KRN_Actions_v2.csv",
+# Use qdt_mass_g_m2 from WHAP_Main_Script_2019.Rmd
+
+qdt_mass_g_m2_2019 <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPDataAnalysis_git/WHAPDataAnalysis/qdt_mass_g_m2_2019.txt") %>%
+  dplyr::select(-X) %>%
+  dplyr::filter(LIT == "KRN")
+
+# There is data on act only for KRN and most of the flooding data is for KRN.
+# Thus, only KRN data are used for these comparisons.
+
+act <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPDataAnalysis_git/WHAPDataAnalysis/WHAP2019_PP_20201002_MUs_KRN_Actions_v2.csv",
                 na.strings=c(""," ","NA")) %>%
   mutate(subunit_ID = paste(LIT, Unit_Name, Subunit_Name, sep = "_"),
-         act = factor(Action_yn))
-
-str(act)
-
-
-# Use qdt_mass_g_m2 from WHAP_Main_Script.Rmd
-
-qdt_mass <- left_join(qdt_mass_g_m2, act)
-
-str(qdt_mass)
-
-act_st1 <- lm(st_g_m2 ~ act * LIT,
-#                weights = 1/st_mass_m2_var,
-                data  = qdt_mass)
-
-anova(act_st1)
-
-plot(allEffects(act_st1))
-
-plot(st_g_m2 ~ act, data = qdt_mass)
-
-plot(wg_g_m2 ~ act, data = qdt_mass)
-
+         act = factor(Action_yn)) %>%
+  dplyr::filter(LIT == "KRN") %>%
+  dplyr::select(LIT,
+                Unit_Name,
+                Subunit_Name,
+                subunit_ID,
+                act,
+                Action)
 
 # effects of flooding in KRN
 
-water2 <- read.csv('WHAP_mapping/Kern_Flooding_Schedule.csv') %>%
+# y.flooded.n are number of years flooded out of the last n
+# y20167, y20178, y20189 are flooding in the last 3 seasons up to 2019
+
+water2 <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPDataAnalysis_git/WHAPDataAnalysis/Kern_Flooding_Schedule.csv") %>%
   mutate(LIT = "KRN",
          Subunit_Name = SubUnit) %>%
   dplyr::select(LIT,
          Subunit_Name,
          starts_with("y"))
 
-str(water2)
-
-qdt_mass <- qdt_mass %>%
-  left_join(water2)
-
-qdt_mass %>%
+qdt_mass_act_fld <- left_join(qdt_mass_g_m2_2019, act) %>%
+  left_join(water2) %>%
   dplyr::select(LIT,
+                Unit_Name,
+                Subunit_Name,
                 subunit_ID,
-                wg_g_m2,
-                st_g_m2,
-                tot_g_m2,
                 act,
-                starts_with("y")) %>%
-  print(n = Inf)
+                Action,
+                y.flooded.15,
+                y.flooded.5,
+                y20167,
+                y20178,
+                y20189,
+                st_g_m2, # none of the units has watergrass
+                st_mass_m2_var)
+
+str(qdt_mass_act_fld)
+
+table(qdt_mass_act_fld$Action)
+
+# Analyze _apparent_ effects of "treatments"
+
+scatterplot(st_g_m2 ~ y.flooded.5 | act, qdt_mass_act_fld, smooth = FALSE)
+
+scatterplot(st_g_m2 ~ y.flooded.15 | act, qdt_mass_act_fld, smooth = FALSE)
+
+boxplot(st_g_m2 ~ y20189, qdt_mass_act_fld) # only 2 were not flooded
+
+plot(st_g_m2 ~ act, data = qdt_mass_act_fld)
+
+
+
 
 
 plot(st_g_m2 ~ factor(y20189), qdt_mass)
-
-scatterplot(st_g_m2 ~ y.flooded.5 | act, qdt_mass, smooth = FALSE)
-
-scatterplot(st_g_m2 ~ y.flooded.15 | act, qdt_mass, smooth = FALSE)
 
 anova(lm(st_g_m2 ~ act + y.flooded.15, qdt_mass))
 
