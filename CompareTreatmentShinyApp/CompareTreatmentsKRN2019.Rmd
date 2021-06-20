@@ -28,7 +28,8 @@ library(coda)
 library(ggmcmc)
 library(ggridges)
 library(tidybayes)
-
+library(magrittr)
+library(modelr)
 
 ```
 
@@ -264,6 +265,18 @@ brm2.mcmc %>%
 ```{r plotPosterior}
 
 plot(brm2)
+
+brm2 %<>% recover_types(qdt_mass_act_fld)
+
+qdt_mass_act_fld %>%
+  data_grid(act) %>%
+  add_fitted_draws(brm2) %>%
+  ggplot(aes(x = .value, y = act)) +
+  stat_halfeye() +
+  stat_pointinterval(.width = c(.66, .95)) +
+  xlab("Swamp timothy productivity (g/m2)") +
+  ylab("Disked (Y/N)")
+
 
 ```
 
