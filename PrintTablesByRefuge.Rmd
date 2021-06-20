@@ -1,0 +1,79 @@
+---
+title: "Print tables by Refuge"
+author: "Emilio A. Laca"
+date: "6/20/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(rmarkdown)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+
+
+```
+
+
+## Print tables by refuge
+
+Get list of files that contain results for all years.
+
+Note: filename regex structure has to be reserved, otherwise, extraneous files will be printed.
+
+Note: the first part of the script can be used to keep adding files to the serv.cat database for WHAP.
+
+```{r getFiles}
+
+qdt.files <- list.files() %>%
+  grep(pattern = "qdt_mass_g_m2_20\\d\\d\\.txt$",
+       x = .,
+       value = TRUE)
+
+df_ls <- list()
+
+for(ffile in qdt.files) {
+  df_ls[[ffile]] = read_csv(ffile) %>%
+           dplyr::select(-X1) %>%
+           mutate(year = as.numeric(str_sub(string = ffile,
+                                            start = 15,
+                                            end = 18)))
+}
+
+whap_su_years <- bind_rows(df_ls) %>%
+  mutate(year = factor(year))
+
+```
+
+
+### Print subunit productivity by refuge
+
+```{r printTables, results='asis'}
+
+for(lit in unique(whap_su_years$LIT)) {
+  print(
+    whap_su_years %>%
+      dplyr::filter(LIT == lit) %>%
+      mutate(wg_g_m2_se = sqrt(wg_mass_m2_var),
+             st_g_m2_se = sqrt(st_mass_m2_var),
+             tot_g_m2_se = sqrt(tot_mass_m2_var)) %>%
+      dplyr::select(Unit_Name,
+                    year,
+                    wg_g_m2,
+                    wg_g_m2_se,
+                    st_g_m2,
+                    st_g_m2_se,
+                    tot_g_m2,
+                    tot_g_m2_se) %>%
+      kable(digits = c(0, 0, 0, 1, 0, 1, 0, 1),
+            caption = paste("Productivity by unit and year for ", lit)) %>%
+      kable_styling(full_width = TRUE)
+  )
+}
+
+
+
+```
+
