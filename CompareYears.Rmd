@@ -16,6 +16,9 @@ Create a graph for subunits within for each refuge that includes estimated means
 knitr::opts_chunk$set(echo = TRUE)
 library(rmarkdown)
 library(tidyverse)
+library(knitr)
+library(kableExtra)
+
 
 ```
 
@@ -48,9 +51,6 @@ viaClass <- read.csv("WHAP_Viability_20210610.csv") %>%
 
 
 ```
-
-
-
 
 
 ```{r plotFunction}
@@ -114,7 +114,7 @@ plot_years <- function(spp = c("total"),
   return(year_plots)
 }
 
-
+plot_years()
 
 
 ```

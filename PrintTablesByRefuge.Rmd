@@ -3,6 +3,8 @@ title: "Print tables by Refuge"
 author: "Emilio A. Laca"
 date: "6/20/2021"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -59,7 +61,7 @@ for(lit in unique(whap_su_years$LIT)) {
       mutate(wg_g_m2_se = sqrt(wg_mass_m2_var),
              st_g_m2_se = sqrt(st_mass_m2_var),
              tot_g_m2_se = sqrt(tot_mass_m2_var)) %>%
-      dplyr::select(Unit_Name,
+      dplyr::select(Subunit_Name,
                     year,
                     wg_g_m2,
                     wg_g_m2_se,

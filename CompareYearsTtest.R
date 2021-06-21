@@ -135,3 +135,8 @@ kable(whap_LIT_years,
       digits = rep(0, 7),
       caption = "Average mass of seed heads over all subunits measured in both years. Comparisons WILL BE made as single t-tests with an assumed df = 30.")
 
+# Add to the refuge level comparison: percent of the units sampled in 2020 also sampled in 2019. number of units sampled in 2020 and 2019/ n sampled in 2020
+
+# Add comparison between LIT using ALL units measured in each year.
+
+# Use t-test in all cases and include a warning about interpretation of the results.
