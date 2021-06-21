@@ -1,0 +1,140 @@
+---
+title: "Data intake and validation for WHAP"
+author: "Emilio A. Laca"
+date: "6/20/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(rmarkdown)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+
+
+```
+
+## Input Data structures and formats
+
+This script is intended to manage the data for the WHAP protocol. This management consists of receiving and validating incoming data and then appending the new data to files that contain all data.
+
+Five types of data input and structures are managed:
+
+1. Management units
+2. Vantage points
+3. Circle plots
+4. Quadrats
+5. Estimates by refuge, subunit and year
+
+Files 1-4 are supposed to be created by queries of the database created by the field sampling software and some heads-up cleaning. In order to be added to the serv.cat site, the files have to meet at least the standards exemplified by the following files.
+
+This section provides a complete set of rules to name files. Data files have to be in simple ASCII comma-separated-values, where the first row contains column or variable names that are directly valid for the R environment. The specific variable names for each file are given below in the corresponding file sections. 
+
+### Management units
+
+**Filename:** MU_yyyy.csv
+
+**Columns:**
+
+|            |                                             |
+OBJECTID     | int  1 2 3 4 5 6 7 8 9 10 ...               |
+LIT          | chr  "SLW" "SLW" "SLW" "SLW" ...            |
+Unit_Name    | chr  "Lewis 1" "Lewis 6" "HQ-7" "LIC" ...   |
+Subunit_Name | chr  "22" "22" "27a" "57" ...               |
+Acreage      | num  29.5 58.6 87.4 70.8 18.1 ...           |
+Shape_Length | num  2489 2649 3484 2888 1572 ...           |
+Shape_Area   | num  194940 386779 576109 466423 119831 ... |
+
+### Vantage points
+
+**Filename:** vp_yyyy.csv
+
+**Columns:**
+
+|                  |                                                  |
+|------------------|--------------------------------------------------|
+| OBJECTID         | int  1 2 3 4 5 6 7 8 9 10 ...                    |
+| LIT              | chr  "SLW" "SLW" "SLW" "KRN" ...|
+| Date             | chr  "8/11/2020 15:02" "12/14/2020 21:02" ...|
+| Observer         | chr  "BT MK" "Beatrix Treiterer" "BT" "GG" ...|
+| Unit_Name        | chr  "Lewis 6" "Lewis 1" "Lewis 1" "4B" ...|
+| Subunit_Name     | chr  "22" "22" "22" "4B-1" ...|
+| VantagePolygonID | chr  "VP1" "VP2" "VP3" "VP4" ...|
+| ProportionVisible| num  0.00286 1.56551 0.02098 0.20583 0.15118 ...|
+| Timothy_Low      | num  0 0.05 1 0.2 0.25 ...|
+| Timothy_Med      | num  0 0.05 0 0.15 0.2 ...|
+| Timothy_High     | num  0 0 0 0.4 0.1 ...|
+| Watergrass_Low   | num  0.01 0.25 0 0 0 0 0 0 0 0 ...|
+| Watergrass_Med   | num  0 0 0 0 0 0 0 0 0 0 ...|
+| Watergrass_High  | num  0 0 0 0 0 0 0 0 0 0 ...|
+| NoFoodCover      | num  0 0.55 0 0.25 0.45 ...|
+| AreaVisible_ac   | num  0.167 46.222 0.62 13.153 9.66 ...|
+| Comments         | chr  "" "" "" "" ...|
+| Shape_Length     | num  150 2436 382 1110 1061 ...|
+| Shape_Area_ac    | num  1106 305181 4090 80927 59438 ...|
+
+
+### Circle plots
+
+**Filename:** cp_yyyy.csv
+
+
+
+### Quadrats
+
+**Filename:** qdt_yyyy.csv
+
+### Data dictionaries and permitted sets
+
+
+
+## Data dictionary
+
+The data dictionary should contain all possible values for key variables such as refuge LIT, unit names, proportions of each yield class, etc. This dictionary can be modified by a person with the proper permissions. We need to consider the use of a DBMS to handle permissions to modify data and structures.
+
+For the purpose of this prototype I will create a data dictionary as a list that can be augmented.
+
+```{r dataDictionary}
+
+data_dicttionary <- list(LIT = character(),
+                         Unit_Name = character(),
+                         date = character())
+
+
+
+```
+
+
+
+### Print tables by refuge
+
+Get list of files that contain results for all years.
+
+Note: filename regex structure has to be reserved, otherwise, extraneous files will be printed.
+
+Note: the first part of the script can be used to keep adding files to the serv.cat database for WHAP.
+
+```{r getFiles}
+
+qdt.files <- list.files() %>%
+  grep(pattern = "qdt_mass_g_m2_20\\d\\d\\.txt$",
+       x = .,
+       value = TRUE)
+
+df_ls <- list()
+
+for(ffile in qdt.files) {
+  df_ls[[ffile]] = read_csv(ffile) %>%
+           dplyr::select(-X1) %>%
+           mutate(year = as.numeric(str_sub(string = ffile,
+                                            start = 15,
+                                            end = 18)))
+}
+
+whap_su_years <- bind_rows(df_ls) %>%
+  mutate(year = factor(year))
+
+```
+
