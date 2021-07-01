@@ -1,10 +1,33 @@
+---
+title: "Compare Years t-tests"
+author: "Emilio A. Laca"
+date: "7/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(tidyverse)
+
+```
+
+## THIS SCRIPT COMPARES THE YIELD PER UNIT AREA BETWEEN YEARS FOR ALL SUBUNITS THAT WERE MEASURED IN BOTH YEARS IT SHOULD PRODUCE TABLES.
+
+A comparison of refuges is drafted but there are questions to answer before it can be finalized.
+
+
+```{r dataWork}
+
 # Compare mass between years within subunits
+# THIS SCRIPT COMPARES THE YIELD PER UNIT AREA BETWEEN YEARS FOR ALL
+# SUBUNITS THAT WERE MEASURED IN BOTH YEARS
+# IT SHOULD PRODUCE TABLES FORMATTED FOR MARKDOWN
+
 
 # Yearly files are put together inside this module.
 # In the future, the complete file would be directly downloaded from server.
-
-library(knitr)
-library(tidyverse)
 
 
 # Read and join files
@@ -16,6 +39,10 @@ gm2_2020 <-read.csv("qdt_mass_g_m2_2020.txt") %>%
     dplyr::select(-X) %>%
     mutate(year = 2020)
 
+```
+
+
+```{r compareUnits}
 # Create table with difference between years within units
 
 whap_su_years <- bind_rows(gm2_2019, gm2_2020) %>%
@@ -66,12 +93,20 @@ kable(whap_su_years,
       digits = c(0, 0, 0, 2, 5, 0, 2, 5, 0, 2, 5),
       caption = "Differences mass 2020 - mass 2019 for all subunits measured in both years. Comparisons are made as single t-tests with an assumed df = 30.")
 
+```
 
+### Compare refuges
+
+These comparisons do not include statistical tests yet because we need to define a little better the scope of the comparisons. Do we want to compare average yield per unit area, regardless of unit size? Do we want to treat the set of units measured as a random sample of units to represent the refuge? Do we want to compare the total food available in the refuge in the two years?
+
+```{r compareRefuges}
 
 # Create table with difference between years for the total seed mass per LIT
 # This calculation has to be updated to include the covariances among units within year.
 # I suspect there will be positive covariances caused by the use of the same estimates
 # of mass per area in each stratum for all subunits.
+
+# FOR THE COMPARISON BETWEEN REFUGES, THE YIELDS _ARE_ WEIGHTED BY AREA
 
 # Caveat: the comparison between years within refuge only reflects the average of
 # those subunits that were measured in both years.
@@ -133,10 +168,12 @@ whap_LIT_years <- bind_rows(gm2_2019, gm2_2020) %>%
 
 kable(whap_LIT_years,
       digits = rep(0, 7),
-      caption = "Average mass of seed heads over all subunits measured in both years. Comparisons WILL BE made as single t-tests with an assumed df = 30.")
+      caption = "Average mass of seed heads over all subunits measured in both years, weighted by unit area. Comparisons WILL BE made as single t-tests with an assumed df = 30.")
 
 # Add to the refuge level comparison: percent of the units sampled in 2020 also sampled in 2019. number of units sampled in 2020 and 2019/ n sampled in 2020
 
 # Add comparison between LIT using ALL units measured in each year.
 
 # Use t-test in all cases and include a warning about interpretation of the results.
+```
+

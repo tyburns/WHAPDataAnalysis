@@ -3,6 +3,9 @@ title: "Data intake and validation for WHAP"
 author: "Emilio A. Laca"
 date: "6/20/2021"
 output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r setup, include=FALSE}
@@ -18,19 +21,77 @@ library(kableExtra)
 
 ## Input Data structures and formats
 
-This script is intended to manage the data for the WHAP protocol. This management consists of receiving and validating incoming data and then appending the new data to files that contain all data.
+This script is intended to manage the data for the WHAP protocol. This
+management consists of receiving and validating incoming data and then
+appending the new data to files that contain all data.
 
-Five types of data input and structures are managed:
+Six types of data input and structures are managed:
 
-1. Management units
-2. Vantage points
-3. Circle plots
-4. Quadrats
-5. Estimates by refuge, subunit and year
+1.  Seedhead mass
+2.  Management units
+3.  Vantage points
+4.  Circle plots
+5.  Quadrats
+6.  Estimates by refuge, subunit and year
 
-Files 1-4 are supposed to be created by queries of the database created by the field sampling software and some heads-up cleaning. In order to be added to the serv.cat site, the files have to meet at least the standards exemplified by the following files.
+The structure of the file for seedhead mass depends on the species, but
+in general, it contains columns for plant dimensions measured in the
+field and associated seedhead mass. These files are used to derive
+models to calculate seedhead mass as a function of plant dimensions and
+number of seedheads per unit area, which are observed and recorded in
+the qdt files.
 
-This section provides a complete set of rules to name files. Data files have to be in simple ASCII comma-separated-values, where the first row contains column or variable names that are directly valid for the R environment. The specific variable names for each file are given below in the corresponding file sections. 
+Files 2-5 are supposed to be created by queries of the database created
+by the field sampling software and some heads-up cleaning performed by
+Eric. In order to be added to the serv.cat site, the files have to meet
+at least the standards exemplified by the following files.
+
+This section provides a complete set of rules to name files. Data files
+have to be in simple ASCII comma-separated-values, where the first row
+contains column or variable names that are directly valid for the R
+environment. The specific variable names for each file are given below
+in the corresponding file sections.
+
+### Seedhead mass
+
+These files are created whenever they are necessary, for example, when a
+new species is included as food. Three species are being considered thus
+far:
+
+-   Watergrass (wg)
+-   Swamp timothy (st)
+-   Smartweed (sw)
+
+**Swamp timothy** data have the following structure:
+
+|                |                                                    |
+|----------------|----------------------------------------------------|
+| id             | Factor w/ 120 levels "CLS_17jul2019_Q3_ST_me", ... |
+| mass_mg        | num 5660 19240 11740 4030 1610 ...                 |
+| mass_per_sh_mg | num 21.2 19 28.2 53.7 18.1 ...                     |
+| avg_length_mm  | num 14.78 10.93 15.41 15.93 9.96 ...               |
+| no_sh          | num 267 1014 416 75 89 ...                         |
+
+The id column should include enough information about each sample to
+have a unique id. This id should match the id of the physical sample
+used to obtain measurements. For example,
+LIT_Date_Quadrat_Stratum_number_etc.
+
+-   mass_mg is the total dry mass of seedheads in the sample in mg
+-   mass_per_sh_mg is mass_mg / no_sh
+-   avg_length_mm is the average length of seedheads in the sample,
+    measured from the top of the stem (bottom of glumes) to the tip, in
+    mm
+-   no_sh is the total number of seedheads in the set
+
+**Watergrass** data have the following structure:
+
+|                |                                                           |
+|----------------|-----------------------------------------------------------|
+| id             | chr "CLS_3jul2019_wg_med_s1" "CLS_3jul2019_wg_low_s1" ... |
+| sh_length_cm   | num 15.2 13.6 4.6 15.6 13.9 15.7 17.3 8.1 4.4 10 ...      |
+| F2T_cm         | num 8.6 10.5 1.3 26.1 24 13.7 20.5 6.5 4.2 7.2 ...        |
+| mass_per_sh_mg | num 279 342 369 427 520 ...                               |
 
 ### Management units
 
@@ -38,14 +99,15 @@ This section provides a complete set of rules to name files. Data files have to 
 
 **Columns:**
 
-|            |                                             |
-OBJECTID     | int  1 2 3 4 5 6 7 8 9 10 ...               |
-LIT          | chr  "SLW" "SLW" "SLW" "SLW" ...            |
-Unit_Name    | chr  "Lewis 1" "Lewis 6" "HQ-7" "LIC" ...   |
-Subunit_Name | chr  "22" "22" "27a" "57" ...               |
-Acreage      | num  29.5 58.6 87.4 70.8 18.1 ...           |
-Shape_Length | num  2489 2649 3484 2888 1572 ...           |
-Shape_Area   | num  194940 386779 576109 466423 119831 ... |
+|              |                                            |
+|--------------|--------------------------------------------|
+| OBJECTID     | int 1 2 3 4 5 6 7 8 9 10 ...               |
+| LIT          | chr "SLW" "SLW" "SLW" "SLW" ...            |
+| Unit_Name    | chr "Lewis 1" "Lewis 6" "HQ-7" "LIC" ...   |
+| Subunit_Name | chr "22" "22" "27a" "57" ...               |
+| Acreage      | num 29.5 58.6 87.4 70.8 18.1 ...           |
+| Shape_Length | num 2489 2649 3484 2888 1572 ...           |
+| Shape_Area   | num 194940 386779 576109 466423 119831 ... |
 
 ### Vantage points
 
@@ -53,68 +115,180 @@ Shape_Area   | num  194940 386779 576109 466423 119831 ... |
 
 **Columns:**
 
-|                  |                                                  |
-|------------------|--------------------------------------------------|
-| OBJECTID         | int  1 2 3 4 5 6 7 8 9 10 ...                    |
-| LIT              | chr  "SLW" "SLW" "SLW" "KRN" ...|
-| Date             | chr  "8/11/2020 15:02" "12/14/2020 21:02" ...|
-| Observer         | chr  "BT MK" "Beatrix Treiterer" "BT" "GG" ...|
-| Unit_Name        | chr  "Lewis 6" "Lewis 1" "Lewis 1" "4B" ...|
-| Subunit_Name     | chr  "22" "22" "22" "4B-1" ...|
-| VantagePolygonID | chr  "VP1" "VP2" "VP3" "VP4" ...|
-| ProportionVisible| num  0.00286 1.56551 0.02098 0.20583 0.15118 ...|
-| Timothy_Low      | num  0 0.05 1 0.2 0.25 ...|
-| Timothy_Med      | num  0 0.05 0 0.15 0.2 ...|
-| Timothy_High     | num  0 0 0 0.4 0.1 ...|
-| Watergrass_Low   | num  0.01 0.25 0 0 0 0 0 0 0 0 ...|
-| Watergrass_Med   | num  0 0 0 0 0 0 0 0 0 0 ...|
-| Watergrass_High  | num  0 0 0 0 0 0 0 0 0 0 ...|
-| NoFoodCover      | num  0 0.55 0 0.25 0.45 ...|
-| AreaVisible_ac   | num  0.167 46.222 0.62 13.153 9.66 ...|
-| Comments         | chr  "" "" "" "" ...|
-| Shape_Length     | num  150 2436 382 1110 1061 ...|
-| Shape_Area_ac    | num  1106 305181 4090 80927 59438 ...|
-
+|                   |                                                 |
+|-------------------|-------------------------------------------------|
+| OBJECTID          | int 1 2 3 4 5 6 7 8 9 10 ...                    |
+| LIT               | chr "SLW" "SLW" "SLW" "KRN" ...                 |
+| Date              | chr "8/11/2020 15:02" "12/14/2020 21:02" ...    |
+| Observer          | chr "BT MK" "Beatrix Treiterer" "BT" "GG" ...   |
+| Unit_Name         | chr "Lewis 6" "Lewis 1" "Lewis 1" "4B" ...      |
+| Subunit_Name      | chr "22" "22" "22" "4B-1" ...                   |
+| VantagePolygonID  | chr "VP1" "VP2" "VP3" "VP4" ...                 |
+| ProportionVisible | num 0.00286 1.56551 0.02098 0.20583 0.15118 ... |
+| Timothy_Low       | num 0 0.05 1 0.2 0.25 ...                       |
+| Timothy_Med       | num 0 0.05 0 0.15 0.2 ...                       |
+| Timothy_High      | num 0 0 0 0.4 0.1 ...                           |
+| Watergrass_Low    | num 0.01 0.25 0 0 0 0 0 0 0 0 ...               |
+| Watergrass_Med    | num 0 0 0 0 0 0 0 0 0 0 ...                     |
+| Watergrass_High   | num 0 0 0 0 0 0 0 0 0 0 ...                     |
+| NoFoodCover       | num 0 0.55 0 0.25 0.45 ...                      |
+| AreaVisible_ac    | num 0.167 46.222 0.62 13.153 9.66 ...           |
+| Comments          | chr "" "" "" "" ...                             |
+| Shape_Length      | num 150 2436 382 1110 1061 ...                  |
+| Shape_Area_ac     | num 1106 305181 4090 80927 59438 ...            |
 
 ### Circle plots
 
 **Filename:** cp_yyyy.csv
 
+**Columns:**
 
+|                 |                                                           |
+|-----------------|-----------------------------------------------------------|
+| OBJECTID        | int 36 39 41 42 43 46 49 50 51 54 ...                     |
+| LIT             | chr "PIX" "PIX" "PIX" "PIX" ...                           |
+| Date            | chr "9/3/20 17:07" "9/4/20 15:34" "8/26/20 16:03" "" ...  |
+| Observer        | chr "GG" "GG" "MJ" "" ...                                 |
+| PlotStatus      | chr "Complete" "Complete" "Complete" "NotFood" ...        |
+| Unit_Name       | chr "8B" "7B" "9B" "6" ...                                |
+| Subunit_Name    | chr "8B" "7B" "9B" "6" ...                                |
+| CirclePlotID    | chr "C427" "C430" "C432" "C433" ...                       |
+| Timothy_Low     | num 0 0 0 0 0 0 0 0.1 0.15 0 ...                          |
+| Timothy_Med     | num 0 0 0.1 0 0.05 0.05 0 0 0.1 0 ...                     |
+| Timothy_High    | num 1 1 0.75 0 0.95 0.95 0.75 0.75 0.2 0.8 ...            |
+| Watergrass_Low  | num 0 0 0 0 0 0 0 0 0 0 ...                               |
+| Watergrass_Med  | num 0 0 0 0 0 0 0 0 0 0 ...                               |
+| Watergrass_High | num 0 0 0 0 0 0 0 0 0 0 ...                               |
+| NoFoodCover     | num 0 0 0 1 0 0 0.15 0.55 0 0 ...                         |
+| Comments        | chr "" "" "" "" ...                                       |
+| X               | num -13289879 -13290430 -13289359 -13290983 -13290281 ... |
+| Y               | num 4287839 4287934 4287894 4287992 4287966 ...           |
 
 ### Quadrats
 
 **Filename:** qdt_yyyy.csv
 
-### Data dictionaries and permitted sets
++-----------------------------------+----------------------------------+
+| OBJECTID                          | int 330 331 342 343 328 329 452  |
+|                                   | 157 158 159 ...                  |
++-----------------------------------+----------------------------------+
+| LIT                               | chr "MDC" "MDC" "MDC" "MDC" ...  |
++-----------------------------------+----------------------------------+
+| Date                              | chr "8/24/20 15:37" "8/24/20     |
+|                                   | 15:40" ...                       |
++-----------------------------------+----------------------------------+
+| Observer                          | chr "JS " "JS " "JS " "JS " ...  |
++-----------------------------------+----------------------------------+
+| Unit_Name                         | chr "Duck Ponds" "Duck Ponds"    |
+|                                   | "Flournoy Pond" ...              |
++-----------------------------------+----------------------------------+
+| Subunit_Name                      | chr "Duck Ponds" "Duck Ponds"    |
+|                                   | "Flournoy Pond" ...              |
++-----------------------------------+----------------------------------+
+| ManagementAction                  | chr "None" "" "None" "None" ...  |
++-----------------------------------+----------------------------------+
+| CommonName                        | chr "Smartweed" "Smartweed"      |
+|                                   | "Smartweed" ...                  |
++-----------------------------------+----------------------------------+
+| ScientificName                    | chr "Polygonum L." "Polygonum    |
+|                                   | L." "Polygonum L." ...           |
++-----------------------------------+----------------------------------+
+| ITIS_TSN                          | int 20847 20847 20847 20847      |
+|                                   | 20847 20847 502210 ...           |
++-----------------------------------+----------------------------------+
+| Stratum                           | chr "Low" "Low" "Low" "Low" ...  |
++-----------------------------------+----------------------------------+
+| PlantHeight                       | num 0 0 0 0 0 0 55.8 5.4 3.6 5.4 |
+|                                   | ...                              |
++-----------------------------------+----------------------------------+
+| n_seed_heads                      | int 0 0 0 0 0 0 5 36 10 27 ...   |
++-----------------------------------+----------------------------------+
+| Quadrat_Size                      | chr "30x30" "30x30" "30x30"      |
+|                                   | "30x0" ...                       |
++-----------------------------------+----------------------------------+
+| seed_head1_F2TLength              | num 0 0 0 0 0 0 13.4 NA NA NA    |
+|                                   | ...                              |
++-----------------------------------+----------------------------------+
+| seed_head1_Length                 | num 0 0 0 0 0 0 5 0.9 0.8 1.8    |
+|                                   | ...                              |
++-----------------------------------+----------------------------------+
+| seed_head2_F2TLength              | num 0 0 0 0 0 0 10.6 0 0 0 ...   |
++-----------------------------------+----------------------------------+
+| seed_head2_Length                 | num 0 0 0 0 0 0 4.2 0.7 0.8 1    |
+|                                   | ...                              |
++-----------------------------------+----------------------------------+
+| seed_head3_F2TLength              | num 0 0 0 0 0 0 6 0 0 0 ...      |
++-----------------------------------+----------------------------------+
+| seed_head3_Length                 | num 0 0 0 0 0 0 2.4 1 0.8 1.3    |
+|                                   | ...                              |
++-----------------------------------+----------------------------------+
+| seed_head4_F2TLength              | num 0 0 0 0 0 0 6.8 0 0 0 ...    |
++-----------------------------------+----------------------------------+
+| seed_head4_Length                 | num 0 0 0 0 0 0 2.2 0.9 0.8 1.1  |
+|                                   | ...                              |
++-----------------------------------+----------------------------------+
+| seed_head5_F2TLength              | num 0 0 0 0 0 0 3.2 0 0 0 ...    |
++-----------------------------------+----------------------------------+
+| seed_head5_Length                 | num 0 0 0 0 0 0 1 1.2 0.9 1.4    |
+|                                   | ...                              |
++-----------------------------------+----------------------------------+
+| Comments                          | chr "100% smartweed " ...        |
++-----------------------------------+----------------------------------+
+| X                                 | num -13417113 -13417108          |
+|                                   | -13416126 -13416142 ...          |
++-----------------------------------+----------------------------------+
+| Y                                 | num 5082063 5082071 5082509      |
+|                                   | 5082505 5081869 ...              |
++-----------------------------------+----------------------------------+
 
+### Variable names
 
+Whenever a different name is encountered for these variables, it will be
+corrected accordingly.
+
+1.  Refuge (for spelled-out refuge names, do not use as a key field)
+2.  LIT (use as the key field)
+3.  Unit_Name
+4.  Subunit_Name
+5.  subunit_ID (paste(LIT, Unit_Name, Subunit_Name, sep = "\_"))
+6.  group (paste(LIT, Unit_Name, Subunit_Name, Stratum, sep = "\_"))
+7.  Stratum ("a.Low", "b.Med", "c.High")
+8.  LIT_Strat (factor(paste(LIT, Stratum, sep = "\_")))
+9.  year (yyyy integer)
+10. Date
 
 ## Data dictionary
 
-The data dictionary should contain all possible values for key variables such as refuge LIT, unit names, proportions of each yield class, etc. This dictionary can be modified by a person with the proper permissions. We need to consider the use of a DBMS to handle permissions to modify data and structures.
+The data dictionary should contain all possible values for key variables
+such as refuge LIT, unit names, proportions of each yield class, etc.
+This dictionary can be modified by a person with the proper permissions.
+We need to consider the use of a DBMS to handle permissions to modify
+data and structures.
 
-For the purpose of this prototype I will create a data dictionary as a list that can be augmented.
+For the purpose of this prototype I will create a data dictionary as a
+list that can be augmented.
 
 ```{r dataDictionary}
 
-data_dicttionary <- list(LIT = character(),
+data_dictionary <- list(LIT = character(),
                          Unit_Name = character(),
-                         date = character())
+                         Subunit_Name = character(),
+                         Date = character(),
+                         )
 
 
 
 ```
 
-
-
 ### Print tables by refuge
 
 Get list of files that contain results for all years.
 
-Note: filename regex structure has to be reserved, otherwise, extraneous files will be printed.
+Note: filename regex structure has to be reserved, otherwise, extraneous
+files will be printed.
 
-Note: the first part of the script can be used to keep adding files to the serv.cat database for WHAP.
+Note: the first part of the script can be used to keep adding files to
+the serv.cat database for WHAP.
 
 ```{r getFiles}
 
@@ -137,4 +311,3 @@ whap_su_years <- bind_rows(df_ls) %>%
   mutate(year = factor(year))
 
 ```
-

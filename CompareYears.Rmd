@@ -7,6 +7,8 @@ editor_options:
   chunk_output_type: console
 ---
 
+# THIS SCRIPT SHOULD CREATE A GRAPH WITH CI's FOR YIELD IN EACH SUBUNIT EACH YEAR
+
 ## Task
 
 Create a graph for subunits within for each refuge that includes estimated means and CI for 2019 and 2020. Include all subunits surveyed in WHAP (ie keep units that were not surveyed in one of the years on the graph).
@@ -55,8 +57,8 @@ viaClass <- read.csv("WHAP_Viability_20210610.csv") %>%
 
 ```{r plotFunction}
 
-# The user can select what years and subunits to compare by providing vectors
-# with their names in the function call
+# Potential improvement: The user can select what years and subunits to compare
+# by providing vectors with their names.
 
 plot_years <- function(spp = c("total"),
                        data = whap_su_years) {
@@ -78,22 +80,6 @@ plot_years <- function(spp = c("total"),
                             y = tot_g_m2,
                             color = year)) +
                  ggtitle("Comparison across years") +
-                 geom_point(size = 4) +
-                 xlab('Subunit Name') +
-                 ylab("Total seed mass 80% CI (g/m^2)") +
-                 geom_errorbar(aes(ymin = CI80lwr,
-                                   ymax = CI80upr),
-                               width = 0.5,
-                               cex = 1) +
-                 theme(plot.title = element_text(size = 16, face = "bold"),
-                       axis.ticks.y = element_blank(),
-                       axis.text.x = element_text(face = "bold"),
-                       axis.title = element_text(size = 12,
-                                                 face = "bold"),
-                       strip.text.y = element_text(hjust = 0,
-                                                   vjust = 1,
-                                                   angle = 180,
-                                                   face = "bold")) +
                  geom_rect(data = viaClass,
                            inherit.aes = FALSE,
                            aes(NULL,
@@ -108,6 +94,22 @@ plot_years <- function(spp = c("total"),
                                                     "chartreuse",
                                                     "chartreuse3"),
                                                   0.2)) +
+                 geom_point(size = 3) +
+                 xlab('Subunit Name') +
+                 ylab("Total seed mass 80% CI (g/m^2)") +
+                 geom_errorbar(aes(ymin = CI80lwr,
+                                   ymax = CI80upr),
+                               width = 0.3,
+                               cex = 0.75) +
+                 theme(plot.title = element_text(size = 16, face = "bold"),
+                       axis.ticks.y = element_blank(),
+                       axis.text.x = element_text(face = "bold"),
+                       axis.title = element_text(size = 12,
+                                                 face = "bold"),
+                       strip.text.y = element_text(hjust = 0,
+                                                   vjust = 1,
+                                                   angle = 180,
+                                                   face = "bold")) +
                  coord_flip()
     print(year_plots[[i]])
   }

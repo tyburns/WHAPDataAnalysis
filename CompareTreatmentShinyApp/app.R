@@ -1,4 +1,8 @@
 # Shiny app to compare sets of units that have different treatments.
+# The interface presents all units in all years in two columns wiht check boxes.
+# Check boxes to select the sets to be compared (first column vs second column).
+# The output table shows a "z-test" for wg, st and total mass per m2 in the units.
+# Averages compared are NOT weighted by area of subunits.
 
 # Comparisons will have to be modified once the covariance among units within
 # years is estimated.
@@ -57,9 +61,11 @@ server <- function(input, output) {
       sqrt()
     
     data.frame(set1_avg, set2_avg, se_diff) %>%
-      mutate(diff = set1_avg - set2_avg,
+      mutate(variable = c("wg_g_m2", "st_g_m2", "tot_g_m2"),
+             diff = set1_avg - set2_avg,
              z = abs(diff / se_diff),
-             p_value = pt(q = z, df = 30, lower.tail = FALSE))
+             p_value = pt(q = z, df = 30, lower.tail = FALSE)) %>%
+      dplyr::select(variable, set1_avg, set2_avg, diff, se_diff, z, p_value)
     
   })
 }

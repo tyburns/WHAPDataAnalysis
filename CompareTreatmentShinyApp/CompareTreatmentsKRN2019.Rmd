@@ -7,6 +7,9 @@ editor_options:
   chunk_output_type: console
 ---
 
+# THIS SCRIPT ANALYZES THE DIFFERENCES BETWEEN UNITS THAT WERE DISKED OR NOT AND FLOODED OR NOT.
+# AN HTML REPORT IS SUPPOSED TO BE PRODUCED.
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 # Effect of action in previous 3 years
