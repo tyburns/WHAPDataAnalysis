@@ -1,0 +1,174 @@
+---
+title: "WHAP_maps_20210406"
+output: html_document
+---
+
+#Loading packages
+```{r}
+packages = c("sf", "tidyr", "dplyr","ggplot2",
+             "viridis",  "MASS", "readr","RColorBrewer")
+
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }
+  }
+)
+#setwd("~/test/WHAP_mapping_2020")
+
+```
+
+#Loading shape files
+##task: get 2020 shape files and change here (modoc shps is 2020)
+##Suggestion from Eric is to change to different geospatial file. Look into Esri Rstudio Bridge for script longevity 
+
+```{r}
+mus_krn <- read_sf('~/test/WHAP_mapping_2019/KRN_MU_2019.shp')
+colnames(mus_krn)[colnames(mus_krn)=="SubUnit"] <- "Sub_Unit"
+mus_pix <- read_sf('~/test/WHAP_mapping_2019/PIX_MU_2019.shp')
+colnames(mus_pix)[colnames(mus_pix)=="UnitName"] <- "Sub_Unit"
+#mus_mdc <- read_sf('MDC_MU_2019.shp')
+mus_slw <- read_sf('~/test/WHAP_mapping_2019/SLW_MU_2019.shp')
+colnames(mus_slw)[colnames(mus_slw)=="UnitName"] <- "Sub_Unit"
+mus_mdc<-read_sf('~/test/Modoc_MU/Modoc_ManagementUnits_20210419.shp')
+colnames(mus_mdc)[colnames(mus_mdc)=="MU_Name"] <- "Sub_Unit"
+```
+
+#Loading mass g m2 data 
+```{r}
+seed_data<-read.csv('C:/Users/tyburns/OneDrive - DOI/Documents/test/WHAP_mapping_2020/qdt_mass_g_m2_2020.txt')
+colnames(seed_data)[colnames(seed_data)=="Subunit_Name"] <- "Sub_Unit"
+```
+
+#Swamp Timothy g/m2 Maps
+```{r}
+#Stone Lakes
+slw_seed<-seed_data %>% 
+  filter(LIT=='SLW') 
+colnames(slw_seed)[colnames(slw_seed)=="Sub_Unit"] <- "SubUnit_id"
+colnames(slw_seed)[colnames(slw_seed)=="Unit_Name"] <- "Sub_Unit"
+slw_seed <- merge(mus_slw, slw_seed, by='Sub_Unit')
+
+slw_st_map<-ggplot(data =slw_seed) +
+  geom_sf(aes(fill = st_g_m2))+
+  scale_fill_viridis(limits = c(1, 700),direction=-1, name="Timothy Seed Mass g/m2")+
+  labs(title="Stone Lakes Timothy Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.text.x = element_text(angle=90))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3, position="dodge")
+ 
+slw_st_map
+
+#Pixley
+pix_seed <- merge(mus_pix, seed_data, by='Sub_Unit')
+
+pix_st_map<-ggplot(data =pix_seed) +
+  geom_sf(aes(fill = st_g_m2))+
+  scale_fill_viridis(limits = c(0.0005, 700), direction=-1, name="Timothy Seed Mass g/m2")+
+  labs(title="Pixley Timothy Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3, position="dodge")
+pix_st_map
+
+
+#Kern
+krn_seed <- merge(mus_krn, seed_data, by='Sub_Unit')
+
+krn_st_map<-ggplot(data =krn_seed) +
+  geom_sf(aes(fill = st_g_m2))+
+  scale_fill_viridis(limits = c(0.0005, 700), direction=-1, name="Timothy Seed Mass g/m2")+
+  labs(title="Kern Timothy Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3, position="dodge")
+krn_st_map
+
+
+#Modoc
+
+mdc_seed <- merge(mus_mdc, seed_data, by='Sub_Unit')
+mdc_st_map<-ggplot(data =mdc_seed) +
+  geom_sf(aes(fill = st_g_m2))+
+  scale_fill_viridis(limits = c(0.0005, 700), direction=-1, name="Timothy Seed Mass g/m2")+
+  labs(title="Modoc Timothy Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3)
+mdc_st_map
+```
+
+#Swamp Timothy Viability Maps
+```{r}
+
+vcolor <- c("Poor" = "coral3", "Fair" = "gold", "Good" = "darkolivegreen3", "Very Good" = "olivedrab4")
+
+#Need Stone Lakes and Modoc viability scales 
+#slw_st_viability <- slw_seed %>%
+  #mutate(viability = if_else(st_g_m2 < 85, "Poor",
+                    # if_else(st_g_m2 <180, "Fair",
+                    # if_else(st_g_m2 <300, "Good", "Very Good"))))
+
+pix_st_viability<- pix_seed %>%
+  mutate(viability = if_else(st_g_m2 < 85, "Poor",
+                     if_else(st_g_m2 <180, "Fair",
+                     if_else(st_g_m2 <300, "Good", "Very Good")))) 
+pix_st_viability_map<-ggplot(data =pix_st_viability) +
+  geom_sf(aes(fill = viability))+
+scale_fill_manual(values = vcolor, name= "Viability")+ 
+  theme(legend.position = "right")+
+  labs(title="Pixley Timothy Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3, position="dodge")+
+  theme_bw()
+pix_st_viability_map
+
+krn_st_viability<-krn_seed %>%
+  mutate(viability = if_else(st_g_m2 < 85, "Poor",
+                     if_else(st_g_m2 <180, "Fair",
+                     if_else(st_g_m2 <300, "Good", "Very Good"))))
+
+krn_st_viability_map<-ggplot(data =krn_st_viability) +
+  geom_sf(aes(fill = viability))+
+scale_fill_manual(values = vcolor, name= "Viability")+ 
+  theme(legend.position = "right")+
+  labs(title="Kern Timothy Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3, position="dodge")+
+  theme_bw()
+krn_st_viability_map
+```
+#Watergrass g/m2 Maps
+```{r}
+slw_wg_map<-ggplot(data =slw_seed) +
+  geom_sf(aes(fill = wg_g_m2))+
+  scale_fill_viridis(limits = c(1, 700),direction=-1, name="Watergrass Seed Mass g/m2")+
+  labs(title="Stone Lakes Watergrass Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.text.x = element_text(angle=90))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3, position="dodge")
+ 
+slw_wg_map
+
+#Pixley
+pix_wg_map<-ggplot(data =pix_seed) +
+  geom_sf(aes(fill = wg_g_m2))+
+  scale_fill_viridis(limits = c(0.0005, 700), direction=-1, name="Watergrass Seed Mass g/m2")+
+  labs(title="Pixley Watergrass Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3, position="dodge")
+pix_wg_map
+
+#Modoc
+
+mdc_seed <- merge(mus_mdc, seed_data, by='Sub_Unit')
+mdc_wg_map<-ggplot(data =mdc_seed) +
+  geom_sf(aes(fill = wg_g_m2))+
+  scale_fill_viridis(limits = c(0.0005, 700), direction=-1, name="Watergrass Seed Mass g/m2")+
+  labs(title="Modoc Watergrass Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3)
+mdc_wg_map
+```
+
+#Watergrass viability maps
