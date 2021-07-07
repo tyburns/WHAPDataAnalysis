@@ -17,7 +17,6 @@ package.check <- lapply(
     }
   }
 )
-#setwd("~/test/WHAP_mapping_2020")
 
 ```
 
@@ -26,14 +25,13 @@ package.check <- lapply(
 ##Suggestion from Eric is to change to different geospatial file. Look into Esri Rstudio Bridge for script longevity 
 
 ```{r}
-mus_krn <- read_sf('~/test/WHAP_mapping_2019/KRN_MU_2019.shp')
+mus_krn <- read_sf('KRN_MU_2019.shp')
 colnames(mus_krn)[colnames(mus_krn)=="SubUnit"] <- "Sub_Unit"
-mus_pix <- read_sf('~/test/WHAP_mapping_2019/PIX_MU_2019.shp')
+mus_pix <- read_sf('PIX_MU_2019.shp')
 colnames(mus_pix)[colnames(mus_pix)=="UnitName"] <- "Sub_Unit"
-#mus_mdc <- read_sf('MDC_MU_2019.shp')
-mus_slw <- read_sf('~/test/WHAP_mapping_2019/SLW_MU_2019.shp')
+mus_slw <- read_sf('SLW_MU_2019.shp')
 colnames(mus_slw)[colnames(mus_slw)=="UnitName"] <- "Sub_Unit"
-mus_mdc<-read_sf('~/test/Modoc_MU/Modoc_ManagementUnits_20210419.shp')
+mus_mdc<-read_sf('Modoc_ManagementUnits_20210419.shp')
 colnames(mus_mdc)[colnames(mus_mdc)=="MU_Name"] <- "Sub_Unit"
 ```
 
