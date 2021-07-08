@@ -46,12 +46,12 @@ Whenever a different name is encountered for these variables, it will be correct
 
 # Data to create model for ST: mass = f(seed no., seed length)
 # From st_model_creation.R
-st_all_noO <- readRDS("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/SeedYieldData/st_all_noO.rds") %>%
+st_all_noO <- readRDS("st_all_noO.rds") %>%
   rename_with(~gsub(".", "_", .x, fixed = TRUE))
 
 # Data to create model for ST: mass = f(seed no., seed length)
 # From wg_model_creation.R
-wgdat <- readRDS("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/SeedYieldData/wgdat.rds") %>%
+wgdat <- readRDS("wgdat.rds") %>%
   rename_with(~gsub(".", "_", .x, fixed = TRUE))
 
 # # Data from vantage points and circle plots from AreaPerSubunitPerStratum2019.R
@@ -102,7 +102,7 @@ F2T_col <- c("seed_head1_F2TLength",
 ```{r prep_Files}
 
 # Vantage polygon information =============================
-vps <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/SeedYieldData/WHAP2019_PP_20201002_VPs.csv") %>%
+vps <- read.csv("WHAP2019_PP_20201002_VPs.csv") %>%
   mutate(level = "VP",
          temp_p = Watergrass_Low +
            Watergrass_Med +
@@ -128,7 +128,7 @@ vps <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKay
                 starts_with("p_"))
 
 # Circle plot information =============================
-cps <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/SeedYieldData/WHAP2019_PP_20201002_CPs.csv") %>%
+cps <- read.csv("WHAP2019_PP_20201002_CPs.csv") %>%
   mutate(level = "CP",
          temp_p = Watergrass_Low +
            Watergrass_Med +
@@ -155,7 +155,7 @@ cps <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKay
                 starts_with("p_"))
 
 # Management unit information =============================
-mus <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/SeedYieldData/WHAP2019_PP_20201002_MUs.csv") %>% # management units
+mus <- read.csv("WHAP2019_PP_20201002_MUs.csv") %>% # management units
   dplyr::select(LIT,
                 Unit_Name,
                 Subunit_Name,
@@ -168,7 +168,7 @@ vpcp <- bind_rows(vps, cps) %>%
 # last row 810 removed is for a unit that was not measured but appears in mus
 
 # Quadrat information ====================================
-qdt_st <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/SeedYieldData/qdt2019c.csv") %>%
+qdt_st <- read.csv("qdt2019c.csv") %>%
   filter(CommonName == "Timothy" & Stratum != "") %>%
   mutate(avg_length_mm = 10 * rowMeans(.[, length_col], na.rm = TRUE)) %>%
   mutate(qdt_m2 = ifelse(Quadrat_Size == "15x15", 0.15^2,
@@ -206,7 +206,7 @@ str(qdt_st)
 ```{r wg_qdt}
 
 # Quadrat data from field ========
-qdt_wg <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/SeedYieldData/qdt2019c.csv") %>%
+qdt_wg <- read.csv("qdt2019c.csv") %>%
   filter(CommonName == "Watergrass" & Stratum != "")
 
 sh_lengths_cm_wg <- as.matrix(qdt_wg[, length_col]) %>% na_if(0)
@@ -257,7 +257,7 @@ str(qdt_wg)
 
 ```{r su_areas}
 
-su_areas <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/SeedYieldData/WHAP2019_PP_20201002_MUs.csv") %>%
+su_areas <- read.csv("WHAP2019_PP_20201002_MUs.csv") %>%
   dplyr::select(LIT,
                 Unit_Name,
                 Subunit_Name,

@@ -45,12 +45,12 @@ Whenever a different name is encountered for these variables, it will be correct
 
 # Data to create model for ST: mass = f(seed no., seed length)
 # From st_model_creation.R
-st_all_noO <- readRDS("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/SeedYieldData/st_all_noO.rds") %>%
+st_all_noO <- readRDS("st_all_noO.rds") %>%
   rename_with(~gsub(".", "_", .x, fixed = TRUE))
 
 # Data to create model for ST: mass = f(seed no., seed length)
 # From wg_model_creation.R
-wgdat <- readRDS("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/SeedYieldData/wgdat.rds") %>%
+wgdat <- readRDS("wgdat.rds") %>%
   rename_with(~gsub(".", "_", .x, fixed = TRUE))
 
 # # Data from vantage points and circle plots from AreaPerSubunitPerStratum2019.R
@@ -101,7 +101,7 @@ F2T_col <- c("seed_head1_F2TLength",
 ```{r prep_Files}
 
 # Vantage polygon information =============================
-vp2020c <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/WHAPData/WHAP2020_PostProcessed_20210108/vp2020c.csv")
+vp2020c <- read.csv("vp2020c.csv")
 
 vps <- vp2020c %>%
   mutate(level = "VP",
@@ -129,7 +129,7 @@ vps <- vp2020c %>%
                 starts_with("p_"))
 
 # Circle plot information =============================
-cp2020c <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/WHAPData/WHAP2020_PostProcessed_20210108/cp2020c.csv")
+cp2020c <- read.csv("cp2020c.csv")
 
 
 cps <- cp2020c %>%
@@ -159,7 +159,7 @@ cps <- cp2020c %>%
                 starts_with("p_"))
 
 # Management unit information =============================
-mu2020c <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/WHAPData/WHAP2020_PostProcessed_20210108/mu2020c.csv")
+mu2020c <- read.csv("mu2020c.csv")
 
 
 mus <- mu2020c %>% # management units
@@ -174,7 +174,7 @@ vpcp <- bind_rows(vps, cps) %>%
   na.omit()
 
 # Quadrat information ====================================
-qdt_st <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/WHAPData/WHAP2020_PostProcessed_20210108/qdt2020c.csv") %>%
+qdt_st <- read.csv("qdt2020c.csv") %>%
   filter(CommonName == "Timothy" & Stratum != "") %>%
   mutate(avg_length_mm = 10 * rowMeans(.[, length_col], na.rm = TRUE)) %>%
   mutate(qdt_m2 = ifelse(Quadrat_Size == "15x15", 0.15^2,
@@ -212,7 +212,7 @@ str(qdt_st)
 ```{r wg_qdt}
 
 # Quadrat data from field ========
-qdt_wg <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/WHAPData/WHAP2020_PostProcessed_20210108/qdt2020c.csv") %>%
+qdt_wg <- read.csv("qdt2020c.csv") %>%
   filter(CommonName == "Watergrass" & Stratum != "")
 
 sh_lengths_cm_wg <- as.matrix(qdt_wg[, length_col]) %>% na_if(0)
