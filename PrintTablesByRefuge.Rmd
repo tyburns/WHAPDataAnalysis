@@ -18,6 +18,10 @@ library(kableExtra)
 
 ```
 
+## Task: Split output tables by refuge.
+
+This script should produce an html report with a table per refuge. Each table contains a row for each unit and columns for seedhead yield in $g/m^2$ for each species and the total, as well as the corresponding standard errors.
+
 
 ## Print tables by refuge
 
@@ -25,7 +29,7 @@ Get list of files that contain results for all years.
 
 Note: filename regex structure has to be reserved, otherwise, extraneous files will be printed.
 
-Note: the first part of the script can be used to keep adding files to the serv.cat database for WHAP.
+Note: the first part of the script can be used to keep adding files to the servCat database for WHAP.
 
 ```{r getFiles}
 
