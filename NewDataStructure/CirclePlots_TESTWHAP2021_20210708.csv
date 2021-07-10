@@ -1,0 +1,10 @@
+﻿GlobalID,eventDate,recordedBy,LIT,unitName,subunitName,decimalLongitude,decimalLatitude,PlotStatus,noFoodVisible,eventRemarks,taxonID,verbatumName,stratum,proportionVisibleArea
+{ED2326F0-1692-4BB0-9EE1-B47E0E866FF2},9/3/2020 17:07,eric_ross@fws.gov_fws,PIX,8B,,-121.276662,38.637689,Complete,0.5,,41605,Swamp Timothy,medium,0.1
+{ED2326F0-1692-4BB0-9EE1-B47E0E866FF2},9/3/2020 17:07,eric_ross@fws.gov_fws,PIX,8B,,-121.276662,38.637689,Complete,0.5,,123456,Smartweed,high,0.4
+{A238EB07-90FF-48F5-8CD7-A2C2FC3DF141},9/4/2020 15:34,eric_ross@fws.gov_fws,PIX,7B,,-121.467469,38.561903,Complete,0.2,,41605,Swamp Timothy,low,0.4
+{A238EB07-90FF-48F5-8CD7-A2C2FC3DF141},9/4/2020 15:34,eric_ross@fws.gov_fws,PIX,7B,,-121.467469,38.561903,Complete,0.2,,41605,Swamp Timothy,medium,0.3
+{A238EB07-90FF-48F5-8CD7-A2C2FC3DF141},9/4/2020 15:34,eric_ross@fws.gov_fws,PIX,7B,,-121.467469,38.561903,Complete,0.2,,41605,Swamp Timothy,high,0.1
+{4DB8CA71-8781-458F-A0F3-19DB9933780C},8/26/2020 16:03,eric_ross@fws.gov_fws,PIX,9B,,-121.42743,38.56279,NotFood,1,,,,,
+{A2153C3B-FE29-43B1-AED2-AC95C05CD85E},8/26/2020 15:44,eric_ross@fws.gov_fws,PIX,9B,,-121.44743,38.54179,Complete,0.15,,41605,Swamp Timothy,low,0.85
+{BF4EABB8-4F6F-488C-9BDC-224C8AE84748},9/4/2020 16:59,eric_ross@fws.gov_fws,PIX,6,,-121.48743,38.58179,NotFood,1,,,,,
+{76FFEEBC-0862-4AAA-8758-B7919C6C0113},9/3/2020 17:04,eric_ross@fws.gov_fws,PIX,7B,,-121.49743,38.59979,Complete,0.55,,123456,Smartweed,medium,0.45

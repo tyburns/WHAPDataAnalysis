@@ -1,0 +1,100 @@
+---
+title: "New Data Structure Comments"
+author: "Emilio A. Laca"
+date: "7/10/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+
+```
+
+
+## New data
+
+Read current version of fictitious data files. These files are supposed to be the input files for the analysis scripts by EAL, and they results from post processing of survey 123 files performed by ER or scripts he prepares.
+
+```{r dataFrom123PP, include=FALSE}
+
+mu_test <- read_csv("ManagementUnits_TESTWHAP2021_20210708.csv")
+
+vp_test <- read_csv("VantagePolygons_TESTWHAP2021_20210708.csv")
+
+cp_test <- read_csv("CirclePlots_TESTWHAP2021_20210708.csv")
+
+qdt_test <- read_csv("Quadrats_TESTWHAP2021_20210708.csv")
+
+```
+
+### Management units
+
+```{r}
+
+str(mu_test)
+
+```
+
+1. Management units do not have global ID's. Why? Do they need one?
+
+2. We need to make a data dictionary for LIT and data have to be checekd against it unless the entry point (survey 123) restricts entry to a db list that is validated AND files are not modified manually after db query. This comment applies to all variables that should have predefined domains ("data dictionaries").
+
+
+### Vantage points
+
+```{r}
+
+str(vp_test)
+
+```
+
+1. Consider using the variable names from Darwin scheme; for example, "vernacularName" instead of "verbatumName," and "fwsTaxonCode" instead of "taxonID".
+
+2. noFoodVisible might be better treated as a species-stratum combination and not as a different variable. We should think about the true meaning and come up with names that reflect the concept. I hesitate to use "noFood" because the fact that we are not specifically targeting a species does not automatically make it "not food." We should consider something like "otherCover" for species and maybe "otherStratum" for the stratum column. We should discuss this.
+
+3. "areaVisible" should have units in the name. I suggest "areaVisible_uu", where uu is the abbreviation for the units used, for example "areaVisible_ac".
+
+4. "eventDate" could be ambiguous depending on the range of dates and times. I would suggest to use the "dd-mmm-yyyy hh:mm:ss" format, for example, "6-Jan-2022 14:53:23".
+
+
+### Circle plots
+
+```{r}
+
+str(cp_test)
+
+```
+
+1. Consider to change NA's (I assume these are empty fields in db) with the corresponding empty values when it is known that the value is null. This means that instead of treating a subunit name known not to exist as NA we treat it as a set character string equal to "". I think this concept is more coherent with the meaning of NA, which means that maybe it was not measured or that the values was lost. In a sense, the "" in a string is like a measured 0 in bird counts. It is not the same as an NA in bird counts.
+
+2. Same comment about NoFoodVisible as above.
+
+3. Same comment about taxonID as above.
+
+4. Same comment for verbatumName as above.
+
+
+### Quadrats
+
+```{r}
+
+str(qdt_test)
+
+```
+
+1. Same comment about eventDate as above.
+
+2. Same comment about subunitName as above.
+
+3. same comment for verbatumSpecies as for verbatumName above. Make sure the same variables get the same names and domains in different files.
+
+4. plantHeight should be plantHeight_uu to specify units.
+
+5. measurementType domain should include units in the values, for example: "sh_length_cm".
+
+
