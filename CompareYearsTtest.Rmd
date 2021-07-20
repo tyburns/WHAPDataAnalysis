@@ -3,6 +3,8 @@ title: "Compare Years t-tests"
 author: "Emilio A. Laca"
 date: "7/1/2021"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -13,7 +15,7 @@ library(tidyverse)
 
 ```
 
-## THIS SCRIPT COMPARES THE YIELD PER UNIT AREA BETWEEN YEARS FOR ALL SUBUNITS THAT WERE MEASURED IN BOTH YEARS IT SHOULD PRODUCE TABLES.
+## THIS SCRIPT COMPARES THE YIELD PER UNIT AREA BETWEEN YEARS FOR ALL SUBUNITS THAT WERE MEASURED IN BOTH YEARS. IT SHOULD PRODUCE TABLES OF TESTS.
 
 A comparison of refuges is drafted but there are questions to answer before it can be finalized.
 
@@ -42,7 +44,7 @@ gm2_2020 <-read.csv("qdt_mass_g_m2_2020.txt") %>%
 ```
 
 
-```{r compareUnits}
+```{r compareUnits, results='asis'}
 # Create table with difference between years within units
 
 whap_su_years <- bind_rows(gm2_2019, gm2_2020) %>%
@@ -89,9 +91,13 @@ whap_su_years <- bind_rows(gm2_2019, gm2_2020) %>%
                   tot_p_value) %>%
     dplyr::filter(rowSums(is.na(.)) != ncol(.) - 2)
 
-kable(whap_su_years,
-      digits = c(0, 0, 0, 2, 5, 0, 2, 5, 0, 2, 5),
-      caption = "Differences mass 2020 - mass 2019 for all subunits measured in both years. Comparisons are made as single t-tests with an assumed df = 30.")
+lits <- unique(whap_su_years$LIT)
+
+for (lit_i in lits){
+kable(whap_su_years %>% dplyr::filter(LIT == lit_i),
+      digits = c(0, 0, 0, 2, 4, 0, 2, 5, 0, 2, 4),
+      caption = "Differences mass 2020 - mass 2019 for all subunits measured in both years. Comparisons are made as single t-tests with an assumed df = 30.") %>% print
+}
 
 ```
 
