@@ -3,6 +3,8 @@ title: "Options to include overlapping species in WHAP"
 author: "Emilio A. Laca"
 date: "7/18/2021"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -66,7 +68,11 @@ This option accounts for overlap by estimating the proportion of each combinatio
 
 Advantage: the total of all proportions estimated must be 1; thus, the proportional correction can be applied as in the current or original method.
 
-Drawback: the number of classes can theoretically be very large ($4^n$ or 64 for three species) and it might be hard to identify the different classes in the field.
+Drawbacks: the number of classes can theoretically be very large ($4^n$ or 64 for three species) and it might be hard to identify the different classes in the field. 
+
+The setup to collect data has to be modified because each row of representing each subarea can potentially be associated with multiple rows of species and strata. When species do not overlap, there is a one-to-one relationship between subareas in VP or CP, species and stratum. With overlap, each subarea row will be potentially associated with multiple species-stratum rows. A DBM system approach dictates that a new table be created between the VP or CP table and the observation table. The figure below represents a suggestion for the solution.
+
+![Modification of database structure to accomodate overlapping species](overlap03.jpg)
 
 The actual number of categories can be much smaller than the theoretical maximum. For example, assuming that the species are watergrass, swamp timothy and smartweed, and that swamp timothy does not overlap with either of the other species, the total number of classes is 3 watergrass + 3 smartweed + 3 swamp timothy + 9 smartweed and swamp timothy + 1 Other = 19.
 
@@ -114,3 +120,5 @@ This method can be organized as follows:
 1. look at the area (VP visible area or CP) and divide it into a series of non-overlapping subareas that are much more similar within than between subareas;
 2. estimate the proportion of total area represented by each subarea;
 3. determine the combination of species-strata present in each subarea.
+
+The new procedure will require a modification of the data structures and the survey process, which will probably require rewriting the instructions to use the survey tool (app).
