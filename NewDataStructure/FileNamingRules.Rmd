@@ -1,0 +1,57 @@
+---
+title: "File structure and naming conventions"
+author: "Emilio A. Laca"
+date: "7/22/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+
+```
+
+
+### Purpose
+
+As data are gathered in the field they have to be post processed and stored/archived in a planned folder structure with preset names to make it easier to write scripts to manipulate the desired files. The files in question are those produced by the post-processing.
+
+### Needed features
+
+1. Handling of partial files or in-progress data.
+2. Folder structure to contain files resulting from post-processing.
+3. File names for files resulting from post-processing.
+
+### Partial data
+
+Files will be post-processed only after all field data for a refuge and year are complete. There will be no partial files post-processed. Therefore, the presence of a post-processed file with a file name and in the folders as discussed below is a statement that those data are complete and that no expected updates will be made to the post-processed files. Unexpected updates are possible but will not be considered in the programming and will have to be handled in an ad-hoc manner as situations arise.
+
+### Folder structure
+
+I think I heard Kara suggest that we keep refuges separately due to "privacy" concerns by personnel. On this bases I propose to have a folder called WHAP_postprocessed_data within which there is a folder for each refuge with name equal to the LIT field for the refuge, for example KRN. Individual files for each year will be in the folder for each refuge. These files will have identical structure and column names. If having refuge data in separate files is not necessary, the structure can be simplified to have a single file per year. Either way is fine for scripting, as (see below) files will be easily joined by simple concatenation.
+
+### File names
+
+Each file will be named with in a standardized manner to facilitate selection and reading of files on demand by scripts. Each file name will have three components separated by underscores and a txt extension after a period. I suggest a txt extension so files are opened by a text editor by default and not by excel. Spelling and case for each component has to be identical to the corresponding entry in the data dictionaries, as these fields will be used as keys in a DBM sense.
+
+a. File type (management units, vantage points, circle plots and quadrats).
+b. Refuge identity (LIT).
+c. Year (yyyy)
+
+Some examples of file names would be:
+
+VP_KRN_2021.txt
+CP_KRN_2020.txt
+QDT_MDC_2023.txt
+
+
+Additional key information can be added to the files if Eric needs to link the files to a specific instance of post-processing. Such information can be inserted to the file name between the yyyy and the .txt. It should start with an underscore and it should NOT contain any underscores, spaces, non-ASCII characters or characters that would have to be escaped in a regex. The whole of the extra information should be part 4 of splitting a file name using the underscore as separator. For example:
+
+VP_KRN_2021_theOneDoneSunPm.txt
+CP_KRN_2020_124xjw-001a.txt
+
+
+File content should be formatted as comma separated values. All files with the same type first part (VP, CP or QDT), should have the same columns and data types, such that they can be row-bound (bind_rows{dplyr}) transparently.
