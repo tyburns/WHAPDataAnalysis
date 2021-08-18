@@ -48,7 +48,7 @@ CP_KRN_2020.txt
 QDT_MDC_2023.txt
 
 
-Additional key information can be added to the files if Eric needs to link the files to a specific instance of post-processing. Such information can be inserted to the file name between the yyyy and the .txt. It should start with an underscore and it should NOT contain any underscores, spaces, non-ASCII characters or characters that would have to be escaped in a regex. The whole of the extra information should be part 4 of splitting a file name using the underscore as separator. For example:
+Additional key information can be added to the files if Eric needs to link the files to a specific instance of post-processing. Such information can be inserted to the file name between the yyyy and the .txt. It should start with an underscore and it should NOT contain any other underscores, spaces, non-ASCII characters or characters that would have to be escaped in a regex. The whole of the extra information should be part 4 of splitting a file name using the underscore as separator. For example:
 
 VP_KRN_2021_theOneDoneSunPm.txt
 CP_KRN_2020_124xjw-001a.txt

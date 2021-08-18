@@ -1,0 +1,961 @@
+---
+title: "Calculation of Timothy and Watergrass seed abundance"
+author: "Emilio A. Laca"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    toc: yes
+    number_sections: yes
+editor_options: 
+  chunk_output_type: console
+---
+# Add code to remove the subunits that have all zeros.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(car)
+library(boot)
+library(emmeans)
+library(rsample)
+library(MASS)
+library(ggforce)
+library(knitr)
+library(kableExtra)
+
+```
+
+## Names of variables 
+
+Whenever a different name is encountered for these variables, it will be corrected accordingly.
+
+1. Refuge (for spelled-out refuge names, do not use as a key field)
+2. LIT (use as the key field)
+3. Unit_Name
+4. Subunit_Name
+5. subunit_ID (paste(LIT, Unit_Name, Subunit_Name, sep = "_"))
+6. group (paste(LIT, Unit_Name, Subunit_Name, Stratum, sep = "_"))
+7. Stratum ("a.Low", "b.Med", "c.High")
+8. LIT_Strat  (factor(paste(LIT, Stratum, sep = "_")))
+
+
+## Read RDS's
+
+```{r rds_Files}
+
+# Data to create model for ST: mass = f(seed no., seed length)
+# From st_model_creation.R
+st_all_noO <- readRDS("st_all_noO.rds") %>%
+  rename_with(~gsub(".", "_", .x, fixed = TRUE))
+
+# Data to create model for ST: mass = f(seed no., seed length)
+# From wg_model_creation.R
+wgdat <- readRDS("wgdat.rds") %>%
+  rename_with(~gsub(".", "_", .x, fixed = TRUE))
+
+# # Data from vantage points and circle plots from AreaPerSubunitPerStratum2019.R
+# vpcp2 <- readRDS("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/vpcp2.rds")
+
+```
+
+## Models to go from seed dimensions to mass
+
+```{r ST_len2mass}
+
+ST_len2mass <- lm(log(mass_mg) ~ log(avg_length_mm) + log(no_sh),
+                  data = st_all_noO)
+
+```
+
+```{r WG_len2mass}
+
+WG_len2mass <- lm(log(mass_per_sh_mg  + 20) ~ sh_len_cm +
+                    emerged +
+                    F2T_cm,
+                  data = wgdat,
+                  na.action = na.exclude)
+
+```
+
+## Prepare utility info
+
+```{r utils}
+
+# List of columns with seed head length and F2T--
+length_col <- c("seed_head1_Length",
+                "seed_head2_Length",
+                "seed_head3_Length",
+                "seed_head4_Length",
+                "seed_head5_Length")
+
+F2T_col <- c("seed_head1_F2TLength",
+             "seed_head2_F2TLength",
+             "seed_head3_F2TLength",
+             "seed_head4_F2TLength",
+             "seed_head5_F2TLength")
+
+```
+
+## Read data files
+
+```{r prep_Files}
+
+# Vantage polygon information =============================
+vps <- read.csv("WHAP2019_PP_20201002_VPs.csv") %>%
+  mutate(level = "VP",
+         temp_p = Watergrass_Low +
+           Watergrass_Med +
+           Watergrass_High +
+           Timothy_Low +
+           Timothy_Med +
+           Timothy_High +
+           NoFoodCover,
+         p_wg_a.Low = Watergrass_Low / temp_p,
+         p_wg_b.Med = Watergrass_Med / temp_p,
+         p_wg_c.High = Watergrass_High / temp_p,
+         p_st_a.Low = Timothy_Low / temp_p,
+         p_st_b.Med = Timothy_Med / temp_p,
+         p_st_c.High = Timothy_High / temp_p,
+         p_noFood = NoFoodCover / temp_p,
+         subunit_ID = factor(paste(LIT, Unit_Name, Subunit_Name, sep = "_"))) %>%
+  dplyr::select(LIT,
+                Unit_Name,
+                Subunit_Name,
+                subunit_ID,
+                level,
+                AreaVisible,
+                starts_with("p_"))
+
+# Circle plot information =============================
+cps <- read.csv("WHAP2019_PP_20201002_CPs.csv") %>%
+  mutate(level = "CP",
+         temp_p = Watergrass_Low +
+           Watergrass_Med +
+           Watergrass_High +
+           Timothy_Low +
+           Timothy_Med +
+           Timothy_High,
+         p_noFood = max(1 - temp_p, 0),
+         p_wg_a.Low = Watergrass_Low / (p_noFood + temp_p),
+         p_wg_b.Med = Watergrass_Med/ (p_noFood + temp_p),
+         p_wg_c.High = Watergrass_High/ (p_noFood + temp_p),
+         p_st_a.Low = Timothy_Low/ (p_noFood + temp_p),
+         p_st_b.Med  = Timothy_Med/ (p_noFood + temp_p),
+         p_st_c.High = Timothy_High/ (p_noFood + temp_p),
+         p_noFood = p_noFood / (p_noFood + temp_p),
+         subunit_ID = factor(paste(LIT, Unit_Name, Subunit_Name, sep = "_")),
+         AreaVisible = 0.1746678) %>%
+  dplyr::select(LIT,
+                Unit_Name,
+                Subunit_Name,
+                subunit_ID,
+                level,
+                AreaVisible,
+                starts_with("p_"))
+
+# Management unit information =============================
+mus <- read.csv("WHAP2019_PP_20201002_MUs.csv") %>% # management units
+  dplyr::select(LIT,
+                Unit_Name,
+                Subunit_Name,
+                su.area_ac = Acreage) %>%
+  mutate(subunit_ID = paste(LIT, Unit_Name, Subunit_Name, sep = "_"))
+
+vpcp <- bind_rows(vps, cps) %>%
+  full_join(mus) %>%
+  na.omit()
+# last row 810 removed is for a unit that was not measured but appears in mus
+
+# Quadrat information ====================================
+qdt_st <- read.csv("qdt2019c.csv") %>%
+  filter(CommonName == "Timothy" & Stratum != "") %>%
+  mutate(avg_length_mm = 10 * rowMeans(.[, length_col], na.rm = TRUE)) %>%
+  mutate(qdt_m2 = ifelse(Quadrat_Size == "15x15", 0.15^2,
+                         ifelse(Quadrat_Size == "5x5", 0.05^2, 0.10)),
+         n_seed_head_m2 = n_seed_heads / qdt_m2,
+         no_sh = n_seed_head_m2) %>%
+  dplyr::select(LIT,
+                Unit_Name,
+                Subunit_Name,
+                Stratum,
+                avg_length_mm,
+                n_seed_head_m2,
+                no_sh) %>%
+  na.omit() %>%
+  mutate(mass_g_m2 = unname(exp(predict(ST_len2mass, newdata = .)) / 1000),
+         mass_g_m2 = ifelse(n_seed_head_m2 == 0, 0, mass_g_m2)) %>% # making sure it handles quadrats where no_sh == 0
+  filter(mass_g_m2 < 2000) %>%
+  mutate(Stratum = dplyr::recode(Stratum,
+                                 `Low` = "a.Low",
+                                 `Med` = "b.Med",
+                                 `High` = "c.High"),
+         Stratum = factor(as.character(Stratum)),
+         subunit_ID = paste(LIT, Unit_Name, Subunit_Name, sep = "_"),
+         LIT_Strat = factor(paste(LIT, Stratum, sep = "_"))) %>%
+  arrange(LIT, Unit_Name, Subunit_Name, Stratum)
+
+attributes(qdt_st)$na.action <- NULL
+
+str(qdt_st)
+
+# Proportion of area estimated from field
+
+```
+
+```{r wg_qdt}
+
+# Quadrat data from field ========
+qdt_wg <- read.csv("qdt2019c.csv") %>%
+  filter(CommonName == "Watergrass" & Stratum != "")
+
+sh_lengths_cm_wg <- as.matrix(qdt_wg[, length_col]) %>% na_if(0)
+sh_F2T_cm_wg <- as.matrix(qdt_wg[, F2T_col]) %>% na_if(0)
+sh_emerged_wg <- sh_F2T_cm_wg / sh_lengths_cm_wg
+
+wgc <- unname(coef(WG_len2mass))
+
+sh_mass_mg_mat <- exp(wgc[1] +
+                        wgc[2] * sh_lengths_cm_wg +
+                        wgc[3] * sh_emerged_wg +
+                        wgc[4] * sh_F2T_cm_wg) - 20
+
+qdt_wg <- qdt_wg %>%
+  mutate(qdt_m2 = ifelse(Quadrat_Size == "15x15", 0.15^2,
+                         ifelse(Quadrat_Size == "5x5", 0.05^2, 0.10)),
+         n_seed_head_m2 = n_seed_heads / qdt_m2,
+         sh_mass_mg = rowMeans(sh_mass_mg_mat, na.rm = TRUE),
+         sh_mass_mg = ifelse(is.nan(sh_mass_mg), NA, sh_mass_mg),
+         avg_length_mm = 10 * rowMeans(sh_lengths_cm_wg, na.rm = TRUE),
+         mass_g_m2 = n_seed_head_m2 * sh_mass_mg / 1000) %>%
+  filter(mass_g_m2 < 400) %>%
+  dplyr:::select(LIT,
+                 Unit_Name,
+                 Subunit_Name,
+                 Stratum,
+                 avg_length_mm,
+                 n_seed_head_m2,
+                 sh_mass_mg,
+                 mass_g_m2) %>%
+  na.omit() %>%
+  mutate(Stratum = dplyr::recode(Stratum,
+                                 `Low` = "a.Low",
+                                 `Med` = "b.Med",
+                                 `High` = "c.High"),
+         Stratum = factor(as.character(Stratum)),
+         subunit_ID = paste(LIT, Unit_Name, Subunit_Name, sep = "_"),
+         LIT_Strat = factor(paste(LIT, Stratum, sep = "_"))) %>%
+  arrange(LIT, Unit_Name, Subunit_Name, Stratum)
+
+attributes(qdt_wg)$na.action <- NULL
+
+str(qdt_wg)
+
+```
+
+## Area per subunit
+
+```{r su_areas}
+
+su_areas <- read.csv("WHAP2019_PP_20201002_MUs.csv") %>%
+  dplyr::select(LIT,
+                Unit_Name,
+                Subunit_Name,
+                area_ac = Acreage) %>%
+  mutate(area_ha = area_ac / 2.47)
+
+```
+
+## Estimation of proportions of areas
+
+Proportion of areas
+
+See http://www.analyticalgroup.com/download/WEIGHTED_MEAN.pdf for var(weighted average) and AREA FRAME DESIGN.pdf
+
+```{r p_areaAverages}
+
+p_Area <- vpcp %>%
+  group_by(subunit_ID) %>%
+  summarise(across(starts_with("p_"), ~weighted.mean(.x, AreaVisible))) %>%
+  arrange(subunit_ID)
+
+# Uncorrected variance of the weighted average ========
+v_Area <- vpcp %>% group_by(subunit_ID) %>% # see www.analyticalgroup.com/download/WEIGHTED_MEAN.pdf
+        summarise(across(starts_with("p_"),
+                         ~ var(.x) * sum(AreaVisible^2) / (sum(AreaVisible)^2))) %>%
+  arrange(subunit_ID) # %>%
+#  na.omit()
+
+# Finite population correction factor ============
+fpcf <- vpcp %>%
+  group_by(subunit_ID) %>%
+  summarise(AreaSampled_ac = sum(AreaVisible)) %>%
+  mutate(subunit_ID2 = subunit_ID) %>%
+  separate(subunit_ID2, sep = "_", into = c("LIT", "Unit_Name", "Subunit_Name")) %>%
+  left_join(su_areas) %>%
+  mutate(fpcf = 1 - AreaSampled_ac / area_ac,
+         fpcf = ifelse(fpcf <= 0, 0.10, fpcf)) %>%
+  dplyr::select(subunit_ID, fpcf) %>%
+  arrange(subunit_ID)
+
+
+# Standard error and variance of weighted averages corrected for finite population =======
+se_Area_c <- v_Area %>%
+  full_join(fpcf) %>%
+  mutate(across(starts_with("p_"), ~ sqrt(.x * fpcf))) %>%
+  arrange(subunit_ID) %>%
+  na.omit()
+
+v_Area_c <- se_Area_c %>%
+  mutate(across(starts_with("p_"), ~ .x^2)) %>%
+  arrange(subunit_ID)
+
+```
+
+## Function to estimate mass per unit area in each stratum
+
+```{r st.modelStrata}
+
+# Use robust linear model
+st_rlm3 <- rlm(mass_g_m2 ~ LIT_Strat, # This has heterogeneity of variance
+              na.action = na.exclude,
+              maxit = 40,
+             data = qdt_st)
+
+```
+
+```{r wg.modelStrata}
+
+with(qdt_wg, table(LIT, Stratum)) # only one quadrat in KRN; remove
+
+qdt_wg <- qdt_wg %>% # Assumes there is no Watergrass in KRN
+  filter(LIT != "KRN") %>%
+  mutate(LIT = factor(LIT),
+         LIT_Strat = factor(LIT_Strat))
+
+# Use robust linear model. LIT and the interaction were NS
+wg_rlm3 <- rlm(mass_g_m2 ~ LIT_Strat, # This has heterogeneity of variance
+              na.action = na.exclude,
+              maxit = 40,
+             data = qdt_wg)
+
+```
+
+Make a data frame with the seed mass per unit area for each stratum, and species (columns) for each subunit (rows).
+`seed_mass_fun` is a function that takes the file `p_Area`, and the models for g.m2 by Subunit_Name and Stratum ("st_rlm3" and "wg_rlm3") as arguments and yields the seed mass of st and wg per unit area of each subunit, and the area of each subunit. The resulting file can be used to calculate refuge-level yields.
+
+```{r seed_mass_fun}
+
+seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg) {
+  tryCatch({
+    .st_rlm3 <- rlm(mass_g_m2 ~ LIT_Strat, # make model for st
+                    na.action = na.exclude,
+                    maxit = 40,
+                    data = .qdt_st)
+    .wg_rlm3 <- rlm(mass_g_m2 ~ LIT_Strat, # make model for wg
+                    na.action = na.exclude,
+                    maxit = 40,
+                    data = .qdt_wg)
+    result <- .p_Area %>% # create file to predict mass/area by stratum & LIT
+      pull(subunit_ID) %>%
+      expand_grid(subunit_ID = .,
+                  Stratum = factor(c("a.Low", "b.Med", "c.High"))) %>%
+      mutate(su = subunit_ID) %>%
+      separate(su, sep = "_", into = c("LIT", "Unit_Name", "Subunit_Name")) %>%
+      mutate(oLIT_Strat = factor(paste(LIT, Stratum, sep = "_"))) %>%
+      mutate(LIT_Strat = factor(ifelse(oLIT_Strat %in% .st_rlm3$xlevels[[1]],
+                                       as.character(oLIT_Strat),
+                                       NA))) %>%
+      mutate(st_g_m2 = unname(predict(.st_rlm3, newdata = .)),
+             LIT_Strat = factor(ifelse(oLIT_Strat %in% .wg_rlm3$xlevels[[1]],
+                                       as.character(oLIT_Strat),
+                                       NA))) %>%
+      mutate(wg_g_m2 =unname(predict(.wg_rlm3, newdata = .)),
+#             LIT_Strat = oLIT_Strat, # not selected below, so it's useless
+             st_g_m2 = replace_na(st_g_m2, 0),
+             wg_g_m2 = replace_na(wg_g_m2, 0)) %>%
+      dplyr::select(LIT,
+                    Unit_Name,
+                    Subunit_Name,
+                    subunit_ID,
+                    Stratum,
+                    st_g_m2,
+                    wg_g_m2) %>%
+      pivot_wider(names_from = Stratum,
+                  values_from = c(st_g_m2, wg_g_m2),
+                  values_fill = 0) %>%
+      full_join(.p_Area, by = c("subunit_ID")) %>%
+      mutate(wg_g_m2 = rowSums(dplyr::select(., starts_with("wg")) *
+                                 dplyr::select(., starts_with("p_wg"))),
+             st_g_m2 = rowSums(dplyr::select(., starts_with("st")) *
+                                 dplyr::select(., starts_with("p_st"))),
+             tot_g_m2 = wg_g_m2 + st_g_m2) %>%
+      full_join(su_areas, by = c(c("LIT", "Unit_Name", "Subunit_Name"))) %>%
+      dplyr::select(-starts_with("p_"), -area_ac) %>%
+      na.omit()
+    return(result)},
+    error = function(e) return(NULL)
+  )
+}
+```
+
+## Mass per subunit and refuge
+
+### Mass per subunit is given as average g/m2 over the whole subunit area. 
+
+```{r mass_per_subunit}
+
+qdt_mass_g_m2 <- seed_mass_fun(p_Area, qdt_st, qdt_wg) %>%
+  arrange(subunit_ID) %>%
+  na.omit()
+
+attr(qdt_mass_g_m2, "notes") <- "These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass."
+
+str(qdt_mass_g_m2)
+```
+
+
+```{r table_, results='asis'}
+
+qdt_mass_g_m2 %>%
+  dplyr::select(LIT,
+                Unit_Name,
+                Subunit_Name,
+                wg_g_m2,
+                st_g_m2,
+                tot_g_m2,
+                area_ha) %>%
+  kable(caption = "Average seed mass per subunit area. Total mass of seed estimated for the subunit divided by the total area of the subunit. These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass.", 
+        format = "html",
+        digits = 1) %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+
+### Calculate mass per refuge (kg) based on original sample.
+
+```{r mass_per_LIT}
+
+mass_kg_LIT <- qdt_mass_g_m2 %>%
+  group_by(LIT) %>%
+  na.omit() %>%
+  summarise(mass_kg_lit = sum(tot_g_m2 * area_ha * 10),
+            tot_ha = sum(area_ha),
+            .groups = "drop") %>%
+  mutate(kg.ha = mass_kg_lit / tot_ha)
+
+attr(mass_kg_LIT, "notes") <- "These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass."
+
+mass_kg_LIT %>%
+  kable(digits = 0,
+        format = "html",
+        caption = "Total seed mass in each refuge, areas and seed mass per unit area. These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass.") %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+## Mass estimates and distributions with quadrat variance.
+
+Seed yield, confidence intervals. etc. for each subunit and refuge are calculated by resampling  yield per stratum for each subunit. For each species, individual quadrats are resampled within refuge and stratum.
+
+The following chunk creates 4001 bootstrap samples of quadrats and for each one of these bootstrap samples it produces an estimated mass per m2 for each species in each stratum and uses those to calculate mass per m2 for each and both species in each subunit using the seed_mass_fun. Masses per m2 for each subunit take into account the proportion of each unit covered by each stratum.
+
+Using `tidymodels` and `rsample`.
+
+```{r bootstrap_yield, warning=FALSE}
+
+system.time(
+  qdt_bt <- bootstraps(qdt_wg, # watergrass
+                       times = 4000,
+                       apparent = TRUE,
+                       strata = LIT_Strat) %>%
+    rename(qdt_wg = splits) %>%
+    full_join(bootstraps(qdt_st,
+                         times = 4000,
+                         apparent = TRUE,
+                         strata = LIT_Strat) %>%
+                rename(qdt_st = splits), by = c("id")) %>% # timothy
+    mutate(mass_su = map2(.x = qdt_st,
+                          .y = qdt_wg,
+                          ~seed_mass_fun(p_Area,
+                                         .qdt_st = analysis(.x),
+                                         .qdt_wg = analysis(.y))))
+)
+
+```
+
+The tibble qdt_bt contains original data, 4000 bootstrap samples of wg quadrats, 4000 bootstrap samples of st quadrats, and the corresponding estimates of mass_m2 in each subunit for each species and total.
+
+The bootstrap samples are then summarized to produce percentile confidence intervals and averages of st, wg and total mass per m2. The code calculates univariate statistics, but the set of bootstrap samples can be used to get any statistics desired, including sampling distributions of comparisons among sets of subunits.
+
+```{r mass_g_m2_Subunit_CI}
+
+mass.su.CI <-
+  qdt_bt %>%
+  dplyr::select(-starts_with("qdt_")) %>% # keep only the id and mass estimates
+  unnest(cols = mass_su) %>% # put all boots estimates in one table
+  na.omit() %>%
+  dplyr::select(subunit_ID, wg_g_m2, st_g_m2, tot_g_m2, area_ha) %>%
+  group_by(subunit_ID) %>% # group by subunit, each subunit has ~4000 reps
+  summarize(wg_q10 = quantile(wg_g_m2, 0.10, na.rm = TRUE), # get percentiles etc.
+            wg_mean = mean(wg_g_m2, na.rm = TRUE),
+            wg_q90 = quantile(wg_g_m2, 0.90, na.rm = TRUE),
+            st_q10 = quantile(st_g_m2, 0.10, na.rm = TRUE),
+            st_mean = mean(st_g_m2, na.rm = TRUE),
+            st_q90 = quantile(st_g_m2, 0.90, na.rm = TRUE),
+            tot_q10 = quantile(tot_g_m2, 0.10, na.rm = TRUE),
+            tot_mean = mean(tot_g_m2, na.rm = TRUE),
+            tot_q90 = quantile(tot_g_m2, 0.90, na.rm = TRUE)) %>%
+  arrange(subunit_ID) %>% na.omit()
+
+attr(mass.su.CI, "notes") <- "These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass, but they include the uncertainty due to sampling quadrats."
+
+
+print(mass.su.CI, n = Inf)
+
+```
+
+
+```{r BootstrapSamples}
+
+boot_mat <- qdt_bt %>%
+  dplyr::select(-starts_with("qdt_")) %>% # keep only the id and mass estimates
+  unnest(cols = mass_su) %>% # put all boots estimates in one table
+  na.omit() %>%
+  dplyr::select(id, subunit_ID, wg_g_m2, st_g_m2, tot_g_m2) %>%
+    # make matrix like df with all estimates for each boot sample in one row
+  pivot_wider(id = id, names_from = subunit_ID, values_from = c(wg_g_m2, st_g_m2, tot_g_m2)) %>%
+
+```
+
+
+In this section, the bootstrap samples are used to estimate total mass of seed heads per refuge.
+
+```{r mass_kg_LIT_CI}
+
+mass_kg_LIT_CI <- qdt_bt %>%
+  filter(unlist(map(mass_su, ~!is.null(.x)))) %>%
+  mutate(mass_su = map(.x = mass_su, ~drop_na(.x)),
+         mass_lit = map(.x = mass_su,
+                        ~group_by(.x, LIT) %>%
+                          summarise(mass_kg_lit = sum(tot_g_m2 * area_ha * 10),
+                                    tot_ha = sum(area_ha),
+                                    kg_ha = mass_kg_lit / tot_ha,
+                                    .groups = "drop"))) %>%
+  dplyr::select(mass_lit) %>%
+  unnest(cols = mass_lit) %>%
+  group_by(LIT) %>%
+  summarise(mass_kg_lit_q10 = quantile(mass_kg_lit, 0.10, na.rm = TRUE),
+            mass_kg_lit_q90 = quantile(mass_kg_lit, 0.90, na.rm = TRUE),
+            mass_kg_lit_mean = mean(mass_kg_lit, na.rm = TRUE),
+            kg_ha_q10 = quantile(kg_ha, 0.10, na.rm = TRUE),
+            kg_ha_q90 = quantile(kg_ha, 0.90, na.rm = TRUE),
+            kg_ha_mean = mean(kg_ha, na.rm = TRUE),
+            tot_ha = mean(tot_ha, 0.10, na.rm = TRUE), .groups = "drop")
+
+attr(mass_kg_LIT_CI, "notes") <- "These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass, but they do include the uncertainty due to sampling quadrats."
+
+```
+
+## Mass estimates with quadrat and area variance
+
+Mass per m2 of subunit area is a weighted average of mass per m2 in each stratum, where the weights are the proportions of the subunit area covered by each stratum, including nonfood areas. Thus, the estimated mass per m2 has variance due to the variance of mass per m2 (quadrat sampling variance and seed head model variance) in each stratum plus variance of the estimated proportion of area in each stratum.
+
+### Sum of products of independent variables
+
+This approach is approximate because it assumes that composition variables are independent, but it includes the correction for finite population.
+
+The formula used is:
+
+$$ \sigma^2_{\sum(X_i Y_i)} = \sum{\left((\sigma^2_{X_i} + \mu^2_{X_i})(\sigma^2_{Y_i} + \mu^2_{Y_i}) - \mu^2_{X_i} \mu^2_{Y_i}\right)}$$
+
+where $X_i$ are the values of mass per unit area for each stratum and the $Y_i$ are the proportions of each stratum in the subunit. The variances of $X_i$ are obtained from the bootstrapped data and the variances of $Y_i$ are given by the calculation of `v_Area_c`.
+
+Confidence intervals are calculated assuming a normal distribution.
+
+```{r area_qdt_var_included}
+
+mass_var <-
+  qdt_bt %>%
+  dplyr::select(-starts_with("qdt_")) %>%
+  filter(unlist(map(qdt_bt$mass_su, ~!is.null(.x)))) %>%
+  mutate(
+    mass_su =
+      map(.x = mass_su,
+          ~unique(.x %>%
+                    dplyr::select(LIT, contains("_g_m2_"))))
+  ) %>%
+  unnest(cols = mass_su) %>%
+  na.omit() %>%
+  group_by(LIT) %>%
+  summarise(across(contains("_g_m2_"), ~var(.x)),
+            .groups = "drop") %>%
+  arrange(LIT) %>% na.omit()
+
+# Variance of total seed head mass per unit (wg and st together)
+
+Xs2 <- v_Area_c %>%
+  arrange(subunit_ID) %>%
+  dplyr::select(p_st_a.Low, # variance of areas
+                p_st_b.Med, 
+                p_st_c.High,
+                p_wg_a.Low,
+                p_wg_b.Med, 
+                p_wg_c.High)
+
+Xm2 <- p_Area %>%
+  arrange(subunit_ID) %>%
+  dplyr::select(p_st_a.Low, # means of areas
+                p_st_b.Med, 
+                p_st_c.High,
+                p_wg_a.Low,
+                p_wg_b.Med, 
+                p_wg_c.High) %>%
+  `^`(2) # square everything
+
+Ys2 <- qdt_mass_g_m2 %>%
+  dplyr::select(-contains("_g_m2"), -area_ha) %>%
+  left_join(mass_var) %>%
+  arrange(subunit_ID) %>%
+  dplyr::select(contains("_g_m2_"))
+
+Ym2 <- (qdt_mass_g_m2 %>%
+          arrange(subunit_ID) %>%
+          dplyr::select(contains("_g_m2_")))^2
+
+Xs2_st <- Xs2 %>% dplyr::select(contains("st_"))
+Xm2_st <- Xm2 %>% dplyr::select(contains("st_"))
+Ys2_st <- Ys2 %>% dplyr::select(contains("st_"))
+Ym2_st <- Ym2 %>% dplyr::select(contains("st_"))
+
+Xs2_wg <- Xs2 %>% dplyr::select(contains("wg_"))
+Xm2_wg <- Xm2 %>% dplyr::select(contains("wg_"))
+Ys2_wg <- Ys2 %>% dplyr::select(contains("wg_"))
+Ym2_wg <- Ym2 %>% dplyr::select(contains("wg_"))
+
+
+qdt_mass_g_m2 <- qdt_mass_g_m2 %>%
+  mutate(tot_mass_m2_var =
+           ((Xs2 + Xm2) *  (Ys2 + Ym2) - Xm2 * Ym2) %>%
+           rowSums(),
+         CI80lwr = tot_g_m2 + qnorm(0.10) * sqrt(tot_mass_m2_var),
+         CI80upr = tot_g_m2 + qnorm(0.90) * sqrt(tot_mass_m2_var),
+         st_mass_m2_var =
+           ((Xs2_st + Xm2_st) *  (Ys2_st + Ym2_st) - Xm2_st * Ym2_st) %>%
+           rowSums(),
+         CI80lwr_st = st_g_m2 + qnorm(0.10) * sqrt(st_mass_m2_var),
+         CI80upr_st = st_g_m2 + qnorm(0.90) * sqrt(st_mass_m2_var),
+         wg_mass_m2_var =
+           ((Xs2_wg + Xm2_wg) *  (Ys2_wg + Ym2_wg) - Xm2_wg * Ym2_wg) %>%
+           rowSums(),
+         CI80lwr_wg = wg_g_m2 + qnorm(0.10) * sqrt(wg_mass_m2_var),
+         CI80upr_wg = wg_g_m2 + qnorm(0.90) * sqrt(wg_mass_m2_var))
+
+
+qdt_mass_g_m2 %>%
+  dplyr::select(LIT, Unit_Name, Subunit_Name, wg_g_m2, st_g_m2, CI80lwr, tot_g_m2, CI80upr) %>%
+  mutate(delta_pcnt = round((100 * (CI80upr - CI80lwr) / 2) / tot_g_m2, 0)) %>%
+  arrange(delta_pcnt) %>%
+  print(n = Inf)
+
+attributes(qdt_mass_g_m2)$notes <- "These estimates include the variance due to quadrat sampling and estimation of proportion of area covered by each stratum. They exclude the variance of the models to convert seed number and length into mass."
+
+write.csv(qdt_mass_g_m2, "qdt_mass_g_m2_2019.txt")
+
+```
+
+
+## Graphical display of results =======
+
+```{r CI_graphs}
+
+# Confidence intervals and estimates are from chunk `area_qdt_var_included`
+
+class.bounds.g.m2 <- c(0, 50, 150, 250)
+
+# Total mass per m2 in each subunit.
+
+for (i in 1:length(unique(qdt_mass_g_m2$LIT))) { #This is an error. See Therese's script.
+  plot <- ggplot(data = qdt_mass_g_m2 %>% arrange(LIT, tot_g_m2),
+                 aes(x = subunit_ID,
+                     y = tot_g_m2,
+                     ymin = CI80lwr,
+                     ymax = CI80upr,
+                     group = LIT)) +
+    geom_pointrange() +
+    geom_hline(col = rep(c("red", "orange", "yellow", "green"),
+                         length(unique(qdt_mass_g_m2$LIT))),
+               yintercept = class.bounds.g.m2, linetype = 2) +
+    xlab('Subunit_Name') + ylab("Total seed mass 80% CI (g/m^2)") +
+    geom_errorbar(aes(ymin = CI80lwr, ymax = CI80upr), width = 0.5, cex = 1) +
+    theme(plot.title = element_text(size = 16, face = "bold"),
+          #        axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.text.x = element_text(face = "bold"),
+          axis.title = element_text(size = 12, face = "bold"),
+          strip.text.y = element_text(hjust = 0, vjust = 1, angle = 180, face = "bold")) +
+    #  scale_y_log10() +
+    coord_flip() +
+    facet_wrap_paginate(~LIT,
+                        strip.position = "left",
+                        nrow = 1,
+                        ncol = 1,
+                        scales = "free_y",
+                        page = i)
+  print(plot)
+}
+
+# Timothy mass per m2 in each subunit.
+
+for (i in 1:length(unique(qdt_mass_g_m2$LIT))) {
+  plot <- ggplot(data = qdt_mass_g_m2 %>% arrange(LIT, tot_g_m2),
+                 aes(x = subunit_ID,
+                     y = st_g_m2,
+                     ymin = CI80lwr_st,
+                     ymax = CI80upr_st,
+                     group = LIT)) +
+    geom_pointrange() +
+    geom_hline(col = rep(c("red", "orange", "yellow", "green"),
+                         length(unique(qdt_mass_g_m2$LIT))),
+               yintercept = class.bounds.g.m2, linetype = 2) +
+    xlab('Subunit_Name') + ylab("Timothy seed mass 80% CI (g/m^2)") +
+    geom_errorbar(aes(ymin = CI80lwr_st, ymax = CI80upr_st), width = 0.5, cex = 1) +
+    theme(plot.title = element_text(size = 16, face = "bold"),
+          #        axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.text.x = element_text(face = "bold"),
+          axis.title = element_text(size = 12, face = "bold"),
+          strip.text.y = element_text(hjust = 0, vjust = 1, angle = 180, face = "bold")) +
+    #  scale_y_log10() +
+    coord_flip() +
+    facet_wrap_paginate(~LIT,
+                        strip.position = "left",
+                        nrow = 1,
+                        ncol = 1,
+                        scales = "free_y",
+                        page = i)
+  print(plot)
+}
+
+# Watergrass mass per m2 in each subunit.
+
+for (i in 1:length(unique(qdt_mass_g_m2$LIT))) {
+  plot <- ggplot(data = qdt_mass_g_m2 %>% arrange(LIT, tot_g_m2),
+                 aes(x = subunit_ID,
+                     y = wg_g_m2,
+                     ymin = CI80lwr_wg,
+                     ymax = CI80upr_wg,
+                     group = LIT)) +
+    geom_pointrange() +
+    geom_hline(col = rep(c("red", "orange", "yellow", "green"),
+                         length(unique(qdt_mass_g_m2$LIT))),
+               yintercept = class.bounds.g.m2, linetype = 2) +
+    xlab('Subunit_Name') + ylab("Watergrass seed mass 80% CI (g/m^2)") +
+    geom_errorbar(aes(ymin = CI80lwr_wg, ymax = CI80upr_wg), width = 0.5, cex = 1) +
+    theme(plot.title = element_text(size = 16, face = "bold"),
+          #        axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.text.x = element_text(face = "bold"),
+          axis.title = element_text(size = 12, face = "bold"),
+          strip.text.y = element_text(hjust = 0, vjust = 1, angle = 180, face = "bold")) +
+    #  scale_y_log10() +
+    coord_flip() +
+    facet_wrap_paginate(~LIT,
+                        strip.position = "left",
+                        nrow = 1,
+                        ncol = 1,
+                        scales = "free_y",
+                        page = i)
+  print(plot)
+}
+
+```
+
+
+
+## Test of differences in mass/m.sq among units within refuge
+
+Variance of differences is approximated by assuming that estimates compared are independent from each other. This assumption may be weak because the estimates for different subunits are based on the same estimates for mass/m2 for the different strata.
+
+```{r compareSubunits}
+# Create function to do differences between all column pairs
+
+compare.all.su <- function(mydf) {
+  row.no <- 0
+  outmydf <- data.frame(diff.name = character(),
+                        mean.a = numeric(),
+                        mean.b = numeric(),
+                        mean.diff = numeric(),
+                        var.a = numeric(),
+                        var.b = numeric(),
+                        sd.diff = numeric(),
+                        tcalc = numeric(),
+                        approx_p_value = numeric(),
+                        stringsAsFactors = FALSE)
+  
+  for (i in 1:(nrow(mydf) - 1)) {
+    for (j in (i + 1):nrow(mydf)) {
+      row.no <- row.no + 1
+      x1 <- paste(mydf$subunit_ID[j], mydf$subunit_ID[i], sep = " vs. ")
+      x2 <- mydf$tot_g_m2[j]
+      x3  <- mydf$tot_g_m2[i]
+      x4 <- x2 - x3
+      x5 <- mydf$tot_mass_m2_var[j]
+      x6 <- mydf$tot_mass_m2_var[i]
+      x7 <- sqrt(x5 + x6)
+      x8 <- x4/x7
+      x9 <- round(pnorm(q = abs(x8), lower.tail = FALSE), 9)
+      outmydf[row.no, "diff.name"] <- x1
+      outmydf[row.no, 2:9] <- c(x2, x3, x4, x5, x6, x7, x8, x9)
+    }
+  }
+  return(outmydf)
+}
+
+compare.all.st <- function(mydf) {
+  row.no <- 0
+  outmydf <- data.frame(diff.name = character(),
+                        mean.a = numeric(),
+                        mean.b = numeric(),
+                        mean.diff = numeric(),
+                        var.a = numeric(),
+                        var.b = numeric(),
+                        sd.diff = numeric(),
+                        tcalc = numeric(),
+                        approx_p_value = numeric(),
+                        stringsAsFactors = FALSE)
+  
+  for (i in 1:(nrow(mydf) - 1)) {
+    for (j in (i + 1):nrow(mydf)) {
+      row.no <- row.no + 1
+      x1 <- paste(mydf$subunit_ID[j], mydf$subunit_ID[i], sep = " vs. ")
+      x2 <- mydf$st_g_m2[j]
+      x3  <- mydf$st_g_m2[i]
+      x4 <- x2 - x3
+      x5 <- mydf$st_mass_m2_var[j]
+      x6 <- mydf$st_mass_m2_var[i]
+      x7 <- sqrt(x5 + x6)
+      x8 <- x4/x7
+      x9 <- round(pnorm(q = abs(x8), lower.tail = FALSE), 9)
+      outmydf[row.no, "diff.name"] <- x1
+      outmydf[row.no, 2:9] <- c(x2, x3, x4, x5, x6, x7, x8, x9)
+    }
+  }
+  return(outmydf)
+}
+
+compare.all.wg <- function(mydf) {
+  row.no <- 0
+  outmydf <- data.frame(diff.name = character(),
+                        mean.a = numeric(),
+                        mean.b = numeric(),
+                        mean.diff = numeric(),
+                        var.a = numeric(),
+                        var.b = numeric(),
+                        sd.diff = numeric(),
+                        tcalc = numeric(),
+                        approx_p_value = numeric(),
+                        stringsAsFactors = FALSE)
+  
+  for (i in 1:(nrow(mydf) - 1)) {
+    for (j in (i + 1):nrow(mydf)) {
+      row.no <- row.no + 1
+      x1 <- paste(mydf$subunit_ID[j], mydf$subunit_ID[i], sep = " vs. ")
+      x2 <- mydf$wg_g_m2[j]
+      x3  <- mydf$wg_g_m2[i]
+      x4 <- x2 - x3
+      x5 <- mydf$wg_mass_m2_var[j]
+      x6 <- mydf$wg_mass_m2_var[i]
+      x7 <- sqrt(x5 + x6)
+      x8 <- x4/x7
+      x9 <- round(pnorm(q = abs(x8), lower.tail = FALSE), 9)
+      outmydf[row.no, "diff.name"] <- x1
+      outmydf[row.no, 2:9] <- c(x2, x3, x4, x5, x6, x7, x8, x9)
+    }
+  }
+  return(outmydf)
+}
+
+compare_su_mass <- qdt_mass_g_m2 %>%
+  dplyr::select(LIT,
+                subunit_ID,
+                wg_g_m2,
+                st_g_m2,
+                tot_g_m2,
+                wg_mass_m2_var,
+                st_mass_m2_var,
+                tot_mass_m2_var) %>%
+  group_by(LIT) %>%
+  nest() %>%
+  mutate(tot_mass = map(data, ~compare.all.su(.x)),
+         st_mass = map(data, ~ compare.all.st(.x)),
+         wg_mass = map(data, ~ compare.all.wg(.x)))
+# Output all tables as csv.
+
+compare_su_mass %>%
+  dplyr::select(st_mass) %>%
+  unnest(cols = c(st_mass)) %>%
+  write_csv("CompareSTMassWithinRefuge_2019.csv")
+
+compare_su_mass %>%
+  dplyr::select(wg_mass) %>%
+  unnest(cols = c(wg_mass)) %>%
+  write_csv("CompareWGMassWithinRefuge_2019.csv")
+
+compare_su_mass %>%
+  dplyr::select(tot_mass) %>%
+  unnest(cols = c(tot_mass)) %>%
+  write_csv("CompareTotalMassWithinRefuge_2019.csv")
+
+
+```
+
+## Test of differences in mass and  mass/m.sq among refuges
+
+```{r CompareRefuges}
+## Comparisons for Total seed mass across subunits in each Refuge #########
+for (lit in 1:length(unique(qdt_mass_g_m2$LIT))) {
+compare_su_mass$tot_mass[[lit]] %>%
+  dplyr::select(diff.name,
+                mean.a,
+                mean.b,
+                approx_p_value) %>%
+  as_tibble() %>%
+  print(n = Inf)
+}
+
+```
+
+
+```{r yieldComponents}
+
+print("Proportion of area in each stratum by subunit")
+print(p_Area, n = Inf)
+write.csv(p_Area, "p_Area2019.csv")
+
+print("Mean seed mass per area for Timothy")
+emmeans(st_rlm3, "LIT_Strat")
+write.csv(emmeans(st_rlm3, "LIT_Strat"), "TimothyMassPerAreaByLITStratum2019.csv")
+
+print("Mean seed mass per area for Watergrass")
+emmeans(wg_rlm3, "LIT_Strat")
+write.csv(emmeans(wg_rlm3, "LIT_Strat"), "WatergrassMassPerAreaByLITStratum2019.csv")
+
+
+```
+
+## Save objects for demo shiny app
+
+```{r}
+# Save estimates for plots and display
+
+saveRDS(qdt_mass_g_m2, "qdt_mass_g_m2_2019.rds")
+
+# Save comparisons between units within refuge
+
+saveRDS(compare_su_mass, "compare_su_mass_2019.rds")
+
+```
+
+

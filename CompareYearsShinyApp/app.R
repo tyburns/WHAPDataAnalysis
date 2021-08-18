@@ -10,6 +10,8 @@ qdt_mass_g_m2_2019 <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJEC
 qdt_mass_g_m2_2020 <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/SeedYieldData/qdt_mass_g_m2_2020.txt") %>%
     dplyr::select(-X)
 
+# Differences are tested for statistical significance by assuming that estimates
+# are independent and that the residual variance used to get the estimates has 
 diff_test <- function(mu1, var1, mu2, var2) {
     Diff <- abs(mu2 - mu1)
     Diff_sgn <- sign(mu2 - mu1)
@@ -22,8 +24,7 @@ diff_test <- function(mu1, var1, mu2, var2) {
 }
 
 
-
-ui <- fluidPage(
+ui <- fluidPage(tags$h2("Compare productivity between two units in different years"),
     
     selectInput(inputId = "tot_g_m2_2019",
                 label = "Unit in 2019",
