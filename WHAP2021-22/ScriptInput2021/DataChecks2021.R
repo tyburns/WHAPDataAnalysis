@@ -169,22 +169,30 @@ setdiff(unique(vps0$subunit_ID), unique(mus0$subunit_ID))
 setdiff(unique(cps0$subunit_ID), unique(mus0$subunit_ID))
 setdiff(unique(qdt0$subunit_ID), unique(mus0$subunit_ID))
 
-mus0[, c("unitName", "subunitName")] %>%
+mus0[, c("LIT", "unitName", "subunitName")] %>%
   unique() %>%
-  arrange(unitName, subunitName)
+  arrange(LIT,
+          unitName,
+          subunitName)
 
 
-(subunits_vps <- vps0[, c("unitName", "subunitName")] %>%
+(subunits_vps <- vps0[, c("LIT", "unitName", "subunitName")] %>%
   unique() %>%
-  arrange(unitName, subunitName))
+  arrange(LIT,
+          unitName,
+          subunitName))
 
-(subunits_cps <- cps0[, c("unitName", "subunitName")] %>%
+(subunits_cps <- cps0[, c("LIT", "unitName", "subunitName")] %>%
     unique() %>%
-    arrange(unitName, subunitName))
+    arrange(LIT,
+            unitName,
+            subunitName))
 
-(subunits_qdt <- qdt0[, c("unitName", "subunitName")] %>%
+(subunits_qdt <- qdt0[, c("LIT", "unitName", "subunitName")] %>%
     unique() %>%
-    arrange(unitName, subunitName))
+    arrange(LIT,
+            unitName,
+            subunitName))
 
 # Unit-subunit names are not consistent across files or with last year.
 
@@ -192,4 +200,10 @@ mus0[, c("unitName", "subunitName")] %>%
 # backward compatible manner.
 # These are the units that were named in 2020:
 
-subunits_2020 <- read.csv("../../WHAP2020-21/ScriptInput2020/mu2020c.csv")
+(subunits_2020 <- read.csv("../../WHAP2020-21/ScriptInput2020/mu2020c.csv") %>%
+    dplyr::select(LIT,
+                  Unit_Name,
+                  Subunit_Name) %>%
+    arrange(LIT,
+            Unit_Name,
+            Subunit_Name))
