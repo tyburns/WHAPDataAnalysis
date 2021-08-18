@@ -317,7 +317,7 @@ v_Area_c <- se_Area_c %>%
 ```{r st.modelStrata}
 
 # Use robust linear model
-st_rlm3 <- rlm(mass_g_m2 ~ LIT_Strat,
+st_rlm3 <- rlm(mass_g_m2 ~ LIT_Strat, # This has heterogeneity of variance
               na.action = na.exclude,
               maxit = 40,
              data = qdt_st)
@@ -334,7 +334,7 @@ qdt_wg <- qdt_wg %>% # Assumes there is no Watergrass in KRN
          LIT_Strat = factor(LIT_Strat))
 
 # Use robust linear model. LIT and the interaction were NS
-wg_rlm3 <- rlm(mass_g_m2 ~ LIT_Strat,
+wg_rlm3 <- rlm(mass_g_m2 ~ LIT_Strat, # This has heterogeneity of variance
               na.action = na.exclude,
               maxit = 40,
              data = qdt_wg)
@@ -371,7 +371,7 @@ seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg) {
                                        as.character(oLIT_Strat),
                                        NA))) %>%
       mutate(wg_g_m2 =unname(predict(.wg_rlm3, newdata = .)),
-             LIT_Strat = oLIT_Strat,
+#             LIT_Strat = oLIT_Strat, # not selected below, so it's useless
              st_g_m2 = replace_na(st_g_m2, 0),
              wg_g_m2 = replace_na(wg_g_m2, 0)) %>%
       dplyr::select(LIT,
@@ -485,18 +485,20 @@ system.time(
 
 ```
 
-The bootstrap samples are then summarized to produce percentile confidence intervals and averages of st, wg and total mass per m2.
+The tibble qdt_bt contains original data, 4000 bootstrap samples of wg quadrats, 4000 bootstrap samples of st quadrats, and the corresponding estimates of mass_m2 in each subunit for each species and total.
+
+The bootstrap samples are then summarized to produce percentile confidence intervals and averages of st, wg and total mass per m2. The code calculates univariate statistics, but covariances over bootstrap samples could be calculated at this stage.
 
 ```{r mass_g_m2_Subunit_CI}
 
 mass.su.CI <-
   qdt_bt %>%
-  dplyr::select(-starts_with("qdt_")) %>%
-  unnest(cols = mass_su) %>%
+  dplyr::select(-starts_with("qdt_")) %>% # keep only the id and mass estimates
+  unnest(cols = mass_su) %>% # put all boots estimates in one table
   na.omit() %>%
   dplyr::select(subunit_ID, wg_g_m2, st_g_m2, tot_g_m2, area_ha) %>%
-  group_by(subunit_ID) %>%
-  summarize(wg_q10 = quantile(wg_g_m2, 0.10, na.rm = TRUE),
+  group_by(subunit_ID) %>% # group by subunit, each subunit has ~4000 reps
+  summarize(wg_q10 = quantile(wg_g_m2, 0.10, na.rm = TRUE), # get percentiles etc.
             wg_mean = mean(wg_g_m2, na.rm = TRUE),
             wg_q90 = quantile(wg_g_m2, 0.90, na.rm = TRUE),
             st_q10 = quantile(st_g_m2, 0.10, na.rm = TRUE),
@@ -876,18 +878,6 @@ compare_su_mass <- qdt_mass_g_m2 %>%
   mutate(tot_mass = map(data, ~compare.all.su(.x)),
          st_mass = map(data, ~ compare.all.st(.x)),
          wg_mass = map(data, ~ compare.all.wg(.x)))
-
-## Comparisons for Total seed mass across subunits in each Refuge #########
-for (lit in 1:length(unique(qdt_mass_g_m2$LIT))) {
-compare_su_mass$tot_mass[[lit]] %>%
-  dplyr::select(diff.name,
-                mean.a,
-                mean.b,
-                approx_p_value) %>%
-  as_tibble() %>%
-  print(n = Inf)
-}
-
 # Output all tables as csv.
 
 compare_su_mass %>%
@@ -906,6 +896,21 @@ compare_su_mass %>%
   write_csv("CompareTotalMassWithinRefuge_2019.csv")
 
 
+```
+
+## Test of differences in mass and  mass/m.sq among refuges
+
+```{r CompareRefuges}
+## Comparisons for Total seed mass across subunits in each Refuge #########
+for (lit in 1:length(unique(qdt_mass_g_m2$LIT))) {
+compare_su_mass$tot_mass[[lit]] %>%
+  dplyr::select(diff.name,
+                mean.a,
+                mean.b,
+                approx_p_value) %>%
+  as_tibble() %>%
+  print(n = Inf)
+}
 
 ```
 
