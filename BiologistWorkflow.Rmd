@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```
 
-## THIS SCRIPT IS IN PROGRESS. IT ASSUMES THAT DATA ARE IN THE ORIGINAL STRUCTURE. DATA AND ANALYSES ARE RESTRICTED TO WATERGRASS AND SWAMP TIMOTHY.
+## THIS SCRIPT IS IN PROGRESS. IT ASSUMES THAT DATA ARE IN THE ORIGINAL STRUCTURE. DATA AND ANALYSES ARE RESTRICTED TO WATERGRASS AND SWAMP TIMOTHY
 
 A much better workflow will be created by designing it holistically as opposed to piecemeal, which is the current state. A holistic approach requires definition of a workflow and functions necessary in the software prior to creating code.
 

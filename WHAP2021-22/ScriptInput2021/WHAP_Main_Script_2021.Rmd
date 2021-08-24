@@ -270,6 +270,7 @@ vpcp <- bind_rows(vps, cps) %>%
 # ST quadrat info -> table with LIT, stratum and mass of seed per m2
 
 qdt_st <- qdt0 %>%
+<<<<<<< HEAD
   dplyr::filter(vernacularName == "SwampTimothy" & stratum != "") %>%
   group_by(GlobalID,
            LIT,
@@ -278,6 +279,13 @@ qdt_st <- qdt0 %>%
            stratum) %>%
   summarise(avg_length_mm = mean(measurementValue, na.rm = TRUE))
 mutate(avg_length_mm = 10 * rowMeans(.[, length_col], na.rm = TRUE)) %>%
+=======
+  filter(vernacularName == "SwampTimothy" & stratum != "") %>%
+  group_by(GlobalID)%>%
+  summarise(avg_length_mm = mean(measurementValue))%>%
+  
+  #mutate(avg_length_mm = 10 * rowMeans(.[, length_col], na.rm = TRUE)) %>%
+>>>>>>> 821cb384d1a801caa66d614e096f3868fef6404a
   mutate(qdt_m2 = ifelse(Quadrat_Size == "15x15", 0.15^2,
                          ifelse(Quadrat_Size == "5x5", 0.05^2, 0.10)),
          n_seed_head_m2 = n_seed_heads / qdt_m2,
