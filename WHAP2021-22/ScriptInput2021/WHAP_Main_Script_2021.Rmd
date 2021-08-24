@@ -215,7 +215,10 @@ vpcp <- bind_rows(vps, cps) %>%
 # Quadrat information ====================================
 qdt_st <- qdt0 %>%
   filter(vernacularName == "SwampTimothy" & stratum != "") %>%
-  mutate(avg_length_mm = 10 * rowMeans(.[, length_col], na.rm = TRUE)) %>%
+  group_by(GlobalID)%>%
+  summarise(avg_length_mm = mean(measurementValue))%>%
+  
+  #mutate(avg_length_mm = 10 * rowMeans(.[, length_col], na.rm = TRUE)) %>%
   mutate(qdt_m2 = ifelse(Quadrat_Size == "15x15", 0.15^2,
                          ifelse(Quadrat_Size == "5x5", 0.05^2, 0.10)),
          n_seed_head_m2 = n_seed_heads / qdt_m2,
