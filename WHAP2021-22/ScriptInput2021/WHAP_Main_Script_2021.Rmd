@@ -112,7 +112,7 @@ vps0 <- read.csv("VantagePolygons_Midseason_20210810.csv")
 
 cps0 <- read.csv("CirclePlots_Midseason_20210810.csv")
 
-qdt0 <- read.csv("Quadrats_Midseason_20210811.csv")
+qdt0 <- read.csv("Quadrats_Midseason_20210823.csv")
 
 mus0 <- read.csv("ManagementUnits_Midseason_20210810.csv")
 
@@ -275,11 +275,12 @@ qdt_st <- qdt0 %>%
            LIT,
            unitName,
            subunitName,
-           stratum) %>%
-  summarise(avg_length_mm = mean(measurementValue, na.rm = TRUE))%>%
-  mutate(avg_length_mm = 10 * rowMeans(.[, length_col], na.rm = TRUE),
-         qdt_m2 = ifelse(Quadrat_Size == "15x15", 0.15^2,
-                         ifelse(Quadrat_Size == "5x5", 0.05^2, 0.10)),
+           stratum,
+           quadratSize) %>%
+  summarise(avg_length_mm = mean(measurementValue, na.rm = TRUE),
+            n_seed_heads = mean(nSeedHeads, na.rm = TRUE)) %>%
+  mutate(qdt_m2 = ifelse(quadratSize == "15x15", 0.15^2,
+                         ifelse(quadratSize == "5x5", 0.05^2, 0.10)),
          n_seed_head_m2 = n_seed_heads / qdt_m2,
          no_sh = n_seed_head_m2) %>%
   dplyr::select(LIT,
@@ -290,6 +291,7 @@ qdt_st <- qdt0 %>%
                 n_seed_head_m2,
                 no_sh) %>%
   na.omit() %>%
+  ungroup() %>%
   mutate(mass_g_m2 = unname(exp(predict(ST_len2mass, newdata = .)) / 1000),
          mass_g_m2 = ifelse(n_seed_head_m2 == 0, 0, mass_g_m2)) %>% # making sure it handles quadrats where no_sh == 0
   dplyr::filter(mass_g_m2 < 2000) %>%
