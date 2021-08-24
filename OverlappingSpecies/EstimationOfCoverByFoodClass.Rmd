@@ -1,0 +1,112 @@
+---
+title: "Procedure to estimate cover by classes of food production"
+author: "Emilio A. Laca"
+date: "8/19/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+
+```
+
+## Video that explains the visualization of proportion of areas covered
+
+https://youtu.be/cS4qwSK-Mqw
+
+**Throughout, we are estimating density of seed heads, not of plants or foliage.**
+
+**Throughout, areas without seed heads of the focal species are treated as a species called OtherCover.**
+
+**All VPs and CPs must have an estimate of proportion of area that is OtherCover.**
+
+## Vantage points and Circle plots estimations (method 1)
+
+This method is formally valid, as all quantities necessary are theoretically estimable always.
+
+### Develop/identify standards for density of each species.
+
+Walk or drive around the area and observe the different units in the refuge to get a general idea of the distribution of density of seedheads of each species.  As you survey the refuge, look at areas of almost pure species that are at least 1 - few m2 at a time and make a mental note of the densities. Imagine the frequency of each area in terms of density of seedheads and partition them into ranges that are low, medium and high. If you have time, go to some of the areas in each category, inspect them and take photos to use as reference. This steps creates the definition of the strata for each species, which you will use for estimating VPs, CPs and quadrats.
+
+
+## Partition total VP/CP area into uniform or distinct types of subareas
+
+1. In this step you visually survey the total area in the VP or CP and partition it into visually different types of subareas. Types of subareas do not have to be contiguous; for example, you may identify a subarea type that appears in several separate patches. We will assume that the subarea types are different combinations of species and density classes.
+
+2. For each subarea type you will assess what proportion of the total area it represents, and what categories of food production it represents.
+
+Due to temporary limitations in the survey123 app, each class has to be entered separately and you will have to indicate that they are paired by giving the area a code and entering the same code in the comments field for both species. Make yourself a list of codes in a sheet of paper and cross them as you use them to make sure you do not repeat the same code for more than one subarea. Of course, the code must be repeated once per species for each subarea with more than one species.
+
+VP codes should be:  vp-1, vp-2, vp-3, etc.
+
+
+a. Focus on one type of subarea. Estimate what proportion of the total it occupies.
+b. If the subarea has no seed heads of any species, enter the record and focus on the next subarea.
+c. Focus on one (perhaps the only one) of the food species in the subarea and determine its density as low, medium or high. Enter a record (same proportion as above, plus species and density) and a subarea code if there are more species.
+d. Focus on the next (if any) species with seed heads in the subarea and repeat the estimate for density. Enter a record (same proportion as above, plus species and density) and a subarea code if there are more species. If there are no more species, cross the subarea code used and proceed to the next type of subarea.
+
+
+Important points
+1. The area observed has to be completely partitioned into food production classes.
+2. The sum of the proportions of the area in each class will be adjusted to equal 1.0.
+3. Areas with seed heads of more than one species will be characterized by the combination of classes.
+4. To characterize these subareas where species are mixed, sequentially focus in each species in the subarea to assess the density of seed heads of each species. Estimate the total proportion represented by the subarea and classify it as species 1 - density of species 1 & species 2 - density of species 2, etc.
+
+
+CP codes should be:   cp-1, cp-2, cp-3, etc.
+
+
+For example, say that you have a subarea area with watergrass and smartweed seed heads.
+
+1.Look at the area where species overlap as a whole and estimate what proportion of the total visible area it represents, say 0.25.
+2. Focus on watergrass in the area and assess its density relative to the standards you created earlier. Determine if the density is low, medium or high; say that you pick medium, and enter a record for the VP showing 0.25 of medium watergrass. In the remarks field enter code vp-1 (assuming this is the first subarea you find with more than one species).
+3. Focus on smartweet and repeat the process. Suppose that the average smartweed density in the subarea is low. Enter a record for the VP showing 0.25 of low smartweed and enter the code vp-1 in the comments or remarks field. Cross out vp-1 in your list.
+
+The VP may have other areas with only watergrass - medium and only smartweed - low. Those areas are entered as separate records as usual and use no additional codes. (Note: In the future, survey123 may replace the codes with a new table with IDs for subareas within VPs. Each subarea can have more than one entry for proportion and class, one for each species present.)
+
+
+### Example with compact subarea types
+
+https://www.youtube.com/embed/dhBI0UTNjsg
+
+
+## Alternative methods
+
+### Method 2 discussed, as understood by Emilio
+
+1. Identify subarea types as above.
+2. Process subarea with single species or no food as usual, but do not enter proportions yet; keep them available.
+3. For each subarea type with more than one species:
+  a. in your mind's eye separate the species into separate parts of the subarea, classify the imaginary subareas by density and estimate the proportion of total area they represent.
+  b. merge the proportions of area represented by the imaginary areas with the corresponding estimate from subareas with single species (step 2) as necessary.
+  c. Enter estimates into app.
+
+Advantage: sum of proportions is corrected to add up to 1.0
+
+Disadvantages:
+
+1. All estimates have to be completed (on paper?) before they can be entered, unless we (1) allow duplicate entries (as seen in the first version of data for 2021), (2) establish that all duplicates are to be summed, and (3) disallow duplicates as corrections of previous entries.
+
+2. The imaginary areas may not be present anywhere in reality, making it impossible to have quadrats to represent them (i.e., not all necessary quantities are always theoretically estimable). I think this happened and was related to the duplicate estimates of 2021.
+
+### Method 3 discussed, as understood by Emilio
+
+1. Focus on seed heads of species 1.
+2. Partition all areas where species 1 seed heads appear based on seed head density.
+3. Estimate the proportion of the total area represented by each stratum of species 1 and enter data.
+4. Focus on the next species (including OtherCover) if any. Repeat.
+
+This method is formally correct and always allows estimation of all necessary quantities, but it cannot benefit from the correction based on closure, because the total of the proportions estimated can be larger than 1.0. This may be the most viable option because of simplicity.
+
+See the brief video explanation (2 minutes)
+
+### Example for method 3 with compact subarea types
+
+https://youtu.be/cQNApkQmXQg
+
+
+## What do we do next?

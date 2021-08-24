@@ -24,6 +24,8 @@ library(ggforce)
 library(knitr)
 library(kableExtra)
 library(measurements)
+library(lubridate)
+library(compositions)
 
 ```
 
@@ -116,6 +118,49 @@ mus0 <- read.csv("ManagementUnits_Midseason_20210810.csv")
 
 ```
 
+```{r fixFiles}
+
+# Fix vernacular names
+vernacKey <- c("Other cover" = "OtherCover",
+               "Swamp Timothy" = "SwampTimothy")
+
+vps0$vernacularName <- dplyr::recode(vps0$vernacularName, !!!vernacKey)
+cps0$vernacularName <- dplyr::recode(cps0$vernacularName, !!!vernacKey)
+qdt0$vernacularName <- dplyr::recode(qdt0$vernacularName, !!!vernacKey)
+
+# Fix unit and subunit names
+
+mus0 %<>%
+  mutate(subunitName = ifelse(subunitName == "", unitName, subunitName),
+         unitName = str_split_fixed(unitName, "-", 2)[, 1])
+
+vps0 %<>%
+  mutate(subunitName = ifelse(subunitName == "", unitName, subunitName),
+         unitName = str_split_fixed(unitName, "-", 2)[, 1])
+
+cps0 %<>%
+  mutate(subunitName = ifelse(subunitName %in% c("0", ""), unitName, subunitName),
+         unitName = str_split_fixed(unitName, "-", 2)[, 1])
+
+qdt0 %<>%
+  mutate(subunitName = ifelse(subunitName == "", unitName, subunitName),
+         unitName = str_split_fixed(unitName, "-", 2)[, 1])
+
+# Fix duplicate records by keeping most recent one
+
+# cps0 %<>% # CAN'T USE THIS BECAUSE TIME STAMPS ARE ALSO DUPLICATED
+#   mutate(dateTime = mdy_hm(eventDate)) %>%
+#   group_by(recordedBy,
+#                 LIT,
+#                 unitName,
+#                 subunitName,
+#                 vernacularName,
+#                 stratum) %>%
+#   slice(which.max(dateTime))
+
+```
+
+
 
 ```{r prep_Files}
 
@@ -129,7 +174,6 @@ vps <- vps0 %>%
                 vernacularName,
                 stratum,
                 proportionVisibleArea) %>% # pVA
-  mutate(vernacularName = str_replace(vernacularName, " ", "_")) %>%
   pivot_wider(names_from = c(vernacularName, stratum),
               names_prefix = "pVA_",
               values_from = proportionVisibleArea,
@@ -139,13 +183,13 @@ vps <- vps0 %>%
          p_wg_a.Low = pVA_Watergrass_low / temp_p,
          p_wg_b.Med = pVA_Watergrass_medium / temp_p,
          p_wg_c.High = pVA_Watergrass_high / temp_p,
-         p_st_a.Low = pVA_Swamp_Timothy_low / temp_p,
-         p_st_b.Med = pVA_Swamp_Timothy_medium / temp_p,
-         p_st_c.High = pVA_Swamp_Timothy_high / temp_p,
+         p_st_a.Low = pVA_SwampTimothy_low / temp_p,
+         p_st_b.Med = pVA_SwampTimothy_medium / temp_p,
+         p_st_c.High = pVA_SwampTimothy_high / temp_p,
          p_sw_a.Low = pVA_Smartweed_low / temp_p,
          p_sw_b.Med = 0,
          p_sw_c.High = 0,
-         p_noFood = pVA_Other_cover_NA / temp_p,
+         p_noFood = pVA_OtherCover_NA / temp_p,
          subunit_ID = factor(paste(LIT, unitName, subunitName, sep = "_"))) %>%
   dplyr::select(LIT,
                 unitName,
@@ -153,23 +197,27 @@ vps <- vps0 %>%
                 subunit_ID,
                 level,
                 areaVisible_ac,
-                starts_with("p_"))
+                starts_with("p"))
 
 # Circle plot information =============================
 cps <- cps0 %>%
   dplyr::select(GlobalID,
+                decimalLatitude,
+                decimalLongitude,
                 LIT,
                 unitName,
                 subunitName,
                 vernacularName,
                 stratum,
                 proportionVisibleArea) %>%
-  group_by(GlobalID, #            | This section to be removed
-                LIT, #            | once the duplicate records
-                unitName,#        | are sorted out
-                subunitName,#     |
-                vernacularName,#  |
-                stratum) %>%#     |
+  group_by(GlobalID,#         | This section to be removed
+           decimalLatitude,#  |
+           decimalLongitude,# |
+           LIT,#              | once the duplicate records
+           unitName,#         | are sorted out.
+           subunitName,#      | Duplicates may actually be
+           vernacularName,#   | incorrectly identified strata
+           stratum) %>%#      | or species
   summarize(proportionVisibleArea = mean(proportionVisibleArea),
             .groups = "drop")%>%
   mutate(vernacularName = str_replace(vernacularName, " ", "_")) %>%
@@ -182,16 +230,19 @@ cps <- cps0 %>%
          p_wg_a.Low = pVA_Watergrass_low / temp_p,
          p_wg_b.Med = pVA_Watergrass_medium / temp_p,
          p_wg_c.High = pVA_Watergrass_high / temp_p,
-         p_st_a.Low = pVA_Swamp_Timothy_low / temp_p,
-         p_st_b.Med = pVA_Swamp_Timothy_medium / temp_p,
-         p_st_c.High = pVA_Swamp_Timothy_high / temp_p,
+         p_st_a.Low = pVA_SwampTimothy_low / temp_p,
+         p_st_b.Med = pVA_SwampTimothy_medium / temp_p,
+         p_st_c.High = pVA_SwampTimothy_high / temp_p,
          p_sw_a.Low = pVA_Smartweed_low / temp_p,
          p_sw_b.Med = 0,
          p_sw_c.High = 0,
-         p_noFood = pVA_Other_cover_NA / temp_p,
+         p_noFood = pVA_OtherCover_NA / temp_p,
          subunit_ID = factor(paste(LIT, unitName, subunitName, sep = "_")),
          areaVisible_ac = conv_unit(pi * 15^2, "m2", "acre")) %>%
-  dplyr::select(LIT,
+  dplyr::select(GlobalID,
+                LIT,
+                decimalLatitude,
+                decimalLongitude,
                 unitName,
                 subunitName,
                 subunit_ID,
@@ -201,21 +252,32 @@ cps <- cps0 %>%
 
 # Management unit information =============================
 mus <- mus0 %>% # management units
+  rename(LIT = Lit) %>%
   dplyr::select(LIT,
                 unitName,
                 subunitName,
-                su.area_ac = Acreage) %>%
+                su.area_ac = Acres) %>%
   mutate(subunit_ID = paste(LIT, unitName, subunitName, sep = "_"))
 
 vpcp <- bind_rows(vps, cps) %>%
   full_join(mus) %>%
   na.omit()
 # last row 810 removed is for a unit that was not measured but appears in mus
+```
 
-# Quadrat information ====================================
+```{r qdt_st}
+
+# ST quadrat info -> table with LIT, stratum and mass of seed per m2
+
 qdt_st <- qdt0 %>%
-  filter(CommonName == "Timothy" & stratum != "") %>%
-  mutate(avg_length_mm = 10 * rowMeans(.[, length_col], na.rm = TRUE)) %>%
+  dplyr::filter(vernacularName == "SwampTimothy" & stratum != "") %>%
+  group_by(GlobalID,
+           LIT,
+           unitName,
+           subunitName,
+           stratum) %>%
+  summarise(avg_length_mm = mean(measurementValue, na.rm = TRUE))
+mutate(avg_length_mm = 10 * rowMeans(.[, length_col], na.rm = TRUE)) %>%
   mutate(qdt_m2 = ifelse(Quadrat_Size == "15x15", 0.15^2,
                          ifelse(Quadrat_Size == "5x5", 0.05^2, 0.10)),
          n_seed_head_m2 = n_seed_heads / qdt_m2,
@@ -230,11 +292,11 @@ qdt_st <- qdt0 %>%
   na.omit() %>%
   mutate(mass_g_m2 = unname(exp(predict(ST_len2mass, newdata = .)) / 1000),
          mass_g_m2 = ifelse(n_seed_head_m2 == 0, 0, mass_g_m2)) %>% # making sure it handles quadrats where no_sh == 0
-  filter(mass_g_m2 < 2000) %>%
+  dplyr::filter(mass_g_m2 < 2000) %>%
   mutate(stratum = dplyr::recode(stratum,
-                                 `Low` = "a.Low",
-                                 `Med` = "b.Med",
-                                 `High` = "c.High"),
+                                 `low` = "a.Low",
+                                 `medium` = "b.Med",
+                                 `high` = "c.High"),
          stratum = factor(as.character(stratum)),
          subunit_ID = paste(LIT, unitName, subunitName, sep = "_"),
          LIT_Strat = factor(paste(LIT, stratum, sep = "_"))) %>%
@@ -248,11 +310,12 @@ str(qdt_st)
 
 ```
 
-```{r wg_qdt}
+```{r qdt_wg}
 
-# Quadrat data from field ========
+# WG quadrat info -> table with LIT, stratum and mass of seed per m2
+
 qdt_wg <- read.csv("qdt2019c.csv") %>%
-  filter(CommonName == "Watergrass" & stratum != "")
+  filter(vernacularName == "Watergrass" & stratum != "")
 
 sh_lengths_cm_wg <- as.matrix(qdt_wg[, length_col]) %>% na_if(0)
 sh_F2T_cm_wg <- as.matrix(qdt_wg[, F2T_col]) %>% na_if(0)

@@ -96,6 +96,7 @@ vernacKey <- c("Other cover" = "OtherCover",
 
 vps0$vernacularName <- dplyr::recode(vps0$vernacularName, !!!vernacKey)
 cps0$vernacularName <- dplyr::recode(cps0$vernacularName, !!!vernacKey)
+qdt0$vernacularName <- dplyr::recode(qdt0$vernacularName, !!!vernacKey)
 
 
 # Check consistency of strata between vps + cps and qdts =====================
@@ -140,7 +141,8 @@ cps0 %>%
                 subunitName,
                 vernacularName,
                 stratum,
-                proportionVisibleArea) %>%
+                proportionVisibleArea,
+                dateTime) %>%
   arrange(subunitName, vernacularName, stratum)
 
 # Check consistency in set of subunits across files ==========================
@@ -188,6 +190,8 @@ mus0[, c("LIT", "unitName", "subunitName")] %>%
             unitName,
             subunitName))
 
+# cps0 has some 0's as subunit names. Should be blank?
+
 (subunits_qdt <- qdt0[, c("LIT", "unitName", "subunitName")] %>%
     unique() %>%
     arrange(LIT,
@@ -207,3 +211,54 @@ mus0[, c("LIT", "unitName", "subunitName")] %>%
     arrange(LIT,
             Unit_Name,
             Subunit_Name))
+
+# QDT data format ============================================================
+# The new data format breaks the link between seed head length and f2t length for
+# watergrass. The same will happen when we start measuring more than one thing
+# in other species. All measurements on individual seedheads should be linked by
+# a seedhead ID.
+
+
+# Coordinates =================================================================
+
+# VPS
+# Check that each point appears only once in globalid
+vps0 %>%
+  group_by(globalid, decimalLatitude, decimalLongitude) %>%
+  count() %>%
+  dim() %>%
+  `[`(1)
+
+vps0 %>%
+  group_by(globalid) %>%
+  count() %>%
+  dim() %>%
+  `[`(1)
+
+vps0 %>%
+  group_by(decimalLatitude, decimalLongitude) %>%
+  count() %>%
+  dim() %>%
+  `[`(1)
+
+# CPS
+# Check that each point appears only once in GlobalID
+cps0 %>%
+  group_by(GlobalID, decimalLatitude, decimalLongitude) %>%
+  count() %>%
+  dim() %>%
+  `[`(1)
+
+cps0 %>%
+  group_by(GlobalID) %>%
+  count() %>%
+  dim() %>%
+  `[`(1)
+
+cps0 %>%
+  group_by(decimalLatitude, decimalLongitude) %>%
+  count() %>%
+  dim() %>%
+  `[`(1)
+
+
