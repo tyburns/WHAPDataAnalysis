@@ -316,19 +316,23 @@ str(qdt_st)
 
 # WG quadrat info -> table with LIT, stratum and mass of seed per m2
 
-qdt_wg <- read.csv("qdt2019c.csv") %>%
-  filter(vernacularName == "Watergrass" & stratum != "")
+qdt_wg <- qdt0 %>%
+  filter(vernacularName == "Watergrass" & stratum != "") %>%
+  pivot_wider(names_from = measurementType, values_from = measurementValue)
 
-sh_lengths_cm_wg <- as.matrix(qdt_wg[, length_col]) %>% na_if(0)
-sh_F2T_cm_wg <- as.matrix(qdt_wg[, F2T_col]) %>% na_if(0)
-sh_emerged_wg <- sh_F2T_cm_wg / sh_lengths_cm_wg
+names(qdt_wg)[names(qdt_wg) == "sh_length"] <- "length_col"
+names(qdt_wg)[names(qdt_wg) == "f2t_length"] <- "F2T_col"
+
+sh_lengths_mm_wg <- as.matrix(qdt_wg$length_col) %>% na_if(0)
+sh_F2T_mm_wg <- as.matrix(qdt_wg$F2T_col) %>% na_if(0)
+sh_emerged_wg <- sh_F2T_mm_wg / sh_lengths_mm_wg
 
 wgc <- unname(coef(WG_len2mass))
 
 sh_mass_mg_mat <- exp(wgc[1] +
-                        wgc[2] * sh_lengths_cm_wg +
+                        wgc[2] * sh_lengths_mm_wg +
                         wgc[3] * sh_emerged_wg +
-                        wgc[4] * sh_F2T_cm_wg) - 20
+                        wgc[4] * sh_F2T_mm_wg) - 20
 
 qdt_wg <- qdt_wg %>%
   mutate(qdt_m2 = ifelse(Quadrat_Size == "15x15", 0.15^2,
@@ -336,7 +340,7 @@ qdt_wg <- qdt_wg %>%
          n_seed_head_m2 = n_seed_heads / qdt_m2,
          sh_mass_mg = rowMeans(sh_mass_mg_mat, na.rm = TRUE),
          sh_mass_mg = ifelse(is.nan(sh_mass_mg), NA, sh_mass_mg),
-         avg_length_mm = 10 * rowMeans(sh_lengths_cm_wg, na.rm = TRUE),
+         avg_length_mm = 10 * rowMeans(sh_lengths_mm_wg, na.rm = TRUE),
          mass_g_m2 = n_seed_head_m2 * sh_mass_mg / 1000) %>%
   filter(mass_g_m2 < 400) %>%
   dplyr:::select(LIT,
