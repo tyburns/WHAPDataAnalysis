@@ -113,8 +113,10 @@ vps0 <- read.csv("VantagePolygons_Midseason_20210810.csv")
 cps0 <- read.csv("CirclePlots_Midseason_20210810.csv")
 
 qdt0 <- read.csv("Quadrats_Midseason_20210823.csv")
+names(qdt0)[1] <- "GlobalID"
 
 mus0 <- read.csv("ManagementUnits_Midseason_20210810.csv")
+names(mus0)[1] <- "LIT"
 
 ```
 
@@ -278,10 +280,10 @@ qdt_st <- qdt0 %>%
            stratum,
            quadratSize) %>%
   summarise(avg_length_mm = mean(measurementValue, na.rm = TRUE),
-            n_seed_heads = mean(nSeedHeads, na.rm = TRUE)) %>%
+            nSeedHeads = mean(nSeedHeads, na.rm = TRUE)) %>%
   mutate(qdt_m2 = ifelse(quadratSize == "15x15", 0.15^2,
                          ifelse(quadratSize == "5x5", 0.05^2, 0.10)),
-         n_seed_head_m2 = n_seed_heads / qdt_m2,
+         n_seed_head_m2 = nSeedHeads / qdt_m2,
          no_sh = n_seed_head_m2) %>%
   dplyr::select(LIT,
                 unitName,
@@ -316,50 +318,47 @@ str(qdt_st)
 
 # WG quadrat info -> table with LIT, stratum and mass of seed per m2
 
-qdt_wg <- qdt0 %>%
-  filter(vernacularName == "Watergrass" & stratum != "") %>%
-  pivot_wider(names_from = measurementType, values_from = measurementValue)
-
-names(qdt_wg)[names(qdt_wg) == "sh_length"] <- "length_col"
-names(qdt_wg)[names(qdt_wg) == "f2t_length"] <- "F2T_col"
-
-sh_lengths_mm_wg <- as.matrix(qdt_wg$length_col) %>% na_if(0)
-sh_F2T_mm_wg <- as.matrix(qdt_wg$F2T_col) %>% na_if(0)
-sh_emerged_wg <- sh_F2T_mm_wg / sh_lengths_mm_wg
-
 wgc <- unname(coef(WG_len2mass))
 
-sh_mass_mg_mat <- exp(wgc[1] +
-                        wgc[2] * sh_lengths_mm_wg +
-                        wgc[3] * sh_emerged_wg +
-                        wgc[4] * sh_F2T_mm_wg) - 20
-
-qdt_wg <- qdt_wg %>%
-  mutate(qdt_m2 = ifelse(Quadrat_Size == "15x15", 0.15^2,
-                         ifelse(Quadrat_Size == "5x5", 0.05^2, 0.10)),
-         n_seed_head_m2 = n_seed_heads / qdt_m2,
-         sh_mass_mg = rowMeans(sh_mass_mg_mat, na.rm = TRUE),
-         sh_mass_mg = ifelse(is.nan(sh_mass_mg), NA, sh_mass_mg),
-         avg_length_mm = 10 * rowMeans(sh_lengths_mm_wg, na.rm = TRUE),
-         mass_g_m2 = n_seed_head_m2 * sh_mass_mg / 1000) %>%
-  filter(mass_g_m2 < 400) %>%
+qdt_wg <- qdt0 %>%
+  filter(vernacularName == "Watergrass" & stratum != "") %>%
+  pivot_wider(names_from = measurementType, values_from = measurementValue) %>%
+  arrange(GlobalID_seedhead) %>%
+  mutate(sh_emerged_wg = f2t_length / sh_length, 
+         sh_mass_mg = exp(wgc[1] +
+                            wgc[2] * sh_length / 10 +
+                            wgc[3] * sh_emerged_wg +
+                            wgc[4] * f2t_length / 10) - 20) %>%
+  mutate(qdt_m2 = ifelse(quadratSize == "15x15", 0.15^2,
+                         ifelse(quadratSize == "5x5", 0.05^2, 0.10)),
+         n_seed_head_m2 = nSeedHeads / qdt_m2) %>%
+  group_by(GlobalID,
+           LIT,
+           unitName,
+           subunitName,
+           stratum,
+           quadratSize) %>%
+  summarize(sh_mass_mg = mean(sh_mass_mg, na.rm = TRUE), 
+            n_seed_head_m2 = mean(n_seed_head_m2, na.rm = TRUE)) %>%
+  mutate(mass_g_m2 = n_seed_head_m2 * sh_mass_mg / 1000,
+         sh_mass_mg = ifelse(is.nan(sh_mass_mg), NA, sh_mass_mg)) %>%
   dplyr:::select(LIT,
                  unitName,
                  subunitName,
                  stratum,
-                 avg_length_mm,
                  n_seed_head_m2,
                  sh_mass_mg,
                  mass_g_m2) %>%
   na.omit() %>%
   mutate(stratum = dplyr::recode(stratum,
-                                 `Low` = "a.Low",
-                                 `Med` = "b.Med",
-                                 `High` = "c.High"),
+                                 `low` = "a.Low",
+                                 `medium` = "b.Med",
+                                 `high` = "c.High"),
          stratum = factor(as.character(stratum)),
          subunit_ID = paste(LIT, unitName, subunitName, sep = "_"),
          LIT_Strat = factor(paste(LIT, stratum, sep = "_"))) %>%
-  arrange(LIT, unitName, subunitName, stratum)
+  arrange(LIT, unitName, subunitName, stratum) %>%
+  ungroup()
 
 attributes(qdt_wg)$na.action <- NULL
 
@@ -371,11 +370,11 @@ str(qdt_wg)
 
 ```{r su_areas}
 
-su_areas <- read.csv("WHAP2019_PP_20201002_MUs.csv") %>%
+su_areas <- mus0 %>%
   dplyr::select(LIT,
                 unitName,
                 subunitName,
-                area_ac = Acreage) %>%
+                area_ac = Acres) %>%
   mutate(area_ha = area_ac / 2.47)
 
 ```
