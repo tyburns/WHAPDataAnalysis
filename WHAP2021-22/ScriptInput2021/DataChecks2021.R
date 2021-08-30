@@ -280,3 +280,19 @@ with(qdt0, table(quadratSize))
 
 # Quadrat size domain has been changed to include "cm" at the end.
 # Suggest that units be placed in the variable name, not in the values.
+
+## Why are there data for PIX-5? =================================
+
+# RB and TB report not having measured that unit.
+# Looks like one vp from unit 4 was reported as unit 5?
+
+vps %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
+
+cps %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
+
+qdt_st %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
+
+qdt_wg %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
+
+
+# {43322E8E-D9FB-422C-9DA2-5F3D993DFEAA} should be in unit 4

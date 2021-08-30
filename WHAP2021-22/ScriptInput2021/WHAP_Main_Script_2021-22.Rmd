@@ -116,6 +116,10 @@ vps0$vernacularName <- dplyr::recode(vps0$vernacularName, !!!vernacKey)
 cps0$vernacularName <- dplyr::recode(cps0$vernacularName, !!!vernacKey)
 qdt0$vernacularName <- dplyr::recode(qdt0$vernacularName, !!!vernacKey)
 
+# Fix incorrect PIX 5 to PIX 4.
+vps0$unitName[vps0$LIT == "PIX" & vps0$unitName == "5"] <- "4"
+
+
 # Fix LIT codes
 qdt0$LIT <- dplyr::recode(qdt0$LIT, "LMC" = "PIX")
 
@@ -406,7 +410,7 @@ In 2021 this part of the code was modified to use a log transformation of the ma
 ```{r st.modelStrata}
 
 # Use robust linear model
-st_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat, # This has heterogeneity of variance
+st_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat,
                na.action = na.exclude,
                maxit = 40,
                data = qdt_st)
