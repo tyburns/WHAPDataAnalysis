@@ -262,3 +262,21 @@ cps0 %>%
   `[`(1)
 
 
+## Consistency of LIT codes ================================================
+
+unique(mus0$LIT)
+
+unique(vps0$LIT)
+
+unique(cps0$LIT)
+
+unique(qdt0$LIT) # This is the first time LMC appears. LMC == PIX?
+
+
+
+## Check domain of quadrat sizes===========================================
+
+with(qdt0, table(quadratSize))
+
+# Quadrat size domain has been changed to include "cm" at the end.
+# Suggest that units be placed in the variable name, not in the values.
