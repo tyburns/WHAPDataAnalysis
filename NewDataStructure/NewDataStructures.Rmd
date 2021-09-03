@@ -1,5 +1,5 @@
 ---
-title: "New Data Structure Comments"
+title: "New Data Structures"
 author: "Emilio A. Laca"
 date: "7/10/2021"
 output: html_document

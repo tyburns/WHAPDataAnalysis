@@ -68,12 +68,31 @@ vernac_names <- sort(c("OtherCover",
                        "SwampTimothy",
                        "Smartweed"))
 
+# Set of correct LIT codes ===================================================
+LIT_codes <- sort(c("KRN",
+                    "PIX",
+                    "MDC",
+                    "SAC",
+                    "SLC",
+                    "CLS"))
+
 
 # Read files =================================================================
-vps0 <- read.csv("VantagePolygons_Midseason_20210810.csv")
-cps0 <- read.csv("CirclePlots_Midseason_20210810.csv")
-qdt0 <- read.csv("Quadrats_Midseason_20210811.csv")
-mus0 <- read.csv("ManagementUnits_Midseason_20210810.csv")
+vps0 <- read.csv("WHAP2021_KRN_PIX_20210811/VantagePolygons_Midseason_20210810.csv")
+cps0 <- read.csv("WHAP2021_KRN_PIX_20210811/CirclePlots_Midseason_20210810.csv")
+qdt0 <- read.csv("WHAP2021_KRN_PIX_20210811/Quadrats_Midseason_20210811.csv")
+mus0 <- read.csv("WHAP2021_KRN_PIX_20210811/ManagementUnits_Midseason_20210810.csv")
+
+
+# Check LIT codes =====================================================
+setdiff(unique(vps0$LIT), LIT_codes)
+setdiff(unique(cps0$LIT), LIT_codes)
+setdiff(unique(qdt0$LIT), LIT_codes) # LMC should be PIX
+setdiff(unique(mus0$Lit), LIT_codes)
+
+
+# Fix LIT codes
+qdt0$LIT <- dplyr::recode(qdt0$LIT, "LMC" = "PIX")
 
 
 # Check variable names =====================================================
@@ -91,6 +110,7 @@ setdiff(unique(cps0$vernacularName), vernac_names)
 setdiff(unique(qdt0$vernacularName), vernac_names)
 
 # Fix vernacular names to be able to continue checks
+# For future we need to have a list of permitted vernacularName values.
 vernacKey <- c("Other cover" = "OtherCover",
                "Swamp Timothy" = "SwampTimothy")
 
@@ -135,15 +155,15 @@ print(cp_dups <- cps0 %>%
 
 cps0 %>%
   dplyr::filter(GlobalID %in% cp_dups$GlobalID) %>%
-  dplyr::select(recordedBy,
+  dplyr::select(#recordedBy,
                 LIT,
                 unitName,
                 subunitName,
                 vernacularName,
                 stratum,
                 proportionVisibleArea,
-                dateTime) %>%
-  arrange(subunitName, vernacularName, stratum)
+                eventDate) %>%
+  arrange(subunitName, vernacularName, stratum, eventDate)
 
 # Check consistency in set of subunits across files ==========================
 
@@ -190,7 +210,10 @@ mus0[, c("LIT", "unitName", "subunitName")] %>%
             unitName,
             subunitName))
 
-# cps0 has some 0's as subunit names. Should be blank?
+
+# Except for cps0, all other files have errors in the unitName and subunitName
+# for KRN 4A-3, KRN 4A-5 and KRN 4A-6
+# cps0 has some 0's as subunit names. Should be blank.
 
 (subunits_qdt <- qdt0[, c("LIT", "unitName", "subunitName")] %>%
     unique() %>%
@@ -211,6 +234,8 @@ mus0[, c("LIT", "unitName", "subunitName")] %>%
     arrange(LIT,
             Unit_Name,
             Subunit_Name))
+
+
 
 # QDT data format ============================================================
 # The new data format breaks the link between seed head length and f2t length for
@@ -262,18 +287,6 @@ cps0 %>%
   `[`(1)
 
 
-## Consistency of LIT codes ================================================
-
-unique(mus0$LIT)
-
-unique(vps0$LIT)
-
-unique(cps0$LIT)
-
-unique(qdt0$LIT) # This is the first time LMC appears. LMC == PIX?
-
-
-
 ## Check domain of quadrat sizes===========================================
 
 with(qdt0, table(quadratSize))
@@ -281,18 +294,19 @@ with(qdt0, table(quadratSize))
 # Quadrat size domain has been changed to include "cm" at the end.
 # Suggest that units be placed in the variable name, not in the values.
 
-## Why are there data for PIX-5? =================================
+## Why are there data for PIX-5 and KRN-Shrew Slough? =========================
 
 # RB and TB report not having measured that unit.
-# Looks like one vp from unit 4 was reported as unit 5?
+# Looks like one vp from unit PIX-4 was reported as unit PIX-5
 
-vps %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
+vps0 %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
 
-cps %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
+cps0 %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
 
-qdt_st %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
+qdt0 %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
 
-qdt_wg %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
+# {43322E8E-D9FB-422C-9DA2-5F3D993DFEAA} should be in unit PIX-4
 
+# Shrew Slough needs to be resolved.
+# Source of error has to be resolved for future
 
-# {43322E8E-D9FB-422C-9DA2-5F3D993DFEAA} should be in unit 4
