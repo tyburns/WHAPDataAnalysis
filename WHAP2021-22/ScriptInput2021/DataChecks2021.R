@@ -63,9 +63,9 @@ qdt_col_names <- c("qdtGlobalID",
                    "measurementValue")
 
 # Set of correct vernacularName ==============================================
-vernac_names <- sort(c("OtherCover",
+vernac_names <- sort(c("Other cover",
                        "Watergrass",
-                       "SwampTimothy",
+                       "Swamp Timothy",
                        "Smartweed"))
 
 # Set of correct LIT codes ===================================================
@@ -73,22 +73,22 @@ LIT_codes <- sort(c("KRN",
                     "PIX",
                     "MDC",
                     "SAC",
-                    "SLC",
+                    "SLW",
                     "CLS"))
 
 
 # Read files =================================================================
-vps0 <- read.csv("WHAP2021_KRN_PIX_20210811/VantagePolygons_Midseason_20210810.csv")
-cps0 <- read.csv("WHAP2021_KRN_PIX_20210811/CirclePlots_Midseason_20210810.csv")
-qdt0 <- read.csv("WHAP2021_KRN_PIX_20210811/Quadrats_Midseason_20210811.csv")
-mus0 <- read.csv("WHAP2021_KRN_PIX_20210811/ManagementUnits_Midseason_20210810.csv")
+vps0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_VantagePolygons_20210831.csv")
+cps0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_CirclePlots_20210901.csv")
+qdt0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_Quadrats_20210902.csv")
+mus0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_ManagementUnits_20210902.csv")
 
 
 # Check LIT codes =====================================================
 setdiff(unique(vps0$LIT), LIT_codes)
 setdiff(unique(cps0$LIT), LIT_codes)
 setdiff(unique(qdt0$LIT), LIT_codes) # LMC should be PIX
-setdiff(unique(mus0$Lit), LIT_codes)
+setdiff(unique(mus0$LIT), LIT_codes)
 
 
 # Fix LIT codes
@@ -109,15 +109,7 @@ setdiff(unique(vps0$vernacularName), vernac_names)
 setdiff(unique(cps0$vernacularName), vernac_names)
 setdiff(unique(qdt0$vernacularName), vernac_names)
 
-# Fix vernacular names to be able to continue checks
 # For future we need to have a list of permitted vernacularName values.
-vernacKey <- c("Other cover" = "OtherCover",
-               "Swamp Timothy" = "SwampTimothy")
-
-vps0$vernacularName <- dplyr::recode(vps0$vernacularName, !!!vernacKey)
-cps0$vernacularName <- dplyr::recode(cps0$vernacularName, !!!vernacKey)
-qdt0$vernacularName <- dplyr::recode(qdt0$vernacularName, !!!vernacKey)
-
 
 # Check consistency of strata between vps + cps and qdts =====================
 # The following combinations of species and strata lack quadrat information.
@@ -130,14 +122,14 @@ bind_rows((vps0 %>% dplyr::select(vernacularName, stratum)),
               group_by(vernacularName, stratum) %>%
               summarize(n_qdt = n())) %>%
   arrange(vernacularName, stratum) %>%
-  dplyr::filter(is.na(n_qdt) & n_propArea > 0 & vernacularName != "OtherCover")
+  dplyr::filter(is.na(n_qdt) & n_propArea > 0 & vernacularName != "Other cover")
 
 
 # Check uniqueness of proportion of area estimations ==========================
 
 # VPS
 print(vp_dups <- vps0 %>%
-        group_by(globalid, vernacularName, stratum) %>%
+        group_by(GlobalID, vernacularName, stratum) %>%
         count() %>%
         dplyr::filter(n > 1),
       n = Inf)
@@ -169,7 +161,6 @@ cps0 %>%
 
 # MUS
 mus0 %<>%
-  rename(LIT = Lit) %>% # has to be made conditional on presence of Lit
   mutate(subunit_ID = paste(LIT, unitName, subunitName, sep = "_"))
 
 # VPS
@@ -236,31 +227,23 @@ mus0[, c("LIT", "unitName", "subunitName")] %>%
             Subunit_Name))
 
 
-
-# QDT data format ============================================================
-# The new data format breaks the link between seed head length and f2t length for
-# watergrass. The same will happen when we start measuring more than one thing
-# in other species. All measurements on individual seedheads should be linked by
-# a seedhead ID.
-
-
 # Coordinates =================================================================
 
 # VPS
 # Check that each point appears only once in globalid
 vps0 %>%
-  group_by(globalid, decimalLatitude, decimalLongitude) %>%
+  group_by(GlobalID, decimalLatitude, decimalLongitude) %>%
   count() %>%
   dim() %>%
   `[`(1)
 
 vps0 %>%
-  group_by(globalid) %>%
+  group_by(GlobalID) %>%
   count() %>%
   dim() %>%
   `[`(1)
 
-vps0 %>%
+vps0 %>% # Why are there fewer unique coords than ID's?
   group_by(decimalLatitude, decimalLongitude) %>%
   count() %>%
   dim() %>%
@@ -306,7 +289,5 @@ cps0 %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
 qdt0 %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
 
 # {43322E8E-D9FB-422C-9DA2-5F3D993DFEAA} should be in unit PIX-4
-
-# Shrew Slough needs to be resolved.
-# Source of error has to be resolved for future
+# KRN-Shrew Slough has to be investigated.
 
