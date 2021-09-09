@@ -149,6 +149,11 @@ qdt0 %<>%
   mutate(subunitName = ifelse(subunitName == "", unitName, subunitName),
          unitName = str_split_fixed(unitName, "-", 2)[, 1])
 
+# Fix column names for PC users
+
+colnames(vps0)[1] <- "globalid"
+colnames(cps0)[1] <- "GlobalID"
+
 ```
 
 ```{r prep_Files}
