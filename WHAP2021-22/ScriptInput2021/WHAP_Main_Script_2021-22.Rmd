@@ -198,7 +198,7 @@ vps <- vps0 %>%
          p_sw_b.Med = 0,
          p_sw_c.High = 0,
          p_noFood = pVA_OtherCover_NA / temp_p,
-         subunit_ID = factor(paste(LIT, unitName, subunitName, sep = "_"))) %>%
+         subunit_ID = factor(paste(LIT, unitName, subunitName, sep = "_")))) %>%
   dplyr::select(LIT,
                 unitName,
                 subunitName,
@@ -234,13 +234,13 @@ cps <- cps0 %>%
          p_wg_a.Low = pVA_Watergrass_low / temp_p,
          p_wg_b.Med = pVA_Watergrass_medium / temp_p,
          p_wg_c.High = pVA_Watergrass_high / temp_p,
-         p_st_a.Low = pVA_SwampTimothy_low / temp_p,
-         p_st_b.Med = pVA_SwampTimothy_medium / temp_p,
-         p_st_c.High = pVA_SwampTimothy_high / temp_p,
+         p_st_a.Low = pVA_Swamp_Timothy_low / temp_p,
+         p_st_b.Med = pVA_Swamp_Timothy_medium / temp_p,
+         p_st_c.High = pVA_Swamp_Timothy_high / temp_p,
          p_sw_a.Low = pVA_Smartweed_low / temp_p,
          p_sw_b.Med = 0,
          p_sw_c.High = 0,
-         p_noFood = pVA_OtherCover_NA / temp_p,
+         p_noFood = pVA_Other_cover_NA / temp_p,
          subunit_ID = factor(paste(LIT, unitName, subunitName, sep = "_")),
          areaVisible_ac = conv_unit(pi * 15^2, "m2", "acre")) %>%
   dplyr::select(LIT,
@@ -256,7 +256,7 @@ mus <- mus0 %>% # management units
   dplyr::select(LIT,
                 unitName,
                 subunitName,
-                su.area_ac = Acres) %>%
+                su.area_ac = acreage) %>%
   mutate(subunit_ID = paste(LIT, unitName, subunitName, sep = "_"))
 
 vpcp <- bind_rows(vps, cps) %>%
@@ -270,7 +270,7 @@ vpcp <- bind_rows(vps, cps) %>%
 # ST quadrat info -> table with LIT, stratum and mass of seed per m2
 
 qdt_st <- qdt0 %>%
-  dplyr::filter(vernacularName == "SwampTimothy" & stratum != "") %>%
+  dplyr::filter(vernacularName == "Swamp_Timothy" & stratum != "") %>%
   group_by(GlobalID,
            LIT,
            unitName,
@@ -315,14 +315,14 @@ str(qdt_st)
 wgc <- unname(coef(WG_len2mass))
 
 qdt_wg <- qdt0 %>%
-  filter(vernacularName == "Watergrass" & stratum != "") %>%
+  dplyr::filter(vernacularName == "Watergrass" & stratum != "") %>%
   pivot_wider(names_from = measurementType, values_from = measurementValue) %>%
-  arrange(GlobalID_seedhead) %>%
-  mutate(sh_emerged_wg = f2t_length / sh_length, 
+  arrange(GlobalID_seed) %>%
+  mutate(sh_emerged_wg = f2t_length_mm / sh_length_mm, 
          sh_mass_mg = exp(wgc[1] +
-                            wgc[2] * sh_length / 10 + # divide by 10 because
+                            wgc[2] * sh_length_mm / 10 + # divide by 10 because
                             wgc[3] * sh_emerged_wg + # model data was in cm
-                            wgc[4] * f2t_length / 10) - 20) %>%
+                            wgc[4] * f2t_length_mm / 10) - 20) %>%
   mutate(qdt_m2 = ifelse(quadratSize == "15x15", 0.15^2,
                          ifelse(quadratSize == "5x5", 0.05^2, 0.10)),
          n_seed_head_m2 = nSeedHeads / qdt_m2) %>%
@@ -368,7 +368,7 @@ su_areas <- mus0 %>%
   dplyr::select(LIT,
                 unitName,
                 subunitName,
-                area_ac = Acres) %>%
+                area_ac = acreage) %>%
   mutate(area_ha = conv_unit(area_ac, "acre", "hectare"))
 
 ```
@@ -430,6 +430,7 @@ In 2021 this part of the code was modified to use a log transformation of the ma
 ```{r st.modelStrata}
 
 # Use robust linear model
+
 st_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat,
                na.action = na.exclude,
                maxit = 40,
