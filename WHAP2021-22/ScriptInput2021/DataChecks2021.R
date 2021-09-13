@@ -4,64 +4,6 @@
 library(tidyverse)
 library(magrittr)
 
-# Sets of correct column names ==============================================
-
-mus_col_names <- c("LIT",
-                   "OrgCode",
-                   "OrgName",
-                   "unitName",
-                   "subunitName",
-                   "Acres")
-
-vps_col_names <- c("vpsGlobalID",
-                   "eventDate",
-                   "recordedBy",
-                   "decimalLatitude",
-                   "decimalLongitude",
-                   "LIT",
-                   "unitName",
-                   "subunitName",
-                   "areaVisible_ac",
-                   "eventRemarks",
-                   "taxonID",
-                   "vernacularName",
-                   "stratum",
-                   "proportionVisibleArea")
-
-cps_col_names <- c("cpsGlobalID",
-                   "eventDate",
-                   "recordedBy",
-                   "decimalLatitude",
-                   "decimalLongitude",
-                   "LIT",
-                   "unitName",
-                   "subunitName",
-                   "plotStatus",
-                   "eventRemarks",
-                   "taxonID",
-                   "vernacularName",
-                   "stratum",
-                   "proportionVisibleArea")
-
-qdt_col_names <- c("qdtGlobalID",
-                   "recordedBy",
-                   "eventDate",
-                   "decimalLatitude",
-                   "decimalLongitude",
-                   "LIT",
-                   "unitName",
-                   "subunitName",
-                   "quadratSize",
-                   "managementAction",
-                   "taxonID",
-                   "vernacularName",
-                   "stratum",
-                   "plantHeight",
-                   "nSeedHeads",
-                   "eventRemarks",
-                   "measurementType",
-                   "measurementValue")
-
 # Set of correct vernacularName ==============================================
 vernac_names <- sort(c("Other cover",
                        "Watergrass",
@@ -97,17 +39,17 @@ qdt0$LIT <- dplyr::recode(qdt0$LIT, "LMC" = "PIX")
 
 # Check variable names =====================================================
 # Column names that should be in there but are not:
-setdiff(mus_col_names, names(mus0))
-setdiff(vps_col_names, names(vps0))
-setdiff(cps_col_names, names(cps0))
-setdiff(qdt_col_names, names(qdt0))
+names(mus0)
+names(vps0)
+names(cps0)
+names(qdt0)
 
 
 # Check species names ========================================================
 # Species vernacular names that should not be there
-setdiff(unique(vps0$vernacularName), vernac_names)
-setdiff(unique(cps0$vernacularName), vernac_names)
-setdiff(unique(qdt0$vernacularName), vernac_names)
+unique(vps0$vernacularName)
+unique(cps0$vernacularName)
+unique(qdt0$vernacularName)
 
 # For future we need to have a list of permitted vernacularName values.
 
@@ -129,7 +71,9 @@ bind_rows((vps0 %>% dplyr::select(vernacularName, stratum)),
 
 # VPS
 print(vp_dups <- vps0 %>%
-        group_by(GlobalID, vernacularName, stratum) %>%
+        group_by(GlobalID,
+                 vernacularName,
+                 stratum) %>%
         count() %>%
         dplyr::filter(n > 1),
       n = Inf)
@@ -138,47 +82,86 @@ print(vp_dups <- vps0 %>%
 
 # CPS
 print(cp_dups <- cps0 %>%
-        group_by(GlobalID, vernacularName, stratum) %>%
+        group_by(GlobalID,
+                 LIT,
+                 unitName,
+                 subunitName,
+                 vernacularName,
+                 stratum) %>%
         count() %>%
         dplyr::filter(n > 1),
       n = Inf)
 
 # Several duplicate records in CPs
 
-cps0 %>%
-  dplyr::filter(GlobalID %in% cp_dups$GlobalID) %>%
-  dplyr::select(#recordedBy,
+id_cols <- c("GlobalID",
+             "LIT",
+             "unitName",
+             "subunitName",
+             "vernacularName",
+             "stratum")
+
+dups_from_top <- duplicated(cps0[, id_cols])
+
+dups_from_bottom <- duplicated(cps0[, id_cols], fromLast = TRUE)
+
+cps0[dups_from_top | dups_from_bottom, ] %>%
+  dplyr::select(recordedBy,
                 LIT,
                 unitName,
                 subunitName,
                 vernacularName,
                 stratum,
-                proportionVisibleArea,
-                eventDate) %>%
-  arrange(subunitName, vernacularName, stratum, eventDate)
+                proportionVisibleArea) %>%
+  arrange(subunitName,
+          vernacularName,
+          stratum)
 
 # Check consistency in set of subunits across files ==========================
 
 # MUS
 mus0 %<>%
-  mutate(subunit_ID = paste(LIT, unitName, subunitName, sep = "_"))
+  mutate(subunit_ID = paste(LIT,
+                            unitName,
+                            subunitName,
+                            sep = "_"))
 
 # VPS
 vps0 %<>%
-  mutate(subunit_ID = paste(LIT, unitName, subunitName, sep = "_"),
-         spp_LIT_Strat = paste(LIT, vernacularName, stratum, sep = "_"))
+  mutate(subunit_ID = paste(LIT,
+                            unitName,
+                            subunitName,
+                            sep = "_"),
+         spp_LIT_Strat = paste(LIT,
+                               vernacularName,
+                               stratum,
+                               sep = "_"))
 
 # CPS
 cps0 %<>%
-  mutate(subunit_ID = paste(LIT, unitName, subunitName, sep = "_"),
-         spp_LIT_Strat = paste(LIT, vernacularName, stratum, sep = "_"))
+  mutate(subunit_ID = paste(LIT,
+                            unitName,
+                            subunitName,
+                            sep = "_"),
+         spp_LIT_Strat = paste(LIT,
+                               vernacularName,
+                               stratum,
+                               sep = "_"))
 
 # QDTS
 qdt0 %<>%
-  mutate(subunit_ID = paste(LIT, unitName, subunitName, sep = "_"),
-         spp_LIT_Strat = paste(LIT, vernacularName, stratum, sep = "_"))
+  mutate(subunit_ID = paste(LIT,
+                            unitName,
+                            subunitName,
+                            sep = "_"),
+         spp_LIT_Strat = paste(LIT,
+                               vernacularName,
+                               stratum,
+                               sep = "_"))
 
 setdiff(unique(vps0$subunit_ID), unique(mus0$subunit_ID))
+setdiff(unique(cps0$subunit_ID), unique(vps0$subunit_ID)) # KRN_5A_5A-6 not in VPS
+setdiff(unique(vps0$subunit_ID), unique(cps0$subunit_ID)) # but it's in CPS
 setdiff(unique(cps0$subunit_ID), unique(mus0$subunit_ID))
 setdiff(unique(qdt0$subunit_ID), unique(mus0$subunit_ID))
 
@@ -186,31 +169,42 @@ mus0[, c("LIT", "unitName", "subunitName")] %>%
   unique() %>%
   arrange(LIT,
           unitName,
-          subunitName)
+          subunitName) %>%
+  as_tibble() %>%
+  print(n = Inf)
 
-
-(subunits_vps <- vps0[, c("LIT", "unitName", "subunitName")] %>%
+subunits_vps <- vps0[, c("LIT", "unitName", "subunitName")] %>%
   unique() %>%
   arrange(LIT,
           unitName,
-          subunitName))
+          subunitName) %>%
+  as_tibble() %>%
+  mutate(su_length = str_length(subunitName)) %>%
+  print(n = Inf)
 
-(subunits_cps <- cps0[, c("LIT", "unitName", "subunitName")] %>%
-    unique() %>%
-    arrange(LIT,
-            unitName,
-            subunitName))
+# VPS has subunit names that are spaces in MDC. They should be empty strings.
+# They are OK in cps.
+
+subunits_cps <- cps0[, c("LIT", "unitName", "subunitName")] %>%
+  unique() %>%
+  arrange(LIT,
+          unitName,
+          subunitName) %>%
+  as_tibble() %>%
+  print(n = Inf)
 
 
 # Except for cps0, all other files have errors in the unitName and subunitName
 # for KRN 4A-3, KRN 4A-5 and KRN 4A-6
 # cps0 has some 0's as subunit names. Should be blank.
 
-(subunits_qdt <- qdt0[, c("LIT", "unitName", "subunitName")] %>%
+subunits_qdt <- qdt0[, c("LIT", "unitName", "subunitName")] %>%
     unique() %>%
     arrange(LIT,
             unitName,
-            subunitName))
+            subunitName) %>%
+    as_tibble() %>%
+  print(n = Inf)
 
 # Unit-subunit names are not consistent across files or with last year.
 
@@ -288,6 +282,4 @@ cps0 %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
 
 qdt0 %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
 
-# {43322E8E-D9FB-422C-9DA2-5F3D993DFEAA} should be in unit PIX-4
-# KRN-Shrew Slough has to be investigated.
 

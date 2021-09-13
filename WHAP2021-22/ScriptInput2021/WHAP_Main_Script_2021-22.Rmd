@@ -87,41 +87,43 @@ WG_len2mass <- lm(log(mass_per_sh_mg  + 20) ~ sh_len_cm +
 
 ## Read data files
 
-**These calculations assume no overlap among species.**
+The script may have to be modified to accept any number of species and to accommodate the absence of some combinations of species_stratum.
 
-The script has to be modified to accept any number of species and to accommodate the absence of some combinations of species_stratum.
+Description of method used to deal with overlapping species:
+
+*To estimate cover, we looked at the field and started with the smallest represented species x density combination.  We estimated percentage across the unit of the least abundant combination first, working our way up to the most dominant combination.  If there was an area that had more than 1 combination, we split the estimated area either in half or whichever was more dominant.  For example, we often had High Swamp Timothy, Low Smartweed and Low Watergrass.  Say we already estimated there was a small area (5%) of High Smartweed and a small area (5%) of no food. We then take the remaining 90% and equally split it 30% each High ST, Low WG and Low SW.  I hope this description is clear.*
+
+*Thanks,* 
+*Jesy*
+
+
+Based on this description, the overlapping species are effectively separated by the estimation method. The total of estimates has to add up to 100%, and the current method of analysis should work, for as long as there was at most single entry for each spp-stratum in each CP and VP.
 
 ```{r readFiles}
 
-vps0 <- read.csv("VantagePolygons_Midseason_20210810.csv")
+vps0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_VantagePolygons_20210831.csv")
 
-cps0 <- read.csv("CirclePlots_Midseason_20210810.csv")
+cps0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_CirclePlots_20210901.csv")
 
-qdt0 <- read.csv("Quadrats_Midseason_20210823.csv")
-names(qdt0)[1] <- "GlobalID"
+qdt0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_Quadrats_20210902.csv")
 
-
-mus0 <- read.csv("ManagementUnits_Midseason_20210810.csv")
-names(mus0)[1] <- "LIT"
+mus0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_ManagementUnits_20210902.csv")
 
 ```
 
 ```{r fixFiles}
 
 # Fix vernacular names
-vernacKey <- c("Other cover" = "OtherCover",
-               "Swamp Timothy" = "SwampTimothy")
 
-vps0$vernacularName <- dplyr::recode(vps0$vernacularName, !!!vernacKey)
-cps0$vernacularName <- dplyr::recode(cps0$vernacularName, !!!vernacKey)
-qdt0$vernacularName <- dplyr::recode(qdt0$vernacularName, !!!vernacKey)
+vps0 %<>%
+  mutate(vernacularName = str_replace(vernacularName, " ", "_"))
 
-# Fix incorrect PIX 5 to PIX 4.
-vps0$unitName[vps0$LIT == "PIX" & vps0$unitName == "5"] <- "4"
+cps0 %<>%
+  mutate(vernacularName = str_replace(vernacularName, " ", "_"))
 
+qdt0 %<>%
+  mutate(vernacularName = str_replace(vernacularName, " ", "_"))
 
-# Fix LIT codes
-qdt0$LIT <- dplyr::recode(qdt0$LIT, "LMC" = "PIX")
 
 # Fix domain of quadratSize
 
@@ -134,28 +136,40 @@ qdt0$quadratSize <- dplyr::recode(qdt0$quadratSize, !!!qdtSizeKey)
 # Fix unit and subunit names
 
 mus0 %<>%
-  mutate(subunitName = ifelse(subunitName == "", unitName, subunitName),
-         unitName = str_split_fixed(unitName, "-", 2)[, 1])
+  mutate(subunitName = ifelse(subunitName == "", unitName, subunitName))
 
 vps0 %<>%
-  mutate(subunitName = ifelse(subunitName == "", unitName, subunitName),
-         unitName = str_split_fixed(unitName, "-", 2)[, 1])
+  mutate(subunitName = ifelse(subunitName == "", unitName, subunitName))
 
 cps0 %<>%
-  mutate(subunitName = ifelse(subunitName %in% c("0", ""), unitName, subunitName),
-         unitName = str_split_fixed(unitName, "-", 2)[, 1])
+  mutate(subunitName = ifelse(subunitName %in% c("0", ""), unitName, subunitName))
 
 qdt0 %<>%
-  mutate(subunitName = ifelse(subunitName == "", unitName, subunitName),
-         unitName = str_split_fixed(unitName, "-", 2)[, 1])
+  mutate(subunitName = ifelse(subunitName == "", unitName, subunitName))
 
 ```
+
+```{r colNames}
+
+# prepare column names necessary
+spp <- unique(c(vps0$vernacularName,
+                    cps0$vernacularName,
+                    qdt0$vernacularName))
+
+strata <- c("low",
+            "medium",
+            "high")
+##### WORKING UP TO HERE #####
+
+
+```
+
 
 ```{r prep_Files}
 
 # Vantage polygon information =============================
 vps <- vps0 %>%
-  dplyr::select(globalid,
+  dplyr::select(GlobalID,
                 LIT,
                 unitName,
                 subunitName,
@@ -169,7 +183,7 @@ vps <- vps0 %>%
               values_fill = 0) %>%
   mutate(level = "VP", # this could be achieved with acomp()
          temp_p = rowSums(across(starts_with("pVA_"))),
-         p_wg_a.Low = pVA_Watergrass_low / temp_p,
+         p_wg_a.Low = ifelse(pVA_Watergrass_low / temp_p,
          p_wg_b.Med = pVA_Watergrass_medium / temp_p,
          p_wg_c.High = pVA_Watergrass_high / temp_p,
          p_st_a.Low = pVA_SwampTimothy_low / temp_p,
