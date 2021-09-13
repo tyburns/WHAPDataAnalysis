@@ -388,6 +388,7 @@ fpcf <- vpcp %>%
   summarise(AreaSampled_ac = sum(areaVisible_ac)) %>%
   mutate(subunit_ID2 = subunit_ID) %>%
   separate(subunit_ID2, sep = "_", into = c("LIT", "unitName", "subunitName")) %>%
+  mutate(subunitName = as.numeric(subunitName)) %>%
   left_join(su_areas) %>%
   mutate(fpcf = 1 - AreaSampled_ac / area_ac,
          fpcf = ifelse(fpcf <= 0, 0.10, fpcf)) %>%
