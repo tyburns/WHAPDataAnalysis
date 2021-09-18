@@ -283,3 +283,30 @@ cps0 %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
 qdt0 %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
 
 
+## Uniqueness of seed head identity ===========================================
+
+qdt0 %>% # several seed head id's are repeated. Why?
+  dplyr::filter(vernacularName == "Swamp_Timothy" & stratum != "") %>%
+  group_by(GlobalID, GlobalID_seed, measurementType) %>%
+  count() %>%
+  arrange(GlobalID, GlobalID_seed, measurementType) %>%
+  print(n = Inf)
+
+qdt0 %>% # several seed head id's are repeated with the same meas. type. Why?
+  dplyr::filter(vernacularName == "Watergrass" & stratum != "") %>%
+  group_by(GlobalID, GlobalID_seed, measurementType) %>%
+  count() %>%
+  arrange(GlobalID, GlobalID_seed, measurementType) %>%
+  print(n = Inf)
+
+qdt0 %>% # several seed head id's are repeated with the same meas. type. Why?
+  dplyr::filter(vernacularName == "Watergrass" & stratum != "") %>%
+  group_by(GlobalID_seed, measurementType) %>%
+  count() %>%
+  arrange(GlobalID_seed, measurementType) %>%
+  print(n = Inf)
+
+# Seed head ID's seem to be incorrect.
+# GlobalID_seed should not have any duplicates in Swamp Timothy.
+# GlobalID_seed should have exactly 2 duplicates in Watergrass, one for each
+# measurement type.

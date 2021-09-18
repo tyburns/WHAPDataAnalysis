@@ -56,7 +56,7 @@ Whenever a different name is encountered for these variables, it will be correct
 st_all_noO <- readRDS("st_all_noO.rds") %>%
   rename_with(~gsub(".", "_", .x, fixed = TRUE))
 
-# Data to create model for ST: mass = f(seed no., seed length)
+# Data to create model for WG: mass = f(seed no., seed length)
 # From wg_model_creation.R
 wgdat <- readRDS("wgdat.rds") %>%
   rename_with(~gsub(".", "_", .x, fixed = TRUE))
@@ -148,23 +148,46 @@ qdt0 %<>%
   mutate(subunitName = ifelse(subunitName == "", unitName, subunitName))
 
 # Fix column names for PC users
-
-colnames(vps0)[1] <- "globalid"
-colnames(cps0)[1] <- "GlobalID"
+# In Rebeca's computer some escape characters are added to the beginning of the file
+# colnames(vps0)[1] <- "GlobalID"
+# colnames(cps0)[1] <- "GlobalID"
 
 ```
 
 ```{r colNames}
 
 # prepare column names necessary
-spp <- unique(c(vps0$vernacularName,
+spp <- setdiff(unique(c(vps0$vernacularName,
                     cps0$vernacularName,
-                    qdt0$vernacularName))
+                    qdt0$vernacularName)),
+               c("Other_cover"))
 
 strata <- c("low",
             "medium",
             "high")
-##### WORKING UP TO HERE #####
+
+in_col_nms <- c("pVA_Other_cover_NA",
+             paste("pVA",
+                   rep(spp, length(strata)),
+                   rep(strata, each = length(spp)),
+                       sep = "_"))
+
+out_col_nms <- in_col_nms %>%
+  str_replace_all(c("pVA" = "p",
+                  "low" = "a.Low",
+                  "medium" = "b.Med",
+                  "high" = "c.High")) %>%
+  set_names(nm = in_col_nms)
+
+closure_proportions <- function(df, .in_cols, .out_cols) {
+  df %<>% mutate(tot_obs_prop = rowSums(across(starts_with("pVA_"))))
+  for (nm in .in_cols){
+    ifelse(nm %in% names(df),
+           df[[.out_cols[nm]]] <- df[[nm]] / df$tot_obs_prop,
+           df[[.out_cols[nm]]] <- 0)
+  }
+  return(df)
+}
 
 
 ```
@@ -186,19 +209,10 @@ vps <- vps0 %>%
               names_prefix = "pVA_",
               values_from = proportionVisibleArea,
               values_fill = 0) %>%
-  mutate(level = "VP", # this could be achieved with acomp()
-         temp_p = rowSums(across(starts_with("pVA_"))),
-         p_wg_a.Low = ifelse(pVA_Watergrass_low / temp_p,
-         p_wg_b.Med = pVA_Watergrass_medium / temp_p,
-         p_wg_c.High = pVA_Watergrass_high / temp_p,
-         p_st_a.Low = pVA_SwampTimothy_low / temp_p,
-         p_st_b.Med = pVA_SwampTimothy_medium / temp_p,
-         p_st_c.High = pVA_SwampTimothy_high / temp_p,
-         p_sw_a.Low = pVA_Smartweed_low / temp_p,
-         p_sw_b.Med = 0,
-         p_sw_c.High = 0,
-         p_noFood = pVA_OtherCover_NA / temp_p,
-         subunit_ID = factor(paste(LIT, unitName, subunitName, sep = "_")))) %>%
+  closure_proportions(.in_cols = in_col_nms,
+                      .out_cols = out_col_nms) %>%
+  mutate(level = "VP",
+         subunit_ID = factor(paste(LIT, unitName, subunitName, sep = "_"))) %>%
   dplyr::select(LIT,
                 unitName,
                 subunitName,
@@ -229,18 +243,9 @@ cps <- cps0 %>%
               names_prefix = "pVA_",
               values_from = proportionVisibleArea,
               values_fill = 0) %>%
-  mutate(level = "CP", # this could be achieved with acomp()
-         temp_p = rowSums(across(starts_with("pVA_"))),
-         p_wg_a.Low = pVA_Watergrass_low / temp_p,
-         p_wg_b.Med = pVA_Watergrass_medium / temp_p,
-         p_wg_c.High = pVA_Watergrass_high / temp_p,
-         p_st_a.Low = pVA_Swamp_Timothy_low / temp_p,
-         p_st_b.Med = pVA_Swamp_Timothy_medium / temp_p,
-         p_st_c.High = pVA_Swamp_Timothy_high / temp_p,
-         p_sw_a.Low = pVA_Smartweed_low / temp_p,
-         p_sw_b.Med = 0,
-         p_sw_c.High = 0,
-         p_noFood = pVA_Other_cover_NA / temp_p,
+  closure_proportions(.in_cols = in_col_nms,
+                      .out_cols = out_col_nms) %>%
+  mutate(level = "CP",
          subunit_ID = factor(paste(LIT, unitName, subunitName, sep = "_")),
          areaVisible_ac = conv_unit(pi * 15^2, "m2", "acre")) %>%
   dplyr::select(LIT,
@@ -259,6 +264,7 @@ mus <- mus0 %>% # management units
                 su.area_ac = acreage) %>%
   mutate(subunit_ID = paste(LIT, unitName, subunitName, sep = "_"))
 
+# Join area estimates from VPs and CPs, then get total area from MUs
 vpcp <- bind_rows(vps, cps) %>%
   full_join(mus) %>%
   na.omit()
@@ -316,7 +322,8 @@ wgc <- unname(coef(WG_len2mass))
 
 qdt_wg <- qdt0 %>%
   dplyr::filter(vernacularName == "Watergrass" & stratum != "") %>%
-  pivot_wider(names_from = measurementType, values_from = measurementValue) %>%
+  pivot_wider(names_from = measurementType,
+              values_from = measurementValue) %>%
   arrange(GlobalID_seed) %>%
   mutate(sh_emerged_wg = f2t_length_mm / sh_length_mm, 
          sh_mass_mg = exp(wgc[1] +
