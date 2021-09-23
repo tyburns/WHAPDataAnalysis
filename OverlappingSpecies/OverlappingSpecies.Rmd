@@ -31,15 +31,139 @@ In the current method the sum of proportion of area covered by each of the no. s
 
 This method avoids the following problem: upon getting to estimate B-low the observer realizes that if A-low is 0.25 and A-high is 0.4, B-low can't be 0.5, particularly considering that there is still some area covered by Other. At that point the observer either underestimates B-low and Other to achieve a sum of 1.0 or starts the process again, reducing the original estimates. By the fact that under this method all categories have to add up to 1 and with the assumption that any over- or underestimation of individual classes is constant as a proportion, this method allows the observer not to worry about the total sum of proportions estimated. Based on my subjective experience, I think this method is very valuable because in reality it is based on comparisons of areas that are visible simultaneously instead of estimation of absolute proportions. I think it is easier to see that one area is twice as much as another than to see that one area is 15% of the total. We can test this with areas on the screen with a few people if necessary.
 
+![Depiction of non-overlapping and overlapping species](overlap01.jpg)
+
 ## Method for overlapping species
 
 The method has to be modified to account for species that overlap. By "overlap" we mean that different food species appear together inside convex area units used as measurement or observation "grain" regardless of how the observation units are arranged in space. See figure below for clarification. We can use the ubiquitous 0.35 cm x 0.35 cm quadrat as our grain.
 
-![Depiction of non-overlapping and overlapping species](overlap01.jpg)
+### Method 1: Estimate species as if they were separate.
 
-I am concerned that visual observation from vantage points may results in greater estimation error for species that overlap that have very different statures. I surmise that when tall and short species overlap, the shorter species is invisible from the vantage points and it is underestimated. This would not be the case with circle plots.
+This method requires that the observer to mentally "move" overlapping species into separate areas and correct their densities. There is not unique way to move species in the imagination. For example, one could "move" all species into a small part of the total area resulting in small areas with high density of each species and a large area without food species. This method must used in a way that total seed head mass and total area are conserved. An example shows how easy it is to violate the conservation of mass.
 
-### Method 1: Estimate each species separately
+Total area is 10 ha. There is 5% under high st, 5% under other cover. The remaining 90% is a mixture of high st, low wg and low sw. For simplicity, assume the following stratum yields: 
+
+|  spp_stratum  |  yield kg/ha   | area ha|  contribution  |
+|--------------:|---------------:|-------:|---------------:|
+|  other cover  |     0          |   0.5  |      0         |
+|  low wg       |    500         |   9    |   4500         |
+|  low sw       |    300         |   9    |   2700         |
+|  high st      |   3000         |   0.5  |   1500         |
+|  high st      |   3000         |   9    |  27000         |
+
+
+True Total = 4500 + 2700 + 1500 + 27000 = 35700 kg
+
+This calculation is based on the assessment that all of the 90% with overlapping species had each of the spp_stratum combinations mentioned. See figure below for a graphical representation.
+
+```{r sims1}
+# Based on
+# http://santiago.begueria.es/2010/10/generating-spatially-correlated-random-fields-with-r/
+# unconditional simulations on a 100 x 100 grid using gstat
+library(gstat)
+library(sp)
+ 
+xyfield <- expand.grid( x = 1:200, y = 1:200)
+
+# define the gstat object (spatial model)
+
+g_model <- function(.range = 5) {
+  gstat(formula = z ~ 1,
+        locations = ~ x + y,
+        dummy = T,
+        beta = 0,
+        model = vgm(psill = 1,
+                    model = "Exp",
+                    range = .range),
+        nmax = 20)
+}
+
+
+sim_plot <- function(.xdim = 200, .ydim = 200, .model = g_model, ...) {
+  
+  xyfield <- expand.grid( x = 1:.xdim, y = 1:.ydim)
+  
+  z1 <- predict(.model(...),
+                newdata = xyfield,
+                nsim = 1) %>%
+    mutate(across(starts_with("sim"), ~ cut(.x, breaks = quantile(.x, 0:10/10))))
+  
+  gridded(z1) = ~ x + y
+  
+  spplot(z1, col.regions = reg.cols)
+  
+}
+
+sim_plot(.xdim = 300, .ydim = 300, .range = 5)
+
+
+# make simulations based on the stat object
+# z1 is more random
+z1 <- predict(g_model(.range = 3),
+             newdata = xyfield,
+             nsim = 1) %>%
+  mutate(across(starts_with("sim"), ~ cut(.x, breaks = quantile(.x, 0:10/10))))
+
+gridded(z1) = ~ x + y
+
+
+reg.cols <- c("chartreuse4",
+              "chartreuse4",
+              "gold2",
+              "gold2",
+              "brown3",
+              "brown3",
+              "skyblue",
+              "skyblue",
+              "brown3",
+              "skyblue")
+
+spplot(z1, col.regions = reg.cols)
+
+reg.cols <- c("chartreuse4",
+              "chartreuse4",
+              "gold2",
+              "gold2",
+              "brown3",
+              "brown3",
+              "brown3",
+              "skyblue",
+              "skyblue",
+              "skyblue")
+
+spplot(z1, col.regions = reg.cols)
+
+# z2 is more clustered
+z2 <- predict(g_model(.range = 20),
+             newdata = xyfield,
+             nsim = 1) %>%
+  mutate(across(starts_with("sim"), ~ factor(round(abs(.x), 0))))
+
+gridded(z2) = ~ x + y
+
+reg.cols <- c("chartreuse4",
+              "skyblue",
+              "gold2",
+              "gold2",
+              "chartreuse4",
+              "brown3",
+              "skyblue",
+              "blue",
+              "black",
+              "brown3")
+
+spplot(z2, col.regions = reg.cols)
+
+table(z2$sim1)
+
+
+
+```
+
+
+
+
+### Method 2: Estimate each species separately
 
 This option ignores the overlap and simply estimates each species-stratum combination independently. As a consequence, this method cannot use the correction based on the sum of all estimates being 1. When there is overlap the sum of all categories can theoretically range from 1 to $4^n$ where n is the number of different food species considered.
 
@@ -62,7 +186,7 @@ Total seedhead mass per unit area in circle plot:
 $$ 0.12 \times M_{A-high} + 0.35 \times M_{A-low} + 0.35 \times M_{B-medium} + 0.35 \times M_{C-low}  $$
 
 
-### Method 2: Estimate each of the species combinations
+### Method 3: Estimate each of the species combinations
 
 This option accounts for overlap by estimating the proportion of each combination of species-stratum present in each subarea. Total area is split into a series of non-overlapping classes, where each class is defined by all the species-stratum combinations. This method allows the correction based on the sum of all proportions being equal to 1.
 

@@ -33,6 +33,7 @@ library(ggridges)
 library(tidybayes)
 library(magrittr)
 library(modelr)
+library(nlme)
 
 ```
 
@@ -89,7 +90,7 @@ qdt_mass_act_fld <- left_join(qdt_mass_g_m2_2019, act) %>%
                 st_mass_m2_var) %>%
   drop_na() %>%
   mutate(wt = 1 / sqrt(st_mass_m2_var),
-         wt = length(st_g_m2) * wt / sum(wt))
+         wt = sum(wt))
 
 
 str(qdt_mass_act_fld)
@@ -129,14 +130,26 @@ These analyses should be interpreted with caution. Apparent effects of treatment
 
 ```{r posteriorTillageEffects}
 
-brm1 <- brm(st_g_m2 | weights(wt) ~ act * y.flooded.15,
+brm1 <- brm(st_g_m2 | weights(wt) ~ act * y.flooded.15, # does not converge
             data = qdt_mass_act_fld,
             iter = 4000,
             warmup = 1500,
             thin = 2,
 )
 
-summary(brm1)
+(prior <- get_prior(st_g_m2 | weights(wt) ~ act * y.flooded.15,
+                    data = qdt_mass_act_fld))
+
+stan1 <- stan_glm(st_g_m2 ~ act * y.flooded.15,
+                  weights = ~wt,
+                  data = qdt_mass_act_fld,
+                  family = "gaussian")
+
+summary(gls(st_g_m2 ~ act * y.flooded.15,
+                  weights = varConstProp(form = ~ wt),
+                  data = qdt_mass_act_fld))
+
+summary(stan1)
 
 bayes_R2(brm1)
 
@@ -214,7 +227,7 @@ brm2.mcmc <- as.mcmc(brm2)
 
 # Check convergence, etc.
 
-gelman.diag(brm2.mcmc)
+# gelman.diag(brm2.mcmc)
 
 ```
 
