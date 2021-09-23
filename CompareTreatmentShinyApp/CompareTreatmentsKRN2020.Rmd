@@ -38,17 +38,16 @@ library(modelr)
 
 ## Data input and exploration
 ```{r dataExplore}
-# Use qdt_mass_g_m2 from WHAP_Main_Script_2019.Rmd
 
-qdt_mass_g_m2_2019 <- read.csv("qdt_mass_g_m2_2019.txt") %>%
+qdt_mass_g_m2_2020 <- read.csv("qdt_mass_g_m2_2020.txt") %>%
   dplyr::select(-X) %>%
   dplyr::filter(LIT == "KRN")
 
 # There is data on act only for KRN and most of the flooding data is for KRN.
 # Thus, only KRN data are used for these comparisons.
 
-act <- read.csv("WHAP2019_PP_20201002_MUs_KRN_Actions_v2.csv",
-                na.strings=c(""," ","NA")) %>%
+act <- read.csv("WHAP2020_PP_20210922_MUs_KRN_Actions.csv",
+                na.strings=c(""," ","NA"), stringsAsFactors=FALSE) %>%
   mutate(subunit_ID = paste(LIT, Unit_Name, Subunit_Name, sep = "_"),
          act = factor(Action_yn),
          Action = replace_na(Action, "none")) %>%
@@ -63,7 +62,7 @@ act <- read.csv("WHAP2019_PP_20201002_MUs_KRN_Actions_v2.csv",
 # effects of flooding in KRN
 
 # y.flooded.n are number of years flooded out of the last n
-# y20167, y20178, y20189 are flooding in the last 3 seasons up to 2019
+# y20167, y20178, y20189, y201920 are flooding in the last 4 seasons up to 2020
 
 water2 <- read.csv("Kern_Flooding_Schedule.csv") %>%
   mutate(LIT = "KRN",
@@ -72,7 +71,7 @@ water2 <- read.csv("Kern_Flooding_Schedule.csv") %>%
          Subunit_Name,
          starts_with("y"))
 
-qdt_mass_act_fld <- left_join(qdt_mass_g_m2_2019, act) %>%
+qdt_mass_act_fld <- left_join(qdt_mass_g_m2_2020, act) %>%
   left_join(water2) %>%
   dplyr::select(LIT,
                 Unit_Name,
@@ -85,6 +84,7 @@ qdt_mass_act_fld <- left_join(qdt_mass_g_m2_2019, act) %>%
                 y20167,
                 y20178,
                 y20189,
+                y201920,
                 st_g_m2, # none of the subunits have watergrass
                 st_mass_m2_var) %>%
   drop_na() %>%
@@ -103,7 +103,7 @@ The raw data plots seems to indicate that the history of flooding is not associa
 table(qdt_mass_act_fld$Action) %>%
   as.data.frame() %>%
   rename(Tillage = Var1) %>%
-  kable(caption = "Number of units that receive each type of tillage treatment in Kern prior to the 2019 season.") %>%
+  kable(caption = "Number of units that receive each type of tillage treatment in Kern prior to the 2020 season.") %>%
   kableExtra::kable_styling(full_width = FALSE)
 
 scatterplot(st_g_m2 ~ y.flooded.5 | act,
@@ -162,7 +162,7 @@ brm1.mcmc %>%
 
 ```
 
-All chains seem to have very similar distributions for all parameters. It looks like convergence to the same posterior has been achieved by all chains for all parameters.
+Note from 2019 script: All chains seem to have very similar distributions for all parameters. It looks like convergence to the same posterior has been achieved by all chains for all parameters.
 
 ```{r trace}
 
@@ -173,7 +173,7 @@ brm1.mcmc %>%
 
 ```
 
-All traceplots seem to indicate good mixing and convergence.
+Note from 2019 script: All traceplots seem to indicate good mixing and convergence.
 
 ```{r running}
 
@@ -184,7 +184,7 @@ brm1.mcmc %>%
 
 ```
 
-The running means are excellent.
+Note from 2019 script: The running means are excellent.
 
 ```{r acf}
 
@@ -232,7 +232,7 @@ brm2.mcmc %>%
 
 ```
 
-All chains seem to have very similar distributions for all parameters. It looks like convergence to the same posterior has been achieved by all chains for all parameters.
+Note from 2019 script: All chains seem to have very similar distributions for all parameters. It looks like convergence to the same posterior has been achieved by all chains for all parameters.
 
 ```{r trace2}
 
@@ -243,7 +243,7 @@ brm2.mcmc %>%
 
 ```
 
-All traceplots seem to indicate good mixing and convergence.
+Note from 2019 script: All traceplots seem to indicate good mixing and convergence.
 
 ```{r running2}
 
@@ -254,7 +254,7 @@ brm2.mcmc %>%
 
 ```
 
-The running means are excellent.
+Note from 2019 script: The running means are excellent.
 
 ```{r acf2}
 
@@ -281,15 +281,15 @@ qdt_mass_act_fld %>%
   stat_halfeye() +
   stat_pointinterval(.width = c(.66, .95)) +
   xlab("Swamp timothy productivity (g/m2)") +
-  ylab("Disked (Y/N)")
+  ylab("Tilled (Y/N)")
 
 
 ```
 
 
-There is a clear difference between units that were disked and those that were not. The posterior median difference is 168 g/m2 with a standard error of 25.7 g/m2.
+There is a clear difference between units that were disced and those that were not. The posterior median difference is 168 g/m2 with a standard error of 25.7 g/m2.
 
-A model including number of years flooded out of the last 15 showed evidence that the effect of flooding depended on tillage, whereby units without tillage had a small increase of yield with increasing number of years flooded but disced units had declining yields witin increasing number of years flooded.
+A model including number of years flooded out of the last 15 showed evidence that the effect of flooding depended on tillage, whereby units without tillage had a small increase of yield with increasing number of years flooded but disced units had declining yields with increasing number of years flooded.
 
 
 

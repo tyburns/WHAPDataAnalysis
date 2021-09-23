@@ -1,5 +1,6 @@
+
 # Shiny app to compare sets of units that have different treatments.
-# The interface presents all units in all years in two columns wiht check boxes.
+# The interface presents all units in all years in two columns with check boxes.
 # Check boxes to select the sets to be compared (first column vs second column).
 # The output table shows a "z-test" for wg, st and total mass per m2 in the units.
 # Averages compared are NOT weighted by area of subunits.
