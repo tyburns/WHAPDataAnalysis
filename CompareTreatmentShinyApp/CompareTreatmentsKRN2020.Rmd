@@ -162,7 +162,7 @@ brm1.mcmc %>%
 
 ```
 
-Note from 2019 script: All chains seem to have very similar distributions for all parameters. It looks like convergence to the same posterior has been achieved by all chains for all parameters.
+
 
 ```{r trace}
 
@@ -173,7 +173,7 @@ brm1.mcmc %>%
 
 ```
 
-Note from 2019 script: All traceplots seem to indicate good mixing and convergence.
+
 
 ```{r running}
 
@@ -184,7 +184,7 @@ brm1.mcmc %>%
 
 ```
 
-Note from 2019 script: The running means are excellent.
+
 
 ```{r acf}
 
@@ -232,7 +232,7 @@ brm2.mcmc %>%
 
 ```
 
-Note from 2019 script: All chains seem to have very similar distributions for all parameters. It looks like convergence to the same posterior has been achieved by all chains for all parameters.
+
 
 ```{r trace2}
 
@@ -243,7 +243,7 @@ brm2.mcmc %>%
 
 ```
 
-Note from 2019 script: All traceplots seem to indicate good mixing and convergence.
+
 
 ```{r running2}
 
@@ -254,7 +254,7 @@ brm2.mcmc %>%
 
 ```
 
-Note from 2019 script: The running means are excellent.
+
 
 ```{r acf2}
 
