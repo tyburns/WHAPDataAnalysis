@@ -78,60 +78,21 @@ g_model <- function(.range = 5) {
         nmax = 20)
 }
 
-
-sim_plot <- function(.xdim = 200, .ydim = 200, .model = g_model, ...) {
-  
-  xyfield <- expand.grid( x = 1:.xdim, y = 1:.ydim)
-  
-  z1 <- predict(.model(...),
-                newdata = xyfield,
-                nsim = 1) %>%
-    mutate(across(starts_with("sim"), ~ cut(.x, breaks = quantile(.x, 0:10/10))))
-  
-  gridded(z1) = ~ x + y
-  
-  spplot(z1, col.regions = reg.cols)
-  
-}
-
-sim_plot(.xdim = 300, .ydim = 300, .range = 5)
-
-
 # make simulations based on the stat object
 # z1 is more random
 z1 <- predict(g_model(.range = 3),
              newdata = xyfield,
              nsim = 1) %>%
-  mutate(across(starts_with("sim"), ~ cut(.x, breaks = quantile(.x, 0:10/10))))
+  mutate(across(starts_with("sim"), ~ factor(round(abs(.x), 0))))
 
 gridded(z1) = ~ x + y
 
-
-reg.cols <- c("chartreuse4",
-              "chartreuse4",
-              "gold2",
-              "gold2",
-              "brown3",
-              "brown3",
-              "skyblue",
-              "skyblue",
-              "brown3",
-              "skyblue")
+reg.cols <- c("chartreuse4", "skyblue", "gold2", "gold3", "chartreuse4")
 
 spplot(z1, col.regions = reg.cols)
 
-reg.cols <- c("chartreuse4",
-              "chartreuse4",
-              "gold2",
-              "gold2",
-              "brown3",
-              "brown3",
-              "brown3",
-              "skyblue",
-              "skyblue",
-              "skyblue")
+table(z1$sim1)
 
-spplot(z1, col.regions = reg.cols)
 
 # z2 is more clustered
 z2 <- predict(g_model(.range = 20),
@@ -141,16 +102,7 @@ z2 <- predict(g_model(.range = 20),
 
 gridded(z2) = ~ x + y
 
-reg.cols <- c("chartreuse4",
-              "skyblue",
-              "gold2",
-              "gold2",
-              "chartreuse4",
-              "brown3",
-              "skyblue",
-              "blue",
-              "black",
-              "brown3")
+reg.cols <- c("chartreuse4", "skyblue", "gold2", "gold3", "chartreuse4")
 
 spplot(z2, col.regions = reg.cols)
 
