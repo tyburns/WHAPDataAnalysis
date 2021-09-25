@@ -1,0 +1,43 @@
+SubUnit,y.flooded.15,y.flooded.5,y20167,y20178,y20189,y201920,Viability
+14A-1,12,4,Flooded,Flooded,Flooded,Flooded,
+14A-2,12,4,Flooded,Flooded,Flooded,Flooded,
+14B-1,10,3,Flooded,Flooded,Flooded,Not Flooded,
+14B-2,11,3,Flooded,Flooded,Flooded,Not Flooded,
+14C-1,9,2,Not Flooded,Flooded,Flooded,Not Flooded,
+14C-2,9,2,Not Flooded,Flooded,Flooded,Not Flooded,
+14D-1,10,3,Not Flooded,Flooded,Flooded,Flooded,
+14D-2,9,2,Not Flooded,Flooded,Not Flooded,Flooded,
+14E-1,10,3,Not Flooded,Flooded,Flooded,Flooded,
+14E-2,9,2,Not Flooded, Flooded, Not Flooded, Flooded,
+14F,10,3,Not Flooded,Flooded,Flooded,Flooded,
+14G-1,6,1,Not Flooded,Flooded,Not Flooded,Not Flooded,
+14G-2,6,1,Not Flooded,Flooded,Not Flooded,Not Flooded,
+4A-1,15,5,Flooded,Flooded,Flooded,Flooded,Poor
+4A-2,15,5,Flooded,Flooded,Flooded,Flooded,Poor
+4A-3,15,5,Flooded,Flooded,Flooded,Flooded,Good
+4A-4,15,5,Flooded,Flooded,Flooded,Flooded,Fair
+4A-5,14,4,Flooded,Flooded,Flooded,Flooded,Good
+4A-6,15,5,Flooded,Flooded,Flooded,Flooded,Fair
+4A-7,15,5,Flooded,Flooded,Flooded,Flooded,
+4B-1,15,5,Flooded,Flooded,Flooded,Flooded,Fair
+4B-2,14,5,Flooded,Flooded,Flooded,Flooded,Poor
+4B-3,15,5,Flooded,Flooded,Flooded,Flooded,Good
+4B-4,15,5,Flooded,Flooded,Flooded,Flooded,
+5A-1,14,5,Flooded,Flooded,Flooded,Flooded,Fair
+5A-3,13,5,Flooded,Flooded,Flooded,Flooded,Poor
+5A-4,13,4,Flooded,Flooded,Flooded,Flooded,Fair
+5A-5,14,5,Flooded,Flooded,Flooded,Flooded,
+5A-6,14,5,Flooded,Flooded,Flooded,Flooded,Fair
+5A-7,14,5,Flooded,Flooded,Flooded,Flooded,Fair
+5B-1,11,4,Flooded,Flooded,Flooded,Flooded,Fair
+5B-2,11,4,Flooded,Flooded,Flooded,Flooded,Poor
+5B-3,12,4,Flooded,Flooded,Flooded,Flooded,Fair
+5B-5,12,4,Flooded,Flooded,Flooded,Flooded,Poor
+5B-6,13,4,Flooded,Flooded,Flooded,Flooded,Fair
+5B-7,13,4,Flooded,Flooded,Flooded,Flooded,Good
+5B-8,13,4,Flooded,Flooded,Flooded,Flooded,Fair
+6A-1,13,4,Flooded,Flooded,Flooded,Flooded,Poor
+6A-2,13,4,Flooded,Flooded,Flooded,Flooded,Poor
+6A-3,11,4,Flooded,Flooded,Flooded,Flooded,
+6A-4,13,4,Flooded,Flooded,Flooded,Flooded,Poor
+6A-5,13,4,Flooded,Flooded,Flooded,Flooded,Fair

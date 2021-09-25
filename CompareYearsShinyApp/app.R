@@ -4,10 +4,13 @@
 
 library(shiny)
 
-qdt_mass_g_m2_2019 <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/SeedYieldData/qdt_mass_g_m2_2019.txt") %>%
+qdt_mass_g_m2_2019 <- read.csv("qdt_mass_g_m2_2019.txt") %>%
     dplyr::select(-X)
 
-qdt_mass_g_m2_2020 <- read.csv("/Users/emilioalaca/Google Drive/Documents/PROJECTS/RefugesIMKaylene/WaterbirdHabitat2017/WHAPeal/WHAPDataAnalysis/SeedYieldData/qdt_mass_g_m2_2020.txt") %>%
+qdt_mass_g_m2_2020 <- read.csv("qdt_mass_g_m2_2020.txt") %>%
+    dplyr::select(-X)
+
+qdt_mass_g_m2_2020 <- read.csv("qdt_mass_g_m2_2021.txt") %>%
     dplyr::select(-X)
 
 # Differences are tested for statistical significance by assuming that estimates

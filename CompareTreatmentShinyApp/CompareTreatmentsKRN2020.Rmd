@@ -162,7 +162,11 @@ brm1.mcmc %>%
 
 ```
 
+<<<<<<< HEAD
 Note from 2019 script: All chains seem to have very similar distributions for all parameters. It looks like convergence to the same posterior has been achieved by all chains for all parameters.
+=======
+
+>>>>>>> 97ec5da1a3b7d804551baf244607d616c6e9f03e
 
 ```{r trace}
 
@@ -173,7 +177,11 @@ brm1.mcmc %>%
 
 ```
 
+<<<<<<< HEAD
 Note from 2019 script: All traceplots seem to indicate good mixing and convergence.
+=======
+
+>>>>>>> 97ec5da1a3b7d804551baf244607d616c6e9f03e
 
 ```{r running}
 
@@ -184,7 +192,11 @@ brm1.mcmc %>%
 
 ```
 
+<<<<<<< HEAD
 Note from 2019 script: The running means are excellent.
+=======
+
+>>>>>>> 97ec5da1a3b7d804551baf244607d616c6e9f03e
 
 ```{r acf}
 
@@ -232,7 +244,11 @@ brm2.mcmc %>%
 
 ```
 
+<<<<<<< HEAD
 Note from 2019 script: All chains seem to have very similar distributions for all parameters. It looks like convergence to the same posterior has been achieved by all chains for all parameters.
+=======
+
+>>>>>>> 97ec5da1a3b7d804551baf244607d616c6e9f03e
 
 ```{r trace2}
 
@@ -243,7 +259,11 @@ brm2.mcmc %>%
 
 ```
 
+<<<<<<< HEAD
 Note from 2019 script: All traceplots seem to indicate good mixing and convergence.
+=======
+
+>>>>>>> 97ec5da1a3b7d804551baf244607d616c6e9f03e
 
 ```{r running2}
 
@@ -254,7 +274,11 @@ brm2.mcmc %>%
 
 ```
 
+<<<<<<< HEAD
 Note from 2019 script: The running means are excellent.
+=======
+
+>>>>>>> 97ec5da1a3b7d804551baf244607d616c6e9f03e
 
 ```{r acf2}
 

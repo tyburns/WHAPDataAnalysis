@@ -79,6 +79,8 @@ g_model <- function(.range = 5) {
 }
 
 
+## Add an idea of sampling scale or grain, for example 2 x 2 m etc.
+
 sim_plot <- function(.xdim = 200, .ydim = 200, .model = g_model, ...) {
   
   xyfield <- expand.grid( x = 1:.xdim, y = 1:.ydim)
@@ -94,7 +96,7 @@ sim_plot <- function(.xdim = 200, .ydim = 200, .model = g_model, ...) {
   
 }
 
-sim_plot(.xdim = 300, .ydim = 300, .range = 5)
+sim_plot(.xdim = 300, .ydim = 300, .range = 50)
 
 
 # make simulations based on the stat object

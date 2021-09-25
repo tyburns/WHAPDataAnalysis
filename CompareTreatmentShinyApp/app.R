@@ -1,5 +1,6 @@
+
 # Shiny app to compare sets of units that have different treatments.
-# The interface presents all units in all years in two columns wiht check boxes.
+# The interface presents all units in all years in two columns with check boxes.
 # Check boxes to select the sets to be compared (first column vs second column).
 # The output table shows a "z-test" for wg, st and total mass per m2 in the units.
 # Averages compared are NOT weighted by area of subunits.
@@ -16,6 +17,10 @@ gm2_2019 <-read.csv("qdt_mass_g_m2_2019.txt") %>%
 gm2_2020 <-read.csv("qdt_mass_g_m2_2020.txt") %>%
   dplyr::select(-X) %>%
   mutate(year = 2020)
+
+gm2_2021 <-read.csv("qdt_mass_g_m2_2021.txt") %>%
+  dplyr::select(-X) %>%
+  mutate(year = 2021)
 
 whap_su_years <- bind_rows(gm2_2019, gm2_2020) %>%
   mutate(year = factor(year),
