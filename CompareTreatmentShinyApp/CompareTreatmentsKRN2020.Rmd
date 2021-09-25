@@ -33,6 +33,8 @@ library(ggridges)
 library(tidybayes)
 library(magrittr)
 library(modelr)
+library(nlme)
+library(posterior)
 
 ```
 
@@ -88,9 +90,9 @@ qdt_mass_act_fld <- left_join(qdt_mass_g_m2_2020, act) %>%
                 st_g_m2, # none of the subunits have watergrass
                 st_mass_m2_var) %>%
   drop_na() %>%
+  dplyr::filter(st_mass_m2_var != 0) %>%
   mutate(wt = 1 / sqrt(st_mass_m2_var),
          wt = length(st_g_m2) * wt / sum(wt))
-
 
 str(qdt_mass_act_fld)
 
@@ -162,11 +164,6 @@ brm1.mcmc %>%
 
 ```
 
-<<<<<<< HEAD
-Note from 2019 script: All chains seem to have very similar distributions for all parameters. It looks like convergence to the same posterior has been achieved by all chains for all parameters.
-=======
-
->>>>>>> 97ec5da1a3b7d804551baf244607d616c6e9f03e
 
 ```{r trace}
 
@@ -177,11 +174,6 @@ brm1.mcmc %>%
 
 ```
 
-<<<<<<< HEAD
-Note from 2019 script: All traceplots seem to indicate good mixing and convergence.
-=======
-
->>>>>>> 97ec5da1a3b7d804551baf244607d616c6e9f03e
 
 ```{r running}
 
@@ -192,11 +184,6 @@ brm1.mcmc %>%
 
 ```
 
-<<<<<<< HEAD
-Note from 2019 script: The running means are excellent.
-=======
-
->>>>>>> 97ec5da1a3b7d804551baf244607d616c6e9f03e
 
 ```{r acf}
 
@@ -226,7 +213,7 @@ brm2.mcmc <- as.mcmc(brm2)
 
 # Check convergence, etc.
 
-gelman.diag(brm2.mcmc)
+# gelman.diag(brm2.mcmc)
 
 ```
 
@@ -244,11 +231,6 @@ brm2.mcmc %>%
 
 ```
 
-<<<<<<< HEAD
-Note from 2019 script: All chains seem to have very similar distributions for all parameters. It looks like convergence to the same posterior has been achieved by all chains for all parameters.
-=======
-
->>>>>>> 97ec5da1a3b7d804551baf244607d616c6e9f03e
 
 ```{r trace2}
 
@@ -259,11 +241,6 @@ brm2.mcmc %>%
 
 ```
 
-<<<<<<< HEAD
-Note from 2019 script: All traceplots seem to indicate good mixing and convergence.
-=======
-
->>>>>>> 97ec5da1a3b7d804551baf244607d616c6e9f03e
 
 ```{r running2}
 
@@ -274,11 +251,6 @@ brm2.mcmc %>%
 
 ```
 
-<<<<<<< HEAD
-Note from 2019 script: The running means are excellent.
-=======
-
->>>>>>> 97ec5da1a3b7d804551baf244607d616c6e9f03e
 
 ```{r acf2}
 
@@ -290,6 +262,8 @@ brm2.mcmc %>%
 ```
 
 
+All tests of convergence find no evidence of problems. Everything seems to be OK.
+
 ## Results
 
 ```{r plotPosterior}
@@ -298,22 +272,28 @@ plot(brm2)
 
 brm2 %<>% recover_types(qdt_mass_act_fld)
 
-qdt_mass_act_fld %>%
-  data_grid(act) %>%
-  add_fitted_draws(brm2) %>%
-  ggplot(aes(x = .value, y = act)) +
+(epreds <- qdt_mass_act_fld %>%
+    data_grid(act) %>%
+    add_epred_draws(brm2)) %>%
+  ggplot(aes(x = .epred, y = act)) +
   stat_halfeye() +
   stat_pointinterval(.width = c(.66, .95)) +
   xlab("Swamp timothy productivity (g/m2)") +
   ylab("Tilled (Y/N)")
 
 
+Till_fx <- brm2 %>%
+  spread_draws(b_actY) %>%
+  ggplot(aes(x = b_actY)) +
+  stat_halfeye() +
+  geom_vline(xintercept = 0, linetype = "dashed") 
+
 ```
 
 
-There is a clear difference between units that were disced and those that were not. The posterior median difference is 168 g/m2 with a standard error of 25.7 g/m2.
+There is a clear difference between units that were disked and those that were not. The posterior median difference is `r median(brm2 %>% spread_draws(b_actY) %>% pluck("b_actY"))` g/m2 with a standard error of `r sd(brm2 %>% spread_draws(b_actY) %>% pluck("b_actY"))` g/m2.
 
-A model including number of years flooded out of the last 15 showed evidence that the effect of flooding depended on tillage, whereby units without tillage had a small increase of yield with increasing number of years flooded but disced units had declining yields with increasing number of years flooded.
+A model including number of years flooded out of the last 15 showed some evidence that the effect of flooding depended on tillage, whereby units without tillage had a small increase of yield with increasing number of years flooded but disked units had declining yields with increasing number of years flooded.
 
 
 

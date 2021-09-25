@@ -34,6 +34,7 @@ library(tidybayes)
 library(magrittr)
 library(modelr)
 library(nlme)
+library(posterior)
 
 ```
 
@@ -89,9 +90,9 @@ qdt_mass_act_fld <- left_join(qdt_mass_g_m2_2019, act) %>%
                 st_g_m2, # none of the subunits have watergrass
                 st_mass_m2_var) %>%
   drop_na() %>%
+  dplyr::filter(st_mass_m2_var != 0) %>%
   mutate(wt = 1 / sqrt(st_mass_m2_var),
-         wt = sum(wt))
-
+         wt = length(st_g_m2) * wt / sum(wt))
 
 str(qdt_mass_act_fld)
 
@@ -130,26 +131,14 @@ These analyses should be interpreted with caution. Apparent effects of treatment
 
 ```{r posteriorTillageEffects}
 
-brm1 <- brm(st_g_m2 | weights(wt) ~ act * y.flooded.15, # does not converge
+brm1 <- brm(st_g_m2 | weights(wt) ~ act * y.flooded.15,
             data = qdt_mass_act_fld,
             iter = 4000,
             warmup = 1500,
             thin = 2,
 )
 
-(prior <- get_prior(st_g_m2 | weights(wt) ~ act * y.flooded.15,
-                    data = qdt_mass_act_fld))
-
-stan1 <- stan_glm(st_g_m2 ~ act * y.flooded.15,
-                  weights = ~wt,
-                  data = qdt_mass_act_fld,
-                  family = "gaussian")
-
-summary(gls(st_g_m2 ~ act * y.flooded.15,
-                  weights = varConstProp(form = ~ wt),
-                  data = qdt_mass_act_fld))
-
-summary(stan1)
+summary(brm1)
 
 bayes_R2(brm1)
 
@@ -256,7 +245,7 @@ brm2.mcmc %>%
 
 ```
 
-All traceplots seem to indicate good mixing and convergence.
+All traceplots seem to indicate better mixing and convergence.
 
 ```{r running2}
 
@@ -287,22 +276,28 @@ plot(brm2)
 
 brm2 %<>% recover_types(qdt_mass_act_fld)
 
-qdt_mass_act_fld %>%
-  data_grid(act) %>%
-  add_fitted_draws(brm2) %>%
-  ggplot(aes(x = .value, y = act)) +
+(epreds <- qdt_mass_act_fld %>%
+    data_grid(act) %>%
+    add_epred_draws(brm2)) %>%
+  ggplot(aes(x = .epred, y = act)) +
   stat_halfeye() +
   stat_pointinterval(.width = c(.66, .95)) +
   xlab("Swamp timothy productivity (g/m2)") +
-  ylab("Disked (Y/N)")
+  ylab("Tilled (Y/N)")
 
+
+Till_fx <- brm2 %>%
+  spread_draws(b_actY) %>%
+  ggplot(aes(x = b_actY)) +
+  stat_halfeye() +
+  geom_vline(xintercept = 0, linetype = "dashed") 
 
 ```
 
 
-There is a clear difference between units that were disked and those that were not. The posterior median difference is 168 g/m2 with a standard error of 25.7 g/m2.
+There is a clear difference between units that were disked and those that were not. The posterior median difference is `r median(brm2 %>% spread_draws(b_actY) %>% pluck("b_actY"))` g/m2 with a standard error of `r sd(brm2 %>% spread_draws(b_actY) %>% pluck("b_actY"))` g/m2.
 
-A model including number of years flooded out of the last 15 showed evidence that the effect of flooding depended on tillage, whereby units without tillage had a small increase of yield with increasing number of years flooded but disced units had declining yields witin increasing number of years flooded.
+A model including number of years flooded out of the last 15 showed some evidence that the effect of flooding depended on tillage, whereby units without tillage had a small increase of yield with increasing number of years flooded but disked units had declining yields with increasing number of years flooded.
 
 
 
