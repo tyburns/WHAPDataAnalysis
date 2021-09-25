@@ -63,6 +63,7 @@ server <- function(input, output) {
       dplyr::filter(subunit_year %in% sets12) %>%
       dplyr::select(wg_mass_m2_var, st_mass_m2_var, tot_mass_m2_var) %>%
       colSums() %>%
+      `/`(length(sets12)^2) %>%
       sqrt()
     
     data.frame(set1_avg, set2_avg, se_diff) %>%

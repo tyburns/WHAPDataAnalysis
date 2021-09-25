@@ -282,11 +282,11 @@ brm2 %<>% recover_types(qdt_mass_act_fld)
   ylab("Tilled (Y/N)")
 
 
-Till_fx <- brm2 %>%
+(Till_fx <- brm2 %>%
   spread_draws(b_actY) %>%
   ggplot(aes(x = b_actY)) +
   stat_halfeye() +
-  geom_vline(xintercept = 0, linetype = "dashed") 
+  geom_vline(xintercept = 0, linetype = "dashed")) 
 
 ```
 
