@@ -59,12 +59,19 @@ server <- function(input, output) {
       dplyr::select(wg_g_m2, st_g_m2, tot_g_m2) %>%
       colMeans()
     
-    se_diff <- whap_su_years %>%
-      dplyr::filter(subunit_year %in% sets12) %>%
+    var_set1 <- whap_su_years %>%
+      dplyr::filter(subunit_year %in% input$set1) %>%
       dplyr::select(wg_mass_m2_var, st_mass_m2_var, tot_mass_m2_var) %>%
       colSums() %>%
-      `/`(length(sets12)^2) %>%
-      sqrt()
+      `/`(length(input$set1)^2)
+    
+    var_set2 <- whap_su_years %>%
+      dplyr::filter(subunit_year %in% input$set2) %>%
+      dplyr::select(wg_mass_m2_var, st_mass_m2_var, tot_mass_m2_var) %>%
+      colSums() %>%
+      `/`(length(input$set2)^2)
+    
+    se_diff <- sqrt(var_set1 + var_set2)
     
     data.frame(set1_avg, set2_avg, se_diff) %>%
       mutate(variable = c("wg_g_m2", "st_g_m2", "tot_g_m2"),

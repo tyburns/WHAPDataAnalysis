@@ -10,7 +10,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-# PROBLEM: there are no quadrats in PIX st high but a couple of units had vps or cps with st high.
+# These estimates ignore the presence of smartweed because the dimension to mass model for smarweed is not yet available.
 
 
 ```{r setup, include=FALSE}
@@ -105,7 +105,7 @@ vps0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_VantagePolygons_202
 
 cps0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_CirclePlots_20210901.csv")
 
-qdt0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_Quadrats_20210902.csv")
+qdt0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_Quadrats_20210923.csv")
 
 mus0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_ManagementUnits_20210902.csv")
 
@@ -409,9 +409,8 @@ fpcf <- vpcp %>%
   summarise(AreaSampled_ac = sum(areaVisible_ac)) %>%
   mutate(subunit_ID2 = subunit_ID) %>%
   separate(subunit_ID2, sep = "_", into = c("LIT", "unitName", "subunitName")) %>%
-  mutate(subunitName = as.numeric(subunitName)) %>%
   left_join(su_areas) %>%
-  mutate(fpcf = 1 - AreaSampled_ac / area_ac,
+  mutate(fpcf = 1 - AreaSampled_ac / area_ac, # in case area sampled > subunit area
          fpcf = ifelse(fpcf <= 0, 0.10, fpcf)) %>%
   dplyr::select(subunit_ID, fpcf) %>%
   arrange(subunit_ID)
@@ -467,14 +466,17 @@ Make a data frame with the seed mass per unit area for each stratum, and species
 
 seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg) {
   tryCatch({
+    
     .st_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat, # make model for st
                     na.action = na.exclude,
                     maxit = 40,
                     data = .qdt_st)
+    
     .wg_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat, # make model for wg
                     na.action = na.exclude,
                     maxit = 40,
                     data = .qdt_wg)
+    
     result <- .p_Area %>% # create file to predict mass/area by stratum & LIT
       pull(subunit_ID) %>%
       expand_grid(subunit_ID = .,
@@ -505,14 +507,16 @@ seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg) {
                   values_fill = 0) %>%
       full_join(.p_Area, by = c("subunit_ID")) %>%
       mutate(wg_g_m2 = rowSums(dplyr::select(., starts_with("wg")) *
-                                 dplyr::select(., starts_with("p_wg"))),
+                                 dplyr::select(., starts_with("p_Watergrass"))),
              st_g_m2 = rowSums(dplyr::select(., starts_with("st")) *
-                                 dplyr::select(., starts_with("p_st"))),
+                                 dplyr::select(., starts_with("p_Swamp_Timothy"))),
              tot_g_m2 = wg_g_m2 + st_g_m2) %>%
       full_join(su_areas, by = c(c("LIT", "unitName", "subunitName"))) %>%
       dplyr::select(-starts_with("p_"), -area_ac) %>%
       na.omit()
+    
     return(result)},
+    
     error = function(e) return(NULL)
   )
 }
@@ -631,7 +635,12 @@ mass.su.CI <-
 attr(mass.su.CI, "notes") <- "These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass, but they include the uncertainty due to sampling quadrats."
 
 
-print(mass.su.CI, n = Inf)
+mass.su.CI %>%
+  kable(digits = c(0, rep(1, 9)),
+        format = "html",
+        caption = "Seed head mass per unit area (g/m2) and 90% CI by species in each subunit. These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass, but they include the uncertainty due to sampling quadrats.") %>%
+  kable_styling(full_width = FALSE)
+
 
 ```
 
@@ -675,6 +684,13 @@ mass_kg_LIT_CI <- qdt_bt %>%
 
 attr(mass_kg_LIT_CI, "notes") <- "These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass, but they do include the uncertainty due to sampling quadrats."
 
+mass_kg_LIT_CI %>%
+  kable(digits = 0,
+        format = "html",
+        caption = "Seed head mass per unit area (g/m2) and 90% CI by refuge. These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass, but they include the uncertainty due to sampling quadrats.") %>%
+  kable_styling(full_width = FALSE)
+
+
 ```
 
 ## Mass estimates with quadrat and area variance
@@ -716,21 +732,21 @@ mass_var <-
 
 Xs2 <- v_Area_c %>%
   arrange(subunit_ID) %>%
-  dplyr::select(p_st_a.Low, # variance of areas
-                p_st_b.Med, 
-                p_st_c.High,
-                p_wg_a.Low,
-                p_wg_b.Med, 
-                p_wg_c.High)
+  dplyr::select(p_Swamp_Timothy_a.Low, # variance of areas
+                p_Swamp_Timothy_b.Med, 
+                p_Swamp_Timothy_c.High,
+                p_Watergrass_a.Low,
+                p_Watergrass_b.Med, 
+                p_Watergrass_c.High)
 
 Xm2 <- p_Area %>%
   arrange(subunit_ID) %>%
-  dplyr::select(p_st_a.Low, # means of areas
-                p_st_b.Med, 
-                p_st_c.High,
-                p_wg_a.Low,
-                p_wg_b.Med, 
-                p_wg_c.High) %>%
+  dplyr::select(p_Swamp_Timothy_a.Low, # means of proportion of areas
+                p_Swamp_Timothy_b.Med, 
+                p_Swamp_Timothy_c.High,
+                p_Watergrass_a.Low,
+                p_Watergrass_b.Med, 
+                p_Watergrass_c.High) %>%
   `^`(2) # square everything
 
 Ys2 <- qdt_mass_g_m2 %>%
@@ -743,13 +759,13 @@ Ym2 <- (qdt_mass_g_m2 %>%
           arrange(subunit_ID) %>%
           dplyr::select(contains("_g_m2_")))^2
 
-Xs2_st <- Xs2 %>% dplyr::select(contains("st_"))
-Xm2_st <- Xm2 %>% dplyr::select(contains("st_"))
+Xs2_st <- Xs2 %>% dplyr::select(contains("Swamp_Timothy_"))
+Xm2_st <- Xm2 %>% dplyr::select(contains("Swamp_Timothy_"))
 Ys2_st <- Ys2 %>% dplyr::select(contains("st_"))
 Ym2_st <- Ym2 %>% dplyr::select(contains("st_"))
 
-Xs2_wg <- Xs2 %>% dplyr::select(contains("wg_"))
-Xm2_wg <- Xm2 %>% dplyr::select(contains("wg_"))
+Xs2_wg <- Xs2 %>% dplyr::select(contains("Watergrass_"))
+Xm2_wg <- Xm2 %>% dplyr::select(contains("Watergrass_"))
 Ys2_wg <- Ys2 %>% dplyr::select(contains("wg_"))
 Ym2_wg <- Ym2 %>% dplyr::select(contains("wg_"))
 
@@ -771,14 +787,16 @@ qdt_mass_g_m2 <- qdt_mass_g_m2 %>%
          CI80lwr_wg = wg_g_m2 + qnorm(0.10) * sqrt(wg_mass_m2_var),
          CI80upr_wg = wg_g_m2 + qnorm(0.90) * sqrt(wg_mass_m2_var))
 
+attributes(qdt_mass_g_m2)$notes <- "These estimates include the variance due to quadrat sampling and estimation of proportion of area covered by each stratum. They exclude the variance of the models to convert seed number and length into mass."
 
 qdt_mass_g_m2 %>%
   dplyr::select(LIT, unitName, subunitName, wg_g_m2, st_g_m2, CI80lwr, tot_g_m2, CI80upr) %>%
   mutate(delta_pcnt = round((100 * (CI80upr - CI80lwr) / 2) / tot_g_m2, 0)) %>%
   arrange(delta_pcnt) %>%
-  print(n = Inf)
-
-attributes(qdt_mass_g_m2)$notes <- "These estimates include the variance due to quadrat sampling and estimation of proportion of area covered by each stratum. They exclude the variance of the models to convert seed number and length into mass."
+  kable(digits = 1,
+        format = "html",
+        caption = "Seed head mass per unit area (g/m2) and CI's including variance due to estimatio of proportion of area covered by each species-stratum combination. Delta is the margin of error as a percentage of the total mass.") %>%
+  kable_styling(full_width = FALSE)
 
 write.csv(qdt_mass_g_m2, "../Output2021/qdt_mass_g_m2_2021.txt")
 
@@ -802,6 +820,7 @@ for (i in 1:length(unique(qdt_mass_g_m2$LIT))) { #This is an error. See Therese'
                      ymin = CI80lwr,
                      ymax = CI80upr,
                      group = LIT)) +
+    ylim(0, 400) +
     geom_pointrange() +
     geom_hline(col = rep(c("red", "orange", "yellow", "green"),
                          length(unique(qdt_mass_g_m2$LIT))),
@@ -834,6 +853,7 @@ for (i in 1:length(unique(qdt_mass_g_m2$LIT))) {
                      ymin = CI80lwr_st,
                      ymax = CI80upr_st,
                      group = LIT)) +
+    ylim(0, 400) +
     geom_pointrange() +
     geom_hline(col = rep(c("red", "orange", "yellow", "green"),
                          length(unique(qdt_mass_g_m2$LIT))),
@@ -866,6 +886,7 @@ for (i in 1:length(unique(qdt_mass_g_m2$LIT))) {
                      ymin = CI80lwr_wg,
                      ymax = CI80upr_wg,
                      group = LIT)) +
+    ylim(0, 400) +
     geom_pointrange() +
     geom_hline(col = rep(c("red", "orange", "yellow", "green"),
                          length(unique(qdt_mass_g_m2$LIT))),

@@ -22,7 +22,7 @@ LIT_codes <- sort(c("KRN",
 # Read files =================================================================
 vps0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_VantagePolygons_20210831.csv")
 cps0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_CirclePlots_20210901.csv")
-qdt0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_Quadrats_20210902.csv")
+qdt0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_Quadrats_20210923.csv")
 mus0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_ManagementUnits_20210902.csv")
 
 
@@ -286,7 +286,7 @@ qdt0 %>% group_by(LIT, unitName, subunitName) %>% count() %>% print(n = Inf)
 ## Uniqueness of seed head identity ===========================================
 
 qdt0 %>% # several seed head id's are repeated. Why?
-  dplyr::filter(vernacularName == "Swamp_Timothy" & stratum != "") %>%
+  dplyr::filter(vernacularName == "Swamp Timothy" & stratum != "") %>%
   group_by(GlobalID, GlobalID_seed, measurementType) %>%
   count() %>%
   arrange(GlobalID, GlobalID_seed, measurementType) %>%
