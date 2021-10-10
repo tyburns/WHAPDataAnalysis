@@ -12,7 +12,6 @@ editor_options:
 
 # These estimates ignore the presence of smartweed because the dimension to mass model for smarweed is not yet available.
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 library(tidyverse)
@@ -31,19 +30,18 @@ library(magrittr)
 
 ```
 
-## Names of variables 
+## Names of variables
 
 Whenever a different name is encountered for these variables, it will be corrected accordingly.
 
-1. Refuge (for spelled-out refuge names, do not use as a key field)
-2. LIT (use as the key field)
-3. unitName
-4. subunitName
-5. subunit_ID (paste(LIT, unitName, subunitName, sep = "_"))
-6. group (paste(LIT, unitName, subunitName, stratum, sep = "_"))
-7. stratum ("a.Low", "b.Med", "c.High")
-8. LIT_Strat  (factor(paste(LIT, stratum, sep = "_")))
-
+1.  Refuge (for spelled-out refuge names, do not use as a key field)
+2.  LIT (use as the key field)
+3.  unitName
+4.  subunitName
+5.  subunit_ID (paste(LIT, unitName, subunitName, sep = "\_"))
+6.  group (paste(LIT, unitName, subunitName, stratum, sep = "\_"))
+7.  stratum ("a.Low", "b.Med", "c.High")
+8.  LIT_Strat (factor(paste(LIT, stratum, sep = "\_")))
 
 ## Read RDS's
 
@@ -84,18 +82,15 @@ WG_len2mass <- lm(log(mass_per_sh_mg  + 20) ~ sh_len_cm +
 
 ```
 
-
 ## Read data files
 
 The script may have to be modified to accept any number of species and to accommodate the absence of some combinations of species_stratum.
 
 Description of method used to deal with overlapping species:
 
-*To estimate cover, we looked at the field and started with the smallest represented species x density combination.  We estimated percentage across the unit of the least abundant combination first, working our way up to the most dominant combination.  If there was an area that had more than 1 combination, we split the estimated area either in half or whichever was more dominant.  For example, we often had High Swamp Timothy, Low Smartweed and Low Watergrass.  Say we already estimated there was a small area (5%) of High Smartweed and a small area (5%) of no food. We then take the remaining 90% and equally split it 30% each High ST, Low WG and Low SW.  I hope this description is clear.*
+*To estimate cover, we looked at the field and started with the smallest represented species x density combination. We estimated percentage across the unit of the least abundant combination first, working our way up to the most dominant combination. If there was an area that had more than 1 combination, we split the estimated area either in half or whichever was more dominant. For example, we often had High Swamp Timothy, Low Smartweed and Low Watergrass. Say we already estimated there was a small area (5%) of High Smartweed and a small area (5%) of no food. We then take the remaining 90% and equally split it 30% each High ST, Low WG and Low SW. I hope this description is clear.*
 
-*Thanks,* 
-*Jesy*
-
+*Thanks,* *Jesy*
 
 Based on this description, the overlapping species are effectively separated by the estimation method. The total of estimates has to add up to 100%, and the current method of analysis should work, for as long as there was at most single entry for each spp-stratum in each CP and VP.
 
@@ -191,7 +186,6 @@ closure_proportions <- function(df, .in_cols, .out_cols) {
 
 
 ```
-
 
 ```{r prep_Files}
 
@@ -384,7 +378,7 @@ su_areas <- mus0 %>%
 
 Proportion of areas
 
-See http://www.analyticalgroup.com/download/WEIGHTED_MEAN.pdf for var(weighted average) and AREA FRAME DESIGN.pdf
+See <http://www.analyticalgroup.com/download/WEIGHTED_MEAN.pdf> for var(weighted average) and AREA FRAME DESIGN.pdf
 
 ```{r p_areaAverages}
 
@@ -459,8 +453,7 @@ wg_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat,
 
 ```
 
-Make a data frame with the seed mass per unit area for each stratum, and species (columns) for each subunit (rows).
-`seed_mass_fun` is a function that takes the file `p_Area`, and the models for g.m2 by subunitName and stratum ("st_rlm3" and "wg_rlm3") as arguments and yields the seed mass of st and wg per unit area of each subunit, and the area of each subunit. The resulting file can be used to calculate refuge-level yields.
+Make a data frame with the seed mass per unit area for each stratum, and species (columns) for each subunit (rows). `seed_mass_fun` is a function that takes the file `p_Area`, and the models for g.m2 by subunitName and stratum ("st_rlm3" and "wg_rlm3") as arguments and yields the seed mass of st and wg per unit area of each subunit, and the area of each subunit. The resulting file can be used to calculate refuge-level yields.
 
 ```{r seed_mass_fun}
 
@@ -524,7 +517,7 @@ seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg) {
 
 ## Mass per subunit and refuge
 
-### Mass per subunit is given as average g/m2 over the whole subunit area. 
+### Mass per subunit is given as average g/m2 over the whole subunit area.
 
 ```{r mass_per_subunit}
 
@@ -578,7 +571,7 @@ mass_kg_LIT %>%
 
 ## Mass estimates and distributions with quadrat variance.
 
-Seed yield, confidence intervals. etc. for each subunit and refuge are calculated by resampling  yield per stratum for each subunit. For each species, individual quadrats are resampled within refuge and stratum.
+Seed yield, confidence intervals. etc. for each subunit and refuge are calculated by resampling yield per stratum for each subunit. For each species, individual quadrats are resampled within refuge and stratum.
 
 The following chunk creates 4001 bootstrap samples of quadrats and for each one of these bootstrap samples it produces an estimated mass per m2 for each species in each stratum and uses those to calculate mass per m2 for each and both species in each subunit using the seed_mass_fun. Masses per m2 for each subunit take into account the proportion of each unit covered by each stratum.
 
@@ -589,16 +582,16 @@ Using `tidymodels` and `rsample`.
 ```{r bootstrap_yield, warning=FALSE}
 
 system.time(
-  qdt_bt <- bootstraps(qdt_wg, # watergrass
+  qdt_bt <- (bootstraps(qdt_wg, # watergrass
                        times = 4000,
                        apparent = TRUE,
                        strata = LIT_Strat) %>%
-    rename(qdt_wg = splits) %>%
-    full_join(bootstraps(qdt_st,
+    rename(qdt_wg = splits)) %>%
+    full_join((bootstraps(qdt_st,
                          times = 4000,
                          apparent = TRUE,
                          strata = LIT_Strat) %>%
-                rename(qdt_st = splits), by = c("id")) %>% # timothy
+                rename(qdt_st = splits)), by = c("id")) %>% # timothy
     mutate(mass_su = map2(.x = qdt_st,
                           .y = qdt_wg,
                           ~seed_mass_fun(p_Area,
@@ -644,6 +637,7 @@ mass.su.CI %>%
 
 ```
 
+The results of bootstrapping are arranged in a matrix where bootstrap samples are rows and subunits are columns. Note that this matrix results from bootstrapping quadrats, which yields boot samples for the mass in each species-stratum combinations. Thus, the boot variation in subunit estimates comes only from those 3 or fewer values per species. The estimates of proportion of area covered do not vary in the calculation of boot_mat. As a result, the estimates of mass for subunits are all highly correlated. The first 2 eigenvalues account for 98% of the total variance, and the first 5 eigenvalues account for 99.9% of the variance.
 
 ```{r BootstrapSamples}
 
@@ -653,10 +647,12 @@ boot_mat <- qdt_bt %>%
   na.omit() %>%
   dplyr::select(id, subunit_ID, wg_g_m2, st_g_m2, tot_g_m2) %>%
   # make matrix like df with all estimates for each boot sample in one row
-  pivot_wider(id = id, names_from = subunit_ID, values_from = c(wg_g_m2, st_g_m2, tot_g_m2))
+  pivot_wider(id = id,
+              names_from = subunit_ID,
+              values_from = c(wg_g_m2, st_g_m2, tot_g_m2)) %>%
+  data.matrix()
   
 ```
-
 
 In this section, the bootstrap samples are used to estimate total mass of seed heads per refuge.
 
@@ -802,7 +798,6 @@ write.csv(qdt_mass_g_m2, "../Output2021/qdt_mass_g_m2_2021.txt")
 
 ```
 
-
 ## Graphical display of results (not run) =======
 
 ```{r CI_graphs, eval=FALSE, echo=FALSE}
@@ -911,8 +906,6 @@ for (i in 1:length(unique(qdt_mass_g_m2$LIT))) {
 }
 
 ```
-
-
 
 ## Test of differences in mass/m.sq among units within refuge
 
@@ -1051,8 +1044,7 @@ compare_su_mass %>%
 
 ```
 
-
-## Test of differences in mass and  mass/m.sq among refuges
+## Test of differences in mass and mass/m.sq among refuges
 
 ```{r CompareRefuges}
 ## Comparisons for Total seed mass across subunits in each Refuge #########
@@ -1067,7 +1059,6 @@ for (lit in 1:length(unique(qdt_mass_g_m2$LIT))) {
 }
 
 ```
-
 
 ```{r yieldComponents}
 
@@ -1126,5 +1117,3 @@ saveRDS(qdt_mass_g_m2, "../Output2021/qdt_mass_g_m2_2021.rds")
 saveRDS(compare_su_mass, "../Output2021/compare_su_mass_2021.rds")
 
 ```
-
-
