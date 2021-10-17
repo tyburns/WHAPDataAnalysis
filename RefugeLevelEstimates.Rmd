@@ -1,0 +1,29 @@
+---
+title: "Refuge level estimates"
+author: "Emilio A. Laca"
+date: "10/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(car)
+library(knitr)
+library(kableExtra)
+library(magrittr)
+
+```
+
+## Read in data
+
+```{r ReadData}
+
+
+
+
+
+```
+
+

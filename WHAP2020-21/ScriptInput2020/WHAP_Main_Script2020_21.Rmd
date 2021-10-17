@@ -191,7 +191,7 @@ qdt_st <- read.csv("qdt2020c.csv") %>%
   na.omit() %>%
   mutate(mass_g_m2 = unname(exp(predict(ST_len2mass, newdata = .)) / 1000),
          mass_g_m2 = ifelse(n_seed_head_m2 == 0, 0, mass_g_m2)) %>% # making sure it handles quadrats where no_sh == 0
-  filter(mass_g_m2 < 2000) %>%
+  dplyr::filter(mass_g_m2 < 2000 & mass_g_m2 != 0) %>%
   mutate(Stratum = dplyr::recode(Stratum,
                                  `Low` = "a.Low",
                                  `Med` = "b.Med",
@@ -323,7 +323,7 @@ v_Area_c <- se_Area_c %>%
 ```{r st.modelStrata}
 
 # Use robust linear model
-st_rlm3 <- rlm(mass_g_m2 ~ LIT_Strat,
+st_rlm3 <- rlm(log(mass_g_m2 + 5) ~ LIT_Strat,
               na.action = na.exclude,
               maxit = 40,
              data = qdt_st)
@@ -340,7 +340,7 @@ qdt_wg <- qdt_wg %>% # Assumes there is no Watergrass in KRN
          LIT_Strat = factor(LIT_Strat))
 
 # Use robust linear model. LIT and the interaction were NS
-wg_rlm3 <- rlm(mass_g_m2 ~ LIT_Strat,
+wg_rlm3 <- rlm(log(mass_g_m2 + 0.5) ~ LIT_Strat,
               na.action = na.exclude,
               maxit = 40,
              data = qdt_wg)
@@ -357,11 +357,11 @@ seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg) {
     
     # make a model for mass per area at quadrat level for each species,
     # refuge and stratum
-    .st_rlm3 <- rlm(mass_g_m2 ~ LIT_Strat, # make model for st
+    .st_rlm3 <- rlm(log(mass_g_m2 + 0.5) ~ LIT_Strat, # make model for st
                     na.action = na.exclude,
                     maxit = 40,
                     data = .qdt_st)
-    .wg_rlm3 <- rlm(mass_g_m2 ~ LIT_Strat, # make model for wg
+    .wg_rlm3 <- rlm(log(mass_g_m2 + 5) ~ LIT_Strat, # make model for wg
                     na.action = na.exclude,
                     maxit = 40,
                     data = .qdt_wg)
@@ -382,13 +382,13 @@ seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg) {
                                        as.character(oLIT_Strat),
                                        NA))) %>%
       # use current LIT_Strat to predict mass per area @ quadrat scale for st
-      mutate(st_g_m2 = unname(predict(.st_rlm3, newdata = .)),
+      mutate(st_g_m2 = unname(exp(predict(.st_rlm3, newdata = .)) - 5),
       # make LIT_Strat col with nonNA values only for cases present in .wg_rlm3
              LIT_Strat = factor(ifelse(oLIT_Strat %in% .wg_rlm3$xlevels[[1]],
                                        as.character(oLIT_Strat),
                                        NA))) %>%
       # use current LIT_Strat to predict mass per area @ quadrat scale for wg
-      mutate(wg_g_m2 =unname(predict(.wg_rlm3, newdata = .)),
+      mutate(wg_g_m2 =unname(exp(predict(.wg_rlm3, newdata = .)) - 0.5),
       # restore full LIT_Strat column
              LIT_Strat = oLIT_Strat,
       # Subunits present p_Area that have area estimates for a species and
@@ -944,21 +944,61 @@ compare_su_mass %>%
 
 ```
 
-
 ```{r yieldComponents}
 
-print("Proportion of area in each stratum by subunit")
-print(p_Area, n = Inf)
-write.csv(p_Area, "p_Area2020.csv")
+# Proportion of area in each subunit ====================
 
-print("Mean seed mass per area for Timothy")
-emmeans(st_rlm3, "LIT_Strat")
-write.csv(emmeans(st_rlm3, "LIT_Strat"), "TimothyMassPerAreaByLITStratum2020.csv")
+kable(p_Area,
+      digits = c(0, rep(3, dim(p_Area)[2] - 1)),
+      caption = "Proportion of area in each stratum by subunit") %>%
+  kable_styling()
 
-print("Mean seed mass per area for Watergrass")
-emmeans(wg_rlm3, "LIT_Strat")
-write.csv(emmeans(wg_rlm3, "LIT_Strat"), "WatergrassMassPerAreaByLITStratum2020.csv")
+write.csv(p_Area, "../Output2020/p_Area2020.csv")
 
+# Swamp Timothy ====================
+
+st_qdt_means <- emmeans(st_rlm3, "LIT_Strat", type = "response") %>%
+  as.tibble() %>%
+  arrange(as.character(LIT_Strat)) %>%
+  dplyr::select(-df) %>%
+  rename(st_g_m2 = response)
+
+kable(st_qdt_means,
+      digits = c(0, 1, 2, 1, 1),
+      caption = "Estimated g/m2 of seedheads for Swamp Timothy strata") %>%
+  kable_styling(full_width = FALSE)
+
+write.csv(st_qdt_means,
+          "../Output2020/TimothyMassPerAreaByLITstratum2020.csv")
+
+# Watergrass ====================
+
+wg_qdt_means <- emmeans(wg_rlm3, "LIT_Strat", type = "response") %>%
+  as.tibble() %>%
+  arrange(as.character(LIT_Strat)) %>%
+  dplyr::select(-df) %>%
+  rename(wg_g_m2 = response)
+
+kable(wg_qdt_means,
+      digits = c(0, 1, 2, 1, 1),
+      caption = "Estimated g/m2 of seedheads for Watergrass strata") %>%
+  kable_styling(full_width = FALSE)
+
+write.csv(wg_qdt_means,
+          "../Output2020/WatergrassMassPerAreaByLITstratum2020.csv")
+
+```
+
+## Save objects for demo shiny app
+
+```{r}
+# Save estimates for plots and display
+
+saveRDS(qdt_mass_g_m2, "../Output2020/qdt_mass_g_m2_2020.rds")
+
+# Save comparisons between units within refuge
+
+saveRDS(compare_su_mass, "../Output2020/compare_su_mass_2020.rds")
 
 ```
 

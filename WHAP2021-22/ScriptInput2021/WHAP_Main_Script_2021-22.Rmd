@@ -654,12 +654,12 @@ boot_mat <- qdt_bt %>%
   
 ```
 
-In this section, the bootstrap samples are used to estimate total mass of seed heads per refuge.
+In this section, the bootstrap samples are used to estimate total mass of seed heads per refuge. **To Do: incorporate covariance between subunit estimates** The current calculation assumes that estimates are indepentent, which is overly optimistic.
 
 ```{r mass_kg_LIT_CI}
 
 mass_kg_LIT_CI <- qdt_bt %>%
-  filter(unlist(map(mass_su, ~!is.null(.x)))) %>%
+  dplyr::filter(unlist(map(mass_su, ~!is.null(.x)))) %>%
   mutate(mass_su = map(.x = mass_su, ~drop_na(.x)),
          mass_lit = map(.x = mass_su,
                         ~group_by(.x, LIT) %>%

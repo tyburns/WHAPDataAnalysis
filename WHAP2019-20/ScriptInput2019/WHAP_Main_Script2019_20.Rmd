@@ -24,6 +24,7 @@ library(ggforce)
 library(knitr)
 library(kableExtra)
 
+
 ```
 
 ## Names of variables 
@@ -313,14 +314,14 @@ v_Area_c <- se_Area_c %>%
 ```
 
 ## Function to estimate mass per unit area in each stratum
-
+ ****** EAL WORKING ON AUTOMATING TRANSFORMATIONS ***********
 ```{r st.modelStrata}
 
 # Use robust linear model
-st_rlm3 <- rlm(mass_g_m2 ~ LIT_Strat, # This has heterogeneity of variance
+st_rlm3 <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
               na.action = na.exclude,
               maxit = 40,
-             data = qdt_st)
+             data = qdt_st))
 
 ```
 
@@ -334,7 +335,7 @@ qdt_wg <- qdt_wg %>% # Assumes there is no Watergrass in KRN
          LIT_Strat = factor(LIT_Strat))
 
 # Use robust linear model. LIT and the interaction were NS
-wg_rlm3 <- rlm(mass_g_m2 ~ LIT_Strat, # This has heterogeneity of variance
+wg_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat,
               na.action = na.exclude,
               maxit = 40,
              data = qdt_wg)
@@ -348,11 +349,11 @@ Make a data frame with the seed mass per unit area for each stratum, and species
 
 seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg) {
   tryCatch({
-    .st_rlm3 <- rlm(mass_g_m2 ~ LIT_Strat, # make model for st
+    .st_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat, # make model for st
                     na.action = na.exclude,
                     maxit = 40,
                     data = .qdt_st)
-    .wg_rlm3 <- rlm(mass_g_m2 ~ LIT_Strat, # make model for wg
+    .wg_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat, # make model for wg
                     na.action = na.exclude,
                     maxit = 40,
                     data = .qdt_wg)
