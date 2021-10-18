@@ -231,7 +231,7 @@ cps <- cps0 %>%
            vernacularName,#   | incorrectly identified strata
            stratum) %>%#      | or species
   summarize(proportionVisibleArea = mean(proportionVisibleArea),
-            .groups = "drop")%>%
+            .groups = "drop") %>%
   mutate(vernacularName = str_replace(vernacularName, " ", "_")) %>%
   pivot_wider(names_from = c(vernacularName, stratum),
               names_prefix = "pVA_",

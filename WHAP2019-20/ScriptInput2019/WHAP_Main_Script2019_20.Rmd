@@ -314,8 +314,23 @@ v_Area_c <- se_Area_c %>%
 ```
 
 ## Function to estimate mass per unit area in each stratum
+
+The bootstrapping and calculation of final estimates with quadrat variance can be sped up by using matrix multiplication. The bootstrapping only produces mass/area for each species by LIT_strat. Mass per unit area for each subunit is then simply the multiplication of this vector times the matrix of proportions of area for each subunit. For example, there are 3 values of mass/area for st in LITx. Say that LITx has 20 subunits. There is then a matrix of proportion of low, medium and high st in each subunit of LITx. This matrix A has 3 columns and 20 rows. The vector of mass per unit area in each subunit is A(20 x 3) %*% X(3 x 1) where X is the vector with the estimates for st in LITx low med and high.
+
  ****** EAL WORKING ON AUTOMATING TRANSFORMATIONS ***********
 ```{r st.modelStrata}
+
+# Define function to invert the Box-Cox transformation
+invBoxCox <- function(x, lambda) {
+  if (lambda == 0) exp(x) else (lambda * x + 1) ^ (1 / lambda)}
+
+
+# Get lambda for st
+st_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
+              na.action = na.exclude,
+              maxit = 40,
+             data = qdt_st)) %>%
+  coef(round = TRUE)
 
 # Use robust linear model
 st_rlm3 <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
