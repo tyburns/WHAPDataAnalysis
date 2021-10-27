@@ -153,8 +153,8 @@ qdt0 %<>%
 
 # prepare column names necessary
 spp <- setdiff(unique(c(vps0$vernacularName,
-                    cps0$vernacularName,
-                    qdt0$vernacularName)),
+                        cps0$vernacularName,
+                        qdt0$vernacularName)),
                c("Other_cover"))
 
 strata <- c("low",
@@ -162,21 +162,21 @@ strata <- c("low",
             "high")
 
 in_col_nms <- c("pVA_Other_cover_NA",
-             paste("pVA",
-                   rep(spp, length(strata)),
-                   rep(strata, each = length(spp)),
-                       sep = "_"))
+                paste("pVA",
+                      rep(spp, length(strata)),
+                      rep(strata, each = length(spp)),
+                      sep = "_"))
 
 out_col_nms <- in_col_nms %>%
   str_replace_all(c("pVA" = "p",
-                  "low" = "a.Low",
-                  "medium" = "b.Med",
-                  "high" = "c.High")) %>%
+                    "low" = "a.Low",
+                    "medium" = "b.Med",
+                    "high" = "c.High")) %>%
   set_names(nm = in_col_nms)
 
 closure_proportions <- function(df, .in_cols, .out_cols) {
   df %<>% mutate(tot_obs_prop = rowSums(across(starts_with("pVA_"))))
-  for (nm in .in_cols){
+  for (nm in .in_cols) {
     ifelse(nm %in% names(df),
            df[[.out_cols[nm]]] <- df[[nm]] / df$tot_obs_prop,
            df[[.out_cols[nm]]] <- 0)
@@ -429,9 +429,21 @@ In 2021 this part of the code was modified to use a log transformation of the ma
 
 ```{r st.modelStrata}
 
-# Use robust linear model
+# Define function to invert the Box-Cox transformation
+invBoxCox <- function(x, lambda) {
+  if (lambda == 0) exp(x) else (lambda * x + 1) ^ (1 / lambda)}
 
-st_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat,
+
+# Get lambda for st
+st_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
+                                na.action = na.exclude,
+                                maxit = 40,
+                                data = qdt_st)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+# Use robust linear model
+st_rlm3 <- rlm(bcPower(mass_g_m2, lambda = st_lambda) ~ LIT_Strat,
                na.action = na.exclude,
                maxit = 40,
                data = qdt_st)
@@ -440,13 +452,22 @@ st_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat,
 
 ```{r wg.modelStrata}
 
-# with(qdt_wg, table(LIT, stratum))
+with(qdt_wg, table(LIT, Stratum)) # only one quadrat in KRN; remove
 
-qdt_wg <- qdt_wg %>%
+qdt_wg <- qdt_wg %>% # Assumes there is no Watergrass in KRN
+  filter(LIT != "KRN") %>%
   mutate(LIT = factor(LIT),
          LIT_Strat = factor(LIT_Strat))
+# Get lambda for wg
+wg_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
+                                na.action = na.exclude,
+                                maxit = 40,
+                                data = qdt_wg)) %>%
+  coef(round = TRUE) %>%
+  unname()
 
-wg_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat,
+# Use robust linear model
+wg_rlm3 <- rlm(bcPower(mass_g_m2, lambda = wg_lambda) ~ LIT_Strat,
                na.action = na.exclude,
                maxit = 40,
                data = qdt_wg)
@@ -460,12 +481,30 @@ Make a data frame with the seed mass per unit area for each stratum, and species
 seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg) {
   tryCatch({
     
-    .st_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat, # make model for st
+    # Get lambda for st
+    .st_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
+                                     na.action = na.exclude,
+                                     maxit = 40,
+                                     data = .qdt_st)) %>%
+      coef(round = TRUE) %>%
+      unname()
+    
+    # Use robust linear model
+    .st_rlm3 <- rlm(bcPower(mass_g_m2, lambda = .st_lambda) ~ LIT_Strat,
                     na.action = na.exclude,
                     maxit = 40,
                     data = .qdt_st)
     
-    .wg_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat, # make model for wg
+    # Get lambda for wg
+    .wg_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
+                                     na.action = na.exclude,
+                                     maxit = 40,
+                                     data = .qdt_wg)) %>%
+      coef(round = TRUE) %>%
+      unname()
+    
+    # Use robust linear model
+    .wg_rlm3 <- rlm(bcPower(mass_g_m2, lambda = .wg_lambda) ~ LIT_Strat,
                     na.action = na.exclude,
                     maxit = 40,
                     data = .qdt_wg)
@@ -480,12 +519,14 @@ seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg) {
       mutate(LIT_Strat = factor(ifelse(oLIT_Strat %in% .st_rlm3$xlevels[[1]],
                                        as.character(oLIT_Strat),
                                        NA))) %>%
-      mutate(st_g_m2 = unname(exp(predict(.st_rlm3, newdata = .))),
+      mutate(st_g_m2 = invBoxCox(unname(predict(.st_rlm3, newdata = .)),
+                                 lambda = .st_lambda),
              LIT_Strat = factor(ifelse(oLIT_Strat %in% .wg_rlm3$xlevels[[1]],
                                        as.character(oLIT_Strat),
                                        NA))) %>%
-      mutate(wg_g_m2 =unname(exp(predict(.wg_rlm3, newdata = .))),
-             #             LIT_Strat = oLIT_Strat, # not selected below, so it's useless
+      mutate(wg_g_m2 = invBoxCox(unname(predict(.wg_rlm3, newdata = .)),
+                                 lambda = .wg_lambda),
+             #LIT_Strat = oLIT_Strat, # not selected below, so it's useless
              st_g_m2 = replace_na(st_g_m2, 0),
              wg_g_m2 = replace_na(wg_g_m2, 0)) %>%
       dplyr::select(LIT,
@@ -513,6 +554,7 @@ seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg) {
     error = function(e) return(NULL)
   )
 }
+
 ```
 
 ## Mass per subunit and refuge
@@ -554,10 +596,17 @@ qdt_mass_g_m2 %>%
 mass_kg_LIT <- qdt_mass_g_m2 %>%
   group_by(LIT) %>%
   na.omit() %>%
-  summarise(mass_kg_lit = sum(tot_g_m2 * area_ha * 10),
+  summarise(tot_mass_kg_lit = sum(tot_g_m2 * area_ha * 10),
+            st_mass_kg_lit = sum(st_g_m2 * area_ha * 10),
+            wg_mass_kg_lit = sum(wg_g_m2 * area_ha * 10),
             tot_ha = sum(area_ha),
             .groups = "drop") %>%
-  mutate(kg.ha = mass_kg_lit / tot_ha)
+  mutate(tot_kg.ha = tot_mass_kg_lit / tot_ha,
+         st_kg.ha = st_mass_kg_lit / tot_ha,
+         wg_kg.ha = wg_mass_kg_lit / tot_ha,
+         year = 2021)
+
+write.csv(mass_kg_LIT, "mass_kg_LIT_2021.txt")
 
 attr(mass_kg_LIT, "notes") <- "These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass."
 
@@ -583,15 +632,15 @@ Using `tidymodels` and `rsample`.
 
 system.time(
   qdt_bt <- (bootstraps(qdt_wg, # watergrass
-                       times = 4000,
-                       apparent = TRUE,
-                       strata = LIT_Strat) %>%
-    rename(qdt_wg = splits)) %>%
+                        times = 4000,
+                        apparent = TRUE,
+                        strata = LIT_Strat) %>%
+               rename(qdt_wg = splits)) %>%
     full_join((bootstraps(qdt_st,
-                         times = 4000,
-                         apparent = TRUE,
-                         strata = LIT_Strat) %>%
-                rename(qdt_st = splits)), by = c("id")) %>% # timothy
+                          times = 4000,
+                          apparent = TRUE,
+                          strata = LIT_Strat) %>%
+                 rename(qdt_st = splits)), by = c("id")) %>% # timothy
     mutate(mass_su = map2(.x = qdt_st,
                           .y = qdt_wg,
                           ~seed_mass_fun(p_Area,
@@ -651,7 +700,7 @@ boot_mat <- qdt_bt %>%
               names_from = subunit_ID,
               values_from = c(wg_g_m2, st_g_m2, tot_g_m2)) %>%
   data.matrix()
-  
+
 ```
 
 In this section, the bootstrap samples are used to estimate total mass of seed heads per refuge. **To Do: incorporate covariance between subunit estimates** The current calculation assumes that estimates are indepentent, which is overly optimistic.

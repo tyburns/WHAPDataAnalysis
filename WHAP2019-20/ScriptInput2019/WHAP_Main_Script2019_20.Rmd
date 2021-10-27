@@ -282,8 +282,8 @@ p_Area <- vpcp %>%
 
 # Uncorrected variance of the weighted average ========
 v_Area <- vpcp %>% group_by(subunit_ID) %>% # see WEIGHTED_MEAN.pdf
-        summarise(across(starts_with("p_"),
-                         ~ var(.x) * sum(AreaVisible^2) / (sum(AreaVisible)^2))) %>%
+  summarise(across(starts_with("p_"),
+                   ~ var(.x) * sum(AreaVisible^2) / (sum(AreaVisible)^2))) %>%
   arrange(subunit_ID) # %>%
 #  na.omit()
 
@@ -317,7 +317,7 @@ v_Area_c <- se_Area_c %>%
 
 The bootstrapping and calculation of final estimates with quadrat variance can be sped up by using matrix multiplication. The bootstrapping only produces mass/area for each species by LIT_strat. Mass per unit area for each subunit is then simply the multiplication of this vector times the matrix of proportions of area for each subunit. For example, there are 3 values of mass/area for st in LITx. Say that LITx has 20 subunits. There is then a matrix of proportion of low, medium and high st in each subunit of LITx. This matrix A has 3 columns and 20 rows. The vector of mass per unit area in each subunit is A(20 x 3) %*% X(3 x 1) where X is the vector with the estimates for st in LITx low med and high.
 
- ****** EAL WORKING ON AUTOMATING TRANSFORMATIONS ***********
+
 ```{r st.modelStrata}
 
 # Define function to invert the Box-Cox transformation
@@ -327,16 +327,17 @@ invBoxCox <- function(x, lambda) {
 
 # Get lambda for st
 st_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
-              na.action = na.exclude,
-              maxit = 40,
-             data = qdt_st)) %>%
-  coef(round = TRUE)
+                                na.action = na.exclude,
+                                maxit = 40,
+                                data = qdt_st)) %>%
+  coef(round = TRUE) %>%
+  unname()
 
 # Use robust linear model
-st_rlm3 <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
-              na.action = na.exclude,
-              maxit = 40,
-             data = qdt_st))
+st_rlm3 <- rlm(bcPower(mass_g_m2, lambda = st_lambda) ~ LIT_Strat,
+               na.action = na.exclude,
+               maxit = 40,
+               data = qdt_st)
 
 ```
 
@@ -348,12 +349,19 @@ qdt_wg <- qdt_wg %>% # Assumes there is no Watergrass in KRN
   filter(LIT != "KRN") %>%
   mutate(LIT = factor(LIT),
          LIT_Strat = factor(LIT_Strat))
+# Get lambda for wg
+wg_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
+                                na.action = na.exclude,
+                                maxit = 40,
+                                data = qdt_wg)) %>%
+  coef(round = TRUE) %>%
+  unname()
 
-# Use robust linear model. LIT and the interaction were NS
-wg_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat,
-              na.action = na.exclude,
-              maxit = 40,
-             data = qdt_wg)
+# Use robust linear model
+wg_rlm3 <- rlm(bcPower(mass_g_m2, lambda = wg_lambda) ~ LIT_Strat,
+               na.action = na.exclude,
+               maxit = 40,
+               data = qdt_wg)
 
 ```
 
@@ -364,14 +372,35 @@ Make a data frame with the seed mass per unit area for each stratum, and species
 
 seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg) {
   tryCatch({
-    .st_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat, # make model for st
+    
+    # Get lambda for st
+    .st_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
+                                     na.action = na.exclude,
+                                     maxit = 40,
+                                     data = .qdt_st)) %>%
+      coef(round = TRUE) %>%
+      unname()
+    
+    # Use robust linear model
+    .st_rlm3 <- rlm(bcPower(mass_g_m2, lambda = .st_lambda) ~ LIT_Strat,
                     na.action = na.exclude,
                     maxit = 40,
                     data = .qdt_st)
-    .wg_rlm3 <- rlm(log(mass_g_m2) ~ LIT_Strat, # make model for wg
+    
+    # Get lambda for wg
+    .wg_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
+                                     na.action = na.exclude,
+                                     maxit = 40,
+                                     data = .qdt_wg)) %>%
+      coef(round = TRUE) %>%
+      unname()
+    
+    # Use robust linear model
+    .wg_rlm3 <- rlm(bcPower(mass_g_m2, lambda = .wg_lambda) ~ LIT_Strat,
                     na.action = na.exclude,
                     maxit = 40,
                     data = .qdt_wg)
+    
     result <- .p_Area %>% # create file to predict mass/area by stratum & LIT
       pull(subunit_ID) %>%
       expand_grid(subunit_ID = .,
@@ -382,12 +411,14 @@ seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg) {
       mutate(LIT_Strat = factor(ifelse(oLIT_Strat %in% .st_rlm3$xlevels[[1]],
                                        as.character(oLIT_Strat),
                                        NA))) %>%
-      mutate(st_g_m2 = unname(predict(.st_rlm3, newdata = .)),
+      mutate(st_g_m2 = invBoxCox(unname(predict(.st_rlm3, newdata = .)),
+                                 lambda = .st_lambda),
              LIT_Strat = factor(ifelse(oLIT_Strat %in% .wg_rlm3$xlevels[[1]],
                                        as.character(oLIT_Strat),
                                        NA))) %>%
-      mutate(wg_g_m2 =unname(predict(.wg_rlm3, newdata = .)),
-#             LIT_Strat = oLIT_Strat, # not selected below, so it's useless
+      mutate(wg_g_m2 = invBoxCox(unname(predict(.wg_rlm3, newdata = .)),
+                                 lambda = .wg_lambda),
+             #             LIT_Strat = oLIT_Strat, # not selected below, so it's useless?
              st_g_m2 = replace_na(st_g_m2, 0),
              wg_g_m2 = replace_na(wg_g_m2, 0)) %>%
       dplyr::select(LIT,
@@ -456,10 +487,17 @@ qdt_mass_g_m2 %>%
 mass_kg_LIT <- qdt_mass_g_m2 %>%
   group_by(LIT) %>%
   na.omit() %>%
-  summarise(mass_kg_lit = sum(tot_g_m2 * area_ha * 10),
+  summarise(tot_mass_kg_lit = sum(tot_g_m2 * area_ha * 10),
+            st_mass_kg_lit = sum(st_g_m2 * area_ha * 10),
+            wg_mass_kg_lit = sum(wg_g_m2 * area_ha * 10),
             tot_ha = sum(area_ha),
             .groups = "drop") %>%
-  mutate(kg.ha = mass_kg_lit / tot_ha)
+  mutate(tot_kg.ha = tot_mass_kg_lit / tot_ha,
+         st_kg.ha = st_mass_kg_lit / tot_ha,
+         wg_kg.ha = wg_mass_kg_lit / tot_ha,
+         year = 2019)
+
+write.csv(mass_kg_LIT, "mass_kg_LIT_2019.txt")
 
 attr(mass_kg_LIT, "notes") <- "These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass."
 
@@ -919,13 +957,13 @@ compare_su_mass %>%
 ```{r CompareRefuges}
 ## Comparisons for Total seed mass across subunits in each Refuge #########
 for (lit in 1:length(unique(qdt_mass_g_m2$LIT))) {
-compare_su_mass$tot_mass[[lit]] %>%
-  dplyr::select(diff.name,
-                mean.a,
-                mean.b,
-                approx_p_value) %>%
-  as_tibble() %>%
-  print(n = Inf)
+  compare_su_mass$tot_mass[[lit]] %>%
+    dplyr::select(diff.name,
+                  mean.a,
+                  mean.b,
+                  approx_p_value) %>%
+    as_tibble() %>%
+    print(n = Inf)
 }
 
 ```
