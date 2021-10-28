@@ -1,0 +1,67 @@
+---
+title: "Equations to calculate mass from seedhead dimensions"
+author: "Emilio A. Laca"
+date: "10/27/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(car)
+library(magrittr)
+
+```
+
+## Data from summer 2021
+
+```{r readData}
+
+sh_dim <- read_excel("Dimensions2MassEquations/SeedDimensionsMDC2021.xlsx", sheet = "dimensions")
+
+sh_mass <- read_excel("Dimensions2MassEquations/SeedDimensionsMDC2021.xlsx", sheet = "weights")
+
+```
+
+Forsome species we grouped several similar seedheads in a bag. Average dimensions have to be calculated for those ans then dimensions and mass have to be merged.
+
+```{r mergeDiemsionsMass, warning=FALSE}
+
+avg_sh_dim <- sh_dim %>%
+  group_by(LIT, spp, taxonID, bag_id) %>%
+  summarise(f2t_length_mm = mean(f2t_length_mm),
+            length_mm = mean(length_mm),
+            width_mm =  mean(width_mm),
+            .groups = "drop")
+
+sh_dim_mass <- full_join(avg_sh_dim, sh_mass)
+
+```
+
+## Exploration
+
+Some models use an a priori combination of dimensions to calculate volume and then regress mass on volume.
+
+```{r exploreDataSmartweed}
+
+sw_dim <- sh_dim_mass %>%
+  dplyr::filter(spp == "Smartweed") %>%
+  mutate(vol_mm3 = pi * (width_mm/2)^2 * length_mm)
+
+sw_dim %>% dplyr::select(mass_mg, length_mm, width_mm, vol_mm3) %>% pairs()
+
+scatterplot(mass_mg ~ vol_mm3, sw_dim, log = "xy")
+
+sw_dim[which.max(sw_dim$vol_mm3), ]
+
+sw_dim %<>% dplyr::filter(vol_mm3 != max(vol_mm3))
+
+```
+
+There is an outlier with unusual width that is excluded.
+
+
+
+
+
