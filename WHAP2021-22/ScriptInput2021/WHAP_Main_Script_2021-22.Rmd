@@ -59,6 +59,9 @@ st_all_noO <- readRDS("st_all_noO.rds") %>%
 wgdat <- readRDS("wgdat.rds") %>%
   rename_with(~gsub(".", "_", .x, fixed = TRUE))
 
+# Data to create model for SW: mass = f(seed no., seed length)
+sw_dat <- readRDS("swdat.rds") 
+
 ```
 
 ## Models to go from seed dimensions to mass
@@ -80,6 +83,15 @@ WG_len2mass <- lm(log(mass_per_sh_mg  + 20) ~ sh_len_cm +
                   data = wgdat,
                   na.action = na.exclude)
 
+```
+
+```{r SW_len2mass}
+
+SW_dim2mass <- lm(bcPower(mass_mg, lambda = 0.33) ~ log(vol_mm3) + length_mm,
+            data = sw_dat)
+
+#Y_prime <- predict(SW_dim2mass,  newdata = .)
+#Y <- lambda * Y_prime + 1) ^ (1/lambda) # where lambda = 0.33
 ```
 
 ## Read data files
