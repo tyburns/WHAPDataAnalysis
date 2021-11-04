@@ -30,15 +30,15 @@ library(kableExtra)
 # In the future, this chunk should join all years available or
 # use a file with all years that is automatically created at the server.
 
-gm2_2019 <-read.csv("qdt_mass_g_m2_2019.txt") %>%
+gm2_2019 <-read.csv("~/WHAP_Analysis/WHAPDataAnalysis/MainScriptDataOutput/qdt_mass_g_m2_2019.txt") %>%
   dplyr::select(-X) %>%
   mutate(year = 2019)
 
-gm2_2020 <-read.csv("qdt_mass_g_m2_2020.txt") %>%
+gm2_2020 <-read.csv("~/WHAP_Analysis/WHAPDataAnalysis/MainScriptDataOutput/qdt_mass_g_m2_2020.txt") %>%
   dplyr::select(-X) %>%
   mutate(year = 2020)
 
-gm2_2021 <-read.csv("qdt_mass_g_m2_2021.txt") %>%
+gm2_2021 <-read.csv("~/WHAP_Analysis/WHAPDataAnalysis/MainScriptDataOutput/qdt_mass_g_m2_2021.txt") %>%
   dplyr::select(-X) %>%
   mutate(year = 2021)
 
