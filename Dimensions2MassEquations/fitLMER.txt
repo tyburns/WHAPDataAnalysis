@@ -1,0 +1,500 @@
+======================================================
+===              backfitting fixed effects         ===
+======================================================
+'data.frame':	3356 obs. of  23 variables:
+ $ GlobalID        : chr  "{0038B8D5-BD48-48A2-9BD6-EC3B75339403}" "{0038B8D5-BD48-48A2-9BD6-EC3B75339403}" "{0038B8D5-BD48-48A2-9BD6-EC3B75339403}" "{0038B8D5-BD48-48A2-9BD6-EC3B75339403}" ...
+ $ decimalLatitude : num  35.7 35.7 35.7 35.7 35.7 ...
+ $ decimalLongitude: num  -120 -120 -120 -120 -120 ...
+ $ LIT             : chr  "KRN" "KRN" "KRN" "KRN" ...
+ $ unitName        : chr  "4A-3" "4A-3" "4A-3" "4A-3" ...
+ $ subunitName     : chr  "4A-3" "4A-3" "4A-3" "4A-3" ...
+ $ recordedBy      : chr  "therese_burns@fws.gov_fws" "therese_burns@fws.gov_fws" "therese_burns@fws.gov_fws" "therese_burns@fws.gov_fws" ...
+ $ eventDate       : chr  "7/28/2021 17:13" "7/28/2021 17:13" "7/28/2021 17:13" "7/28/2021 17:13" ...
+ $ quadratSize     : chr  "15x15" "15x15" "15x15" "15x15" ...
+ $ managementAction: chr  "mowed" "mowed" "mowed" "mowed" ...
+ $ taxonID         : int  41605 41605 41605 41605 41605 502210 502210 502210 502210 502210 ...
+ $ vernacularName  : chr  "Swamp_Timothy" "Swamp_Timothy" "Swamp_Timothy" "Swamp_Timothy" ...
+ $ stratum         : chr  "medium" "medium" "medium" "medium" ...
+ $ plantHeight     : num  8 8 8 8 8 29.2 29.2 5.8 5.8 5.8 ...
+ $ nSeedHeads      : int  33 33 33 33 33 1 1 3 3 3 ...
+ $ eventRemarks    : chr  "" "" "" "" ...
+ $ GlobalID_seed   : chr  "{99CBFC25-0566-4E86-8970-4CE1EEA6B031}" "{C7849AA4-52DA-49E1-9143-9902216045BB}" "{00C4D399-2309-4F36-83BE-D6F5F5EDA7BF}" "{780A18A8-2CFB-4CEA-BC63-70B698FACEBB}" ...
+ $ measurementType : chr  "sh_length_mm" "sh_length_mm" "sh_length_mm" "sh_length_mm" ...
+ $ measurementValue: int  12 18 8 10 12 144 122 28 14 68 ...
+ $ GlobalID_CP     : chr  "{647F67F6-2B87-46CF-9354-62CC54CD7F4E}" "{647F67F6-2B87-46CF-9354-62CC54CD7F4E}" "{647F67F6-2B87-46CF-9354-62CC54CD7F4E}" "{647F67F6-2B87-46CF-9354-62CC54CD7F4E}" ...
+ $ GlobalID_VP     : chr  "{861E5191-3119-44C2-985F-0D46BD192F7A}" "{861E5191-3119-44C2-985F-0D46BD192F7A}" "{861E5191-3119-44C2-985F-0D46BD192F7A}" "{861E5191-3119-44C2-985F-0D46BD192F7A}" ...
+ $ distanceCP_m    : num  3.85 3.85 3.85 3.85 3.85 ...
+ $ distanceVP_m    : num  0 0 0 0 0 0 0 0 0 0 ...
+                                 GlobalID decimalLatitude decimalLongitude LIT         unitName      subunitName
+1  {00EE7CA1-47E3-40B4-A7AA-D6416E424A54}        41.48268        -120.5174 MDC  Grandma Tract 9  Grandma Tract 9
+2  {00EE7CA1-47E3-40B4-A7AA-D6416E424A54}        41.48268        -120.5174 MDC  Grandma Tract 9  Grandma Tract 9
+3  {00EE7CA1-47E3-40B4-A7AA-D6416E424A54}        41.48268        -120.5174 MDC  Grandma Tract 9  Grandma Tract 9
+4  {00EE7CA1-47E3-40B4-A7AA-D6416E424A54}        41.48268        -120.5174 MDC  Grandma Tract 9  Grandma Tract 9
+5  {00EE7CA1-47E3-40B4-A7AA-D6416E424A54}        41.48268        -120.5174 MDC  Grandma Tract 9  Grandma Tract 9
+6  {00EE7CA1-47E3-40B4-A7AA-D6416E424A54}        41.48268        -120.5174 MDC  Grandma Tract 9  Grandma Tract 9
+7  {00EE7CA1-47E3-40B4-A7AA-D6416E424A54}        41.48268        -120.5174 MDC  Grandma Tract 9  Grandma Tract 9
+8  {00EE7CA1-47E3-40B4-A7AA-D6416E424A54}        41.48268        -120.5174 MDC  Grandma Tract 9  Grandma Tract 9
+9  {00EE7CA1-47E3-40B4-A7AA-D6416E424A54}        41.48268        -120.5174 MDC  Grandma Tract 9  Grandma Tract 9
+10 {00EE7CA1-47E3-40B4-A7AA-D6416E424A54}        41.48268        -120.5174 MDC  Grandma Tract 9  Grandma Tract 9
+11 {01FD9E65-5A93-4403-AB2C-D29E42A6C9E5}        41.44489        -120.5295 MDC         Matney 6         Matney 6
+12 {01FD9E65-5A93-4403-AB2C-D29E42A6C9E5}        41.44489        -120.5295 MDC         Matney 6         Matney 6
+13 {01FD9E65-5A93-4403-AB2C-D29E42A6C9E5}        41.44489        -120.5295 MDC         Matney 6         Matney 6
+14 {01FD9E65-5A93-4403-AB2C-D29E42A6C9E5}        41.44489        -120.5295 MDC         Matney 6         Matney 6
+15 {01FD9E65-5A93-4403-AB2C-D29E42A6C9E5}        41.44489        -120.5295 MDC         Matney 6         Matney 6
+16 {01FD9E65-5A93-4403-AB2C-D29E42A6C9E5}        41.44489        -120.5295 MDC         Matney 6         Matney 6
+17 {01FD9E65-5A93-4403-AB2C-D29E42A6C9E5}        41.44489        -120.5295 MDC         Matney 6         Matney 6
+18 {01FD9E65-5A93-4403-AB2C-D29E42A6C9E5}        41.44489        -120.5295 MDC         Matney 6         Matney 6
+19 {01FD9E65-5A93-4403-AB2C-D29E42A6C9E5}        41.44489        -120.5295 MDC         Matney 6         Matney 6
+20 {01FD9E65-5A93-4403-AB2C-D29E42A6C9E5}        41.44489        -120.5295 MDC         Matney 6         Matney 6
+21 {023107C6-6157-4CB4-B30F-21D94D638AB0}        41.45241        -120.5235 MDC Upper Goose Pond Upper Goose Pond
+22 {023107C6-6157-4CB4-B30F-21D94D638AB0}        41.45241        -120.5235 MDC Upper Goose Pond Upper Goose Pond
+23 {023107C6-6157-4CB4-B30F-21D94D638AB0}        41.45241        -120.5235 MDC Upper Goose Pond Upper Goose Pond
+24 {023107C6-6157-4CB4-B30F-21D94D638AB0}        41.45241        -120.5235 MDC Upper Goose Pond Upper Goose Pond
+25 {023107C6-6157-4CB4-B30F-21D94D638AB0}        41.45241        -120.5235 MDC Upper Goose Pond Upper Goose Pond
+26 {023107C6-6157-4CB4-B30F-21D94D638AB0}        41.45241        -120.5235 MDC Upper Goose Pond Upper Goose Pond
+27 {023107C6-6157-4CB4-B30F-21D94D638AB0}        41.45241        -120.5235 MDC Upper Goose Pond Upper Goose Pond
+28 {023107C6-6157-4CB4-B30F-21D94D638AB0}        41.45241        -120.5235 MDC Upper Goose Pond Upper Goose Pond
+29 {023107C6-6157-4CB4-B30F-21D94D638AB0}        41.45241        -120.5235 MDC Upper Goose Pond Upper Goose Pond
+30 {023107C6-6157-4CB4-B30F-21D94D638AB0}        41.45241        -120.5235 MDC Upper Goose Pond Upper Goose Pond
+31 {094274F8-3A65-46C4-AAD2-B2CD71DE5A65}        41.47487        -120.5207 MDC    Flournoy Pond    Flournoy Pond
+32 {094274F8-3A65-46C4-AAD2-B2CD71DE5A65}        41.47487        -120.5207 MDC    Flournoy Pond    Flournoy Pond
+33 {094274F8-3A65-46C4-AAD2-B2CD71DE5A65}        41.47487        -120.5207 MDC    Flournoy Pond    Flournoy Pond
+34 {094274F8-3A65-46C4-AAD2-B2CD71DE5A65}        41.47487        -120.5207 MDC    Flournoy Pond    Flournoy Pond
+35 {094274F8-3A65-46C4-AAD2-B2CD71DE5A65}        41.47487        -120.5207 MDC    Flournoy Pond    Flournoy Pond
+36 {094274F8-3A65-46C4-AAD2-B2CD71DE5A65}        41.47487        -120.5207 MDC    Flournoy Pond    Flournoy Pond
+37 {094274F8-3A65-46C4-AAD2-B2CD71DE5A65}        41.47487        -120.5207 MDC    Flournoy Pond    Flournoy Pond
+38 {094274F8-3A65-46C4-AAD2-B2CD71DE5A65}        41.47487        -120.5207 MDC    Flournoy Pond    Flournoy Pond
+39 {094274F8-3A65-46C4-AAD2-B2CD71DE5A65}        41.47487        -120.5207 MDC    Flournoy Pond    Flournoy Pond
+40 {094274F8-3A65-46C4-AAD2-B2CD71DE5A65}        41.47487        -120.5207 MDC    Flournoy Pond    Flournoy Pond
+41 {0B78008E-7CD0-4723-90CA-C0C74F376270}        41.45233        -120.5236 MDC Upper Goose Pond Upper Goose Pond
+42 {0B78008E-7CD0-4723-90CA-C0C74F376270}        41.45233        -120.5236 MDC Upper Goose Pond Upper Goose Pond
+43 {0B78008E-7CD0-4723-90CA-C0C74F376270}        41.45233        -120.5236 MDC Upper Goose Pond Upper Goose Pond
+                   recordedBy       eventDate quadratSize managementAction taxonID vernacularName stratum plantHeight
+1  jessica_simons@fws.gov_fws 8/26/2021 18:47       30x30             none  823756      Smartweed     low        16.6
+2  jessica_simons@fws.gov_fws 8/26/2021 18:47       30x30             none  823756      Smartweed     low        16.6
+3  jessica_simons@fws.gov_fws 8/26/2021 18:47       30x30             none  823756      Smartweed     low        16.6
+4  jessica_simons@fws.gov_fws 8/26/2021 18:47       30x30             none  823756      Smartweed     low        16.6
+5  jessica_simons@fws.gov_fws 8/26/2021 18:47       30x30             none  823756      Smartweed     low        16.6
+6  jessica_simons@fws.gov_fws 8/26/2021 18:47       30x30             none  823756      Smartweed     low        16.6
+7  jessica_simons@fws.gov_fws 8/26/2021 18:47       30x30             none  823756      Smartweed     low        16.6
+8  jessica_simons@fws.gov_fws 8/26/2021 18:47       30x30             none  823756      Smartweed     low        16.6
+9  jessica_simons@fws.gov_fws 8/26/2021 18:47       30x30             none  823756      Smartweed     low        16.6
+10 jessica_simons@fws.gov_fws 8/26/2021 18:47       30x30             none  823756      Smartweed     low        16.6
+11 jessica_simons@fws.gov_fws 8/25/2021 14:43       30x30             none  823756      Smartweed    high        72.0
+12 jessica_simons@fws.gov_fws 8/25/2021 14:43       30x30             none  823756      Smartweed    high        72.0
+13 jessica_simons@fws.gov_fws 8/25/2021 14:43       30x30             none  823756      Smartweed    high        72.0
+14 jessica_simons@fws.gov_fws 8/25/2021 14:43       30x30             none  823756      Smartweed    high        72.0
+15 jessica_simons@fws.gov_fws 8/25/2021 14:43       30x30             none  823756      Smartweed    high        72.0
+16 jessica_simons@fws.gov_fws 8/25/2021 14:43       30x30             none  823756      Smartweed    high        72.0
+17 jessica_simons@fws.gov_fws 8/25/2021 14:43       30x30             none  823756      Smartweed    high        72.0
+18 jessica_simons@fws.gov_fws 8/25/2021 14:43       30x30             none  823756      Smartweed    high        72.0
+19 jessica_simons@fws.gov_fws 8/25/2021 14:43       30x30             none  823756      Smartweed    high        72.0
+20 jessica_simons@fws.gov_fws 8/25/2021 14:43       30x30             none  823756      Smartweed    high        72.0
+21 jessica_simons@fws.gov_fws 8/23/2021 16:43       30x30             none  823756      Smartweed     low        12.2
+22 jessica_simons@fws.gov_fws 8/23/2021 16:43       30x30             none  823756      Smartweed     low        12.2
+23 jessica_simons@fws.gov_fws 8/23/2021 16:43       30x30             none  823756      Smartweed     low        12.2
+24 jessica_simons@fws.gov_fws 8/23/2021 16:43       30x30             none  823756      Smartweed     low        12.2
+25 jessica_simons@fws.gov_fws 8/23/2021 16:43       30x30             none  823756      Smartweed     low        12.2
+26 jessica_simons@fws.gov_fws 8/23/2021 16:43       30x30             none  823756      Smartweed     low        12.2
+27 jessica_simons@fws.gov_fws 8/23/2021 16:43       30x30             none  823756      Smartweed     low        12.2
+28 jessica_simons@fws.gov_fws 8/23/2021 16:43       30x30             none  823756      Smartweed     low        12.2
+29 jessica_simons@fws.gov_fws 8/23/2021 16:43       30x30             none  823756      Smartweed     low        12.2
+30 jessica_simons@fws.gov_fws 8/23/2021 16:43       30x30             none  823756      Smartweed     low        12.2
+31 jessica_simons@fws.gov_fws 8/23/2021 18:13       30x30             none  823756      Smartweed  medium        25.6
+32 jessica_simons@fws.gov_fws 8/23/2021 18:13       30x30             none  823756      Smartweed  medium        25.6
+33 jessica_simons@fws.gov_fws 8/23/2021 18:13       30x30             none  823756      Smartweed  medium        25.6
+34 jessica_simons@fws.gov_fws 8/23/2021 18:13       30x30             none  823756      Smartweed  medium        25.6
+35 jessica_simons@fws.gov_fws 8/23/2021 18:13       30x30             none  823756      Smartweed  medium        25.6
+36 jessica_simons@fws.gov_fws 8/23/2021 18:13       30x30             none  823756      Smartweed  medium        25.6
+37 jessica_simons@fws.gov_fws 8/23/2021 18:13       30x30             none  823756      Smartweed  medium        25.6
+38 jessica_simons@fws.gov_fws 8/23/2021 18:13       30x30             none  823756      Smartweed  medium        25.6
+39 jessica_simons@fws.gov_fws 8/23/2021 18:13       30x30             none  823756      Smartweed  medium        25.6
+40 jessica_simons@fws.gov_fws 8/23/2021 18:13       30x30             none  823756      Smartweed  medium        25.6
+41 jessica_simons@fws.gov_fws 8/23/2021 16:47       30x30             none  823756      Smartweed     low         7.8
+42 jessica_simons@fws.gov_fws 8/23/2021 16:47       30x30             none  823756      Smartweed     low         7.8
+43 jessica_simons@fws.gov_fws 8/23/2021 16:47       30x30             none  823756      Smartweed     low         7.8
+   nSeedHeads eventRemarks                          GlobalID_seed measurementType measurementValue
+1          40              {7AE6BB25-9CE1-4DEE-B0B8-629B50DA4E8F}    sh_length_mm               16
+2          40              {585871A0-2BDF-4654-9A3C-1F927EFF04F8}    sh_length_mm               14
+3          40              {70DBF1ED-634F-433F-A188-737219158E70}    sh_length_mm                6
+4          40              {7966E823-D399-4437-BB77-B67270BB6739}    sh_length_mm               12
+5          40              {025BEC03-FDFA-4810-A270-13D10FB16CE5}    sh_length_mm               12
+6          40              {70DBF1ED-634F-433F-A188-737219158E70}     sh_width_mm                6
+7          40              {025BEC03-FDFA-4810-A270-13D10FB16CE5}     sh_width_mm                9
+8          40              {585871A0-2BDF-4654-9A3C-1F927EFF04F8}     sh_width_mm                8
+9          40              {7AE6BB25-9CE1-4DEE-B0B8-629B50DA4E8F}     sh_width_mm               10
+10         40              {7966E823-D399-4437-BB77-B67270BB6739}     sh_width_mm                8
+11        211              {86C34ABD-5340-417C-995A-A8D23CD591E8}    sh_length_mm               20
+12        211              {03B942BF-08B0-443C-B379-24819CF625C4}    sh_length_mm               10
+13        211              {5381194B-3FB6-4C2F-838D-C28D2FAE159E}    sh_length_mm               22
+14        211              {1542B7F0-8143-40C6-AC2E-6A5A6D84A3EE}    sh_length_mm               50
+15        211              {63364E29-2878-4DE3-8440-9A49A5936A6F}    sh_length_mm               14
+16        211              {1542B7F0-8143-40C6-AC2E-6A5A6D84A3EE}     sh_width_mm                6
+17        211              {86C34ABD-5340-417C-995A-A8D23CD591E8}     sh_width_mm                8
+18        211              {63364E29-2878-4DE3-8440-9A49A5936A6F}     sh_width_mm                8
+19        211              {03B942BF-08B0-443C-B379-24819CF625C4}     sh_width_mm                8
+20        211              {5381194B-3FB6-4C2F-838D-C28D2FAE159E}     sh_width_mm                8
+21         26      Planted {C0D0C922-7BA1-4260-9C80-D4CF54E1643E}    sh_length_mm                7
+22         26      Planted {56914139-C241-4C39-A7CE-2D14A1EC6D4C}    sh_length_mm               21
+23         26      Planted {E26C7636-DDA8-4BB7-B296-488617CEE740}    sh_length_mm               14
+24         26      Planted {2B83BEF6-4FFE-4BBD-9083-07EB866DBA92}    sh_length_mm               10
+25         26      Planted {38B44C42-6955-413E-B955-8C55F924D869}    sh_length_mm               22
+26         26      Planted {E26C7636-DDA8-4BB7-B296-488617CEE740}     sh_width_mm               10
+27         26      Planted {2B83BEF6-4FFE-4BBD-9083-07EB866DBA92}     sh_width_mm                8
+28         26      Planted {C0D0C922-7BA1-4260-9C80-D4CF54E1643E}     sh_width_mm                8
+29         26      Planted {38B44C42-6955-413E-B955-8C55F924D869}     sh_width_mm                8
+30         26      Planted {56914139-C241-4C39-A7CE-2D14A1EC6D4C}     sh_width_mm               10
+31         24              {4AC464ED-ECDE-4ADF-A6ED-E7E52B763E5B}    sh_length_mm               18
+32         24              {AB607CBD-8DC8-4C5D-9846-C7CA43739F08}    sh_length_mm               12
+33         24              {FBE281A8-A8AF-4382-AB38-E2B11EB5145B}    sh_length_mm               12
+34         24              {27EB7F40-9B23-49AD-95EE-D7DD249A06F2}    sh_length_mm               18
+35         24              {D6DFAEC0-AEC3-46AF-8270-5812C32E5CEB}    sh_length_mm               14
+36         24              {FBE281A8-A8AF-4382-AB38-E2B11EB5145B}     sh_width_mm                5
+37         24              {AB607CBD-8DC8-4C5D-9846-C7CA43739F08}     sh_width_mm                6
+38         24              {D6DFAEC0-AEC3-46AF-8270-5812C32E5CEB}     sh_width_mm                8
+39         24              {27EB7F40-9B23-49AD-95EE-D7DD249A06F2}     sh_width_mm                4
+40         24              {4AC464ED-ECDE-4ADF-A6ED-E7E52B763E5B}     sh_width_mm                5
+41          9      Planted {3FEB31D3-AE77-4C39-BA01-76CBFD8112A6}    sh_length_mm                5
+42          9      Planted {272D8679-4165-49FD-8632-DDC8659F7C76}    sh_length_mm               21
+43          9      Planted {AC1CCD9C-ED05-49C6-B625-3ABA7B1C2315}    sh_length_mm               11
+                              GlobalID_CP                            GlobalID_VP distanceCP_m distanceVP_m
+1  {19ABEF16-C63B-4BF2-812A-BA40A5E7855F} {6EC46060-DCD8-406C-9197-7614C657217E}     8.609864      0.00000
+2  {19ABEF16-C63B-4BF2-812A-BA40A5E7855F} {6EC46060-DCD8-406C-9197-7614C657217E}     8.609864      0.00000
+3  {19ABEF16-C63B-4BF2-812A-BA40A5E7855F} {6EC46060-DCD8-406C-9197-7614C657217E}     8.609864      0.00000
+4  {19ABEF16-C63B-4BF2-812A-BA40A5E7855F} {6EC46060-DCD8-406C-9197-7614C657217E}     8.609864      0.00000
+5  {19ABEF16-C63B-4BF2-812A-BA40A5E7855F} {6EC46060-DCD8-406C-9197-7614C657217E}     8.609864      0.00000
+6  {19ABEF16-C63B-4BF2-812A-BA40A5E7855F} {6EC46060-DCD8-406C-9197-7614C657217E}     8.609864      0.00000
+7  {19ABEF16-C63B-4BF2-812A-BA40A5E7855F} {6EC46060-DCD8-406C-9197-7614C657217E}     8.609864      0.00000
+8  {19ABEF16-C63B-4BF2-812A-BA40A5E7855F} {6EC46060-DCD8-406C-9197-7614C657217E}     8.609864      0.00000
+9  {19ABEF16-C63B-4BF2-812A-BA40A5E7855F} {6EC46060-DCD8-406C-9197-7614C657217E}     8.609864      0.00000
+10 {19ABEF16-C63B-4BF2-812A-BA40A5E7855F} {6EC46060-DCD8-406C-9197-7614C657217E}     8.609864      0.00000
+11 {7B9F9B4E-7A70-4755-A482-B1E8BE29B38C} {4C52FF4B-2384-44ED-9473-D7F415EFA8BD}     5.734427      0.00000
+12 {7B9F9B4E-7A70-4755-A482-B1E8BE29B38C} {4C52FF4B-2384-44ED-9473-D7F415EFA8BD}     5.734427      0.00000
+13 {7B9F9B4E-7A70-4755-A482-B1E8BE29B38C} {4C52FF4B-2384-44ED-9473-D7F415EFA8BD}     5.734427      0.00000
+14 {7B9F9B4E-7A70-4755-A482-B1E8BE29B38C} {4C52FF4B-2384-44ED-9473-D7F415EFA8BD}     5.734427      0.00000
+15 {7B9F9B4E-7A70-4755-A482-B1E8BE29B38C} {4C52FF4B-2384-44ED-9473-D7F415EFA8BD}     5.734427      0.00000
+16 {7B9F9B4E-7A70-4755-A482-B1E8BE29B38C} {4C52FF4B-2384-44ED-9473-D7F415EFA8BD}     5.734427      0.00000
+17 {7B9F9B4E-7A70-4755-A482-B1E8BE29B38C} {4C52FF4B-2384-44ED-9473-D7F415EFA8BD}     5.734427      0.00000
+18 {7B9F9B4E-7A70-4755-A482-B1E8BE29B38C} {4C52FF4B-2384-44ED-9473-D7F415EFA8BD}     5.734427      0.00000
+19 {7B9F9B4E-7A70-4755-A482-B1E8BE29B38C} {4C52FF4B-2384-44ED-9473-D7F415EFA8BD}     5.734427      0.00000
+20 {7B9F9B4E-7A70-4755-A482-B1E8BE29B38C} {4C52FF4B-2384-44ED-9473-D7F415EFA8BD}     5.734427      0.00000
+21 {CB204275-6D25-4E6A-A1D5-248548A05A1C} {12CDBE26-DE64-4466-81A6-F92879E4403B}     3.354081      0.00000
+22 {CB204275-6D25-4E6A-A1D5-248548A05A1C} {12CDBE26-DE64-4466-81A6-F92879E4403B}     3.354081      0.00000
+23 {CB204275-6D25-4E6A-A1D5-248548A05A1C} {12CDBE26-DE64-4466-81A6-F92879E4403B}     3.354081      0.00000
+24 {CB204275-6D25-4E6A-A1D5-248548A05A1C} {12CDBE26-DE64-4466-81A6-F92879E4403B}     3.354081      0.00000
+25 {CB204275-6D25-4E6A-A1D5-248548A05A1C} {12CDBE26-DE64-4466-81A6-F92879E4403B}     3.354081      0.00000
+26 {CB204275-6D25-4E6A-A1D5-248548A05A1C} {12CDBE26-DE64-4466-81A6-F92879E4403B}     3.354081      0.00000
+27 {CB204275-6D25-4E6A-A1D5-248548A05A1C} {12CDBE26-DE64-4466-81A6-F92879E4403B}     3.354081      0.00000
+28 {CB204275-6D25-4E6A-A1D5-248548A05A1C} {12CDBE26-DE64-4466-81A6-F92879E4403B}     3.354081      0.00000
+29 {CB204275-6D25-4E6A-A1D5-248548A05A1C} {12CDBE26-DE64-4466-81A6-F92879E4403B}     3.354081      0.00000
+30 {CB204275-6D25-4E6A-A1D5-248548A05A1C} {12CDBE26-DE64-4466-81A6-F92879E4403B}     3.354081      0.00000
+31 {CF52B0D6-79C2-4864-AD1A-2276F1C95DAB} {2F0728CD-77BE-4B71-B4DC-1F65194868BB}     7.145476     54.44426
+32 {CF52B0D6-79C2-4864-AD1A-2276F1C95DAB} {2F0728CD-77BE-4B71-B4DC-1F65194868BB}     7.145476     54.44426
+33 {CF52B0D6-79C2-4864-AD1A-2276F1C95DAB} {2F0728CD-77BE-4B71-B4DC-1F65194868BB}     7.145476     54.44426
+34 {CF52B0D6-79C2-4864-AD1A-2276F1C95DAB} {2F0728CD-77BE-4B71-B4DC-1F65194868BB}     7.145476     54.44426
+35 {CF52B0D6-79C2-4864-AD1A-2276F1C95DAB} {2F0728CD-77BE-4B71-B4DC-1F65194868BB}     7.145476     54.44426
+36 {CF52B0D6-79C2-4864-AD1A-2276F1C95DAB} {2F0728CD-77BE-4B71-B4DC-1F65194868BB}     7.145476     54.44426
+37 {CF52B0D6-79C2-4864-AD1A-2276F1C95DAB} {2F0728CD-77BE-4B71-B4DC-1F65194868BB}     7.145476     54.44426
+38 {CF52B0D6-79C2-4864-AD1A-2276F1C95DAB} {2F0728CD-77BE-4B71-B4DC-1F65194868BB}     7.145476     54.44426
+39 {CF52B0D6-79C2-4864-AD1A-2276F1C95DAB} {2F0728CD-77BE-4B71-B4DC-1F65194868BB}     7.145476     54.44426
+40 {CF52B0D6-79C2-4864-AD1A-2276F1C95DAB} {2F0728CD-77BE-4B71-B4DC-1F65194868BB}     7.145476     54.44426
+41 {CB204275-6D25-4E6A-A1D5-248548A05A1C} {12CDBE26-DE64-4466-81A6-F92879E4403B}     7.438479      0.00000
+42 {CB204275-6D25-4E6A-A1D5-248548A05A1C} {12CDBE26-DE64-4466-81A6-F92879E4403B}     7.438479      0.00000
+43 {CB204275-6D25-4E6A-A1D5-248548A05A1C} {12CDBE26-DE64-4466-81A6-F92879E4403B}     7.438479      0.00000
+ [ reached 'max' / getOption("max.print") -- omitted 857 rows ]
+# A tibble: 398 × 23
+   GlobalID  decimalLatitude decimalLongitude LIT   unitName  subunitName recordedBy eventDate quadratSize managementAction
+   <chr>               <dbl>            <dbl> <chr> <chr>     <chr>       <chr>      <chr>     <chr>       <chr>           
+ 1 {00D5778…            41.4            -121. MDC   Matney 3  Matney 3    jessica_s… 8/24/202… 30x30       none            
+ 2 {00DDB9C…            41.4            -121. MDC   Matney 4… Matney 4 N… jessica_s… 8/24/202… 30x30       none            
+ 3 {00DDB9C…            41.4            -121. MDC   Matney 4… Matney 4 N… jessica_s… 8/24/202… 30x30       none            
+ 4 {00DDB9C…            41.4            -121. MDC   Matney 4… Matney 4 N… jessica_s… 8/24/202… 30x30       none            
+ 5 {01073B6…            35.9            -119. PIX   2A        2A          therese_b… 7/29/202… 30x30       none            
+ 6 {01073B6…            35.9            -119. PIX   2A        2A          therese_b… 7/29/202… 30x30       none            
+ 7 {01073B6…            35.9            -119. PIX   2A        2A          therese_b… 7/29/202… 30x30       none            
+ 8 {01073B6…            35.9            -119. PIX   2A        2A          therese_b… 7/29/202… 30x30       none            
+ 9 {01073B6…            35.9            -119. PIX   2A        2A          therese_b… 7/29/202… 30x30       none            
+10 {01E8F17…            41.5            -121. MDC   Grandma … Grandma Tr… jessica_s… 8/26/202… 30x30       none            
+# … with 388 more rows, and 13 more variables: taxonID <int>, vernacularName <chr>, stratum <chr>, plantHeight <dbl>,
+#   nSeedHeads <int>, eventRemarks <chr>, GlobalID_seed <chr>, GlobalID_CP <chr>, GlobalID_VP <chr>, distanceCP_m <dbl>,
+#   distanceVP_m <dbl>, f2t_length_mm <int>, sh_length_mm <int>
+tibble [398 × 23] (S3: tbl_df/tbl/data.frame)
+ $ GlobalID        : chr [1:398] "{00D5778F-D6DD-466B-B28F-FBBC735FA424}" "{00DDB9C1-AE17-49F2-BDBE-51749A5368D9}" "{00DDB9C1-AE17-49F2-BDBE-51749A5368D9}" "{00DDB9C1-AE17-49F2-BDBE-51749A5368D9}" ...
+ $ decimalLatitude : num [1:398] 41.4 41.4 41.4 41.4 35.9 ...
+ $ decimalLongitude: num [1:398] -121 -121 -121 -121 -119 ...
+ $ LIT             : chr [1:398] "MDC" "MDC" "MDC" "MDC" ...
+ $ unitName        : chr [1:398] "Matney 3" "Matney 4 North" "Matney 4 North" "Matney 4 North" ...
+ $ subunitName     : chr [1:398] "Matney 3" "Matney 4 North" "Matney 4 North" "Matney 4 North" ...
+ $ recordedBy      : chr [1:398] "jessica_simons@fws.gov_fws" "jessica_simons@fws.gov_fws" "jessica_simons@fws.gov_fws" "jessica_simons@fws.gov_fws" ...
+ $ eventDate       : chr [1:398] "8/24/2021 16:45" "8/24/2021 18:35" "8/24/2021 18:35" "8/24/2021 18:35" ...
+ $ quadratSize     : chr [1:398] "30x30" "30x30" "30x30" "30x30" ...
+ $ managementAction: chr [1:398] "none" "none" "none" "none" ...
+ $ taxonID         : int [1:398] 502210 502210 502210 502210 502210 502210 502210 502210 502210 502210 ...
+ $ vernacularName  : chr [1:398] "Watergrass" "Watergrass" "Watergrass" "Watergrass" ...
+ $ stratum         : chr [1:398] "low" "low" "low" "low" ...
+ $ plantHeight     : num [1:398] 29.2 5.8 5.8 5.8 34 34 34 34 34 35.2 ...
+ $ nSeedHeads      : int [1:398] 1 3 3 3 5 5 5 5 5 8 ...
+ $ eventRemarks    : chr [1:398] "" "" "" "" ...
+ $ GlobalID_seed   : chr [1:398] "{E2ABF14F-401E-4D0C-BB3C-558C71C21FEB}" "{47D9E74E-1C8D-47C4-AC91-0F852FE0B0EE}" "{0C6E789D-D67F-4DAE-A451-B3A70544F2B2}" "{1EB500C2-AD3C-42FA-8796-70BD1B8970CB}" ...
+ $ GlobalID_CP     : chr [1:398] "{659FDACE-A5C1-41D3-92F6-25291391928D}" "{E190B07C-C591-4A97-AA93-EBCD95D11205}" "{E190B07C-C591-4A97-AA93-EBCD95D11205}" "{E190B07C-C591-4A97-AA93-EBCD95D11205}" ...
+ $ GlobalID_VP     : chr [1:398] "{ED930FF6-A393-4536-83F1-609AAE3483F2}" "{1327AFC9-62DB-4F10-87AF-7A061BACAE8C}" "{1327AFC9-62DB-4F10-87AF-7A061BACAE8C}" "{1327AFC9-62DB-4F10-87AF-7A061BACAE8C}" ...
+ $ distanceCP_m    : num [1:398] 10.07 9.16 9.16 9.16 5.73 ...
+ $ distanceVP_m    : num [1:398] 0 0 0 0 4.32 ...
+ $ f2t_length_mm   : int [1:398] 144 28 14 68 53 34 60 92 96 33 ...
+ $ sh_length_mm    : int [1:398] 122 82 55 72 70 72 90 89 102 97 ...
+[1] "sh_length_mm"  "f2t_length_mm" "sh_width_mm"  
+Linear mixed model fit by REML. t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: log(mass_mg) ~ log(length_mm) + log(f2t_length_mm + 120) + (log(f2t_length_mm +  
+    120) | LIT_yr) + log(emerged + 1) + (0 + log(emerged + 1) |      LIT_yr)
+   Data: wg_d2m
+
+REML criterion at convergence: 1999
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-4.6840 -0.4917  0.0903  0.6304  4.9914 
+
+Random effects:
+ Groups   Name                     Variance Std.Dev. Corr 
+ LIT_yr   (Intercept)              0.80605  0.8978        
+          log(f2t_length_mm + 120) 0.04538  0.2130   -0.98
+ LIT_yr.1 log(emerged + 1)         0.95472  0.9771        
+ Residual                          0.32657  0.5715        
+Number of obs: 1144, groups:  LIT_yr, 4
+
+Fixed effects:
+                         Estimate Std. Error       df t value Pr(>|t|)    
+(Intercept)               -5.3895     0.9858 288.8226  -5.467 9.91e-08 ***
+log(length_mm)             1.8071     0.1114 601.4498  16.223  < 2e-16 ***
+log(f2t_length_mm + 120)   0.3225     0.2885 176.4021   1.118    0.265    
+log(emerged + 1)           0.8767     0.5658   4.0129   1.550    0.196    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+            (Intr) lg(l_) l(2_+1
+lg(lngth_m)  0.593              
+lg(2__+120) -0.954 -0.793       
+log(mrgd+1)  0.390  0.362 -0.427
+optimizer (nloptwrap) convergence code: 0 (OK)
+unable to evaluate scaled gradient
+Model failed to converge: degenerate  Hessian with 1 negative eigenvalues
+
+Linear mixed model fit by REML. t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: log(mass_mg) ~ log(length_mm) + (log(length_mm) | LIT_yr) + log(f2t_length_mm +  
+    120) + (log(f2t_length_mm + 120) | LIT_yr) + log(emerged +      1) + (log(emerged + 1) | LIT_yr)
+   Data: wg_d2m
+
+REML criterion at convergence: 1994.7
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-4.6972 -0.5025  0.1025  0.6319  4.9676 
+
+Random effects:
+ Groups   Name                     Variance Std.Dev. Corr 
+ LIT_yr   (Intercept)               0.00000 0.0000        
+          log(length_mm)            0.00000 0.0000    NaN 
+ LIT_yr.1 (Intercept)              11.59191 3.4047        
+          log(f2t_length_mm + 120)  0.53719 0.7329   -1.00
+ LIT_yr.2 (Intercept)               0.06516 0.2553        
+          log(emerged + 1)          0.42033 0.6483   -1.00
+ Residual                           0.32547 0.5705        
+Number of obs: 1144, groups:  LIT_yr, 4
+
+Fixed effects:
+                         Estimate Std. Error       df t value Pr(>|t|)    
+(Intercept)               -6.9117     1.9064  16.3125  -3.625  0.00221 ** 
+log(length_mm)             1.8140     0.1092 752.2744  16.608  < 2e-16 ***
+log(f2t_length_mm + 120)   0.6255     0.4547  27.1947   1.376  0.18017    
+log(emerged + 1)           0.6338     0.4437   3.2327   1.429  0.24221    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+            (Intr) lg(l_) l(2_+1
+lg(lngth_m)  0.336              
+lg(2__+120) -0.975 -0.525       
+log(mrgd+1)  0.218  0.491 -0.364
+optimizer (nloptwrap) convergence code: 0 (OK)
+boundary (singular) fit: see ?isSingular
+
+	===     random intercepts     ===
+evaluating addition of by-log(length_mm) random intercepts to model
+Linear mixed model fit by REML ['lmerModLmerTest']
+Formula: log(mass_mg) ~ log(length_mm) + (log(length_mm) | LIT_yr) + log(f2t_length_mm +  
+    120) + (log(f2t_length_mm + 120) | LIT_yr) + log(emerged +      1) + (log(emerged + 1) | LIT_yr)
+   Data: wg_d2m
+REML criterion at convergence: 1994.724
+Random effects:
+ Groups   Name                     Std.Dev. Corr 
+ LIT_yr   (Intercept)              0.0000        
+          log(length_mm)           0.0000    NaN 
+ LIT_yr.1 (Intercept)              3.4047        
+          log(f2t_length_mm + 120) 0.7329   -1.00
+ LIT_yr.2 (Intercept)              0.2553        
+          log(emerged + 1)         0.6483   -1.00
+ Residual                          0.5705        
+Number of obs: 1144, groups:  LIT_yr, 4
+Fixed Effects:
+             (Intercept)            log(length_mm)  log(f2t_length_mm + 120)          log(emerged + 1)  
+                 -6.9117                    1.8140                    0.6255                    0.6338  
+optimizer (nloptwrap) convergence code: 0 (OK) ; 0 optimizer warnings; 1 lme4 warnings 
+	===       random slopes       ===
+evaluating addition of ( + log(length_mm)|LIT_yr) to model
+evaluating addition of ( + log(f2t_length_mm + 120)|LIT_yr) to model
+evaluating addition of ( + log(emerged + 1)|LIT_yr) to model
+log file is /var/folders/c_/7dhljxbs4j116mdk8jxwhmyw0000gn/T//RtmpRdfHPN/ffRanefLMER_log_Wed_Nov__3_19-45-43_2021.txt 
+Linear mixed model fit by REML ['lmerModLmerTest']
+Formula: log(mass_mg) ~ log(length_mm) + (log(length_mm) | LIT_yr) + log(f2t_length_mm +  
+    120) + (log(f2t_length_mm + 120) | LIT_yr) + log(emerged +      1) + (log(emerged + 1) | LIT_yr)
+   Data: wg_d2m
+REML criterion at convergence: 1994.724
+Random effects:
+ Groups   Name                     Std.Dev. Corr 
+ LIT_yr   (Intercept)              0.0000        
+          log(length_mm)           0.0000    NaN 
+ LIT_yr.1 (Intercept)              3.4047        
+          log(f2t_length_mm + 120) 0.7329   -1.00
+ LIT_yr.2 (Intercept)              0.2553        
+          log(emerged + 1)         0.6483   -1.00
+ Residual                          0.5705        
+Number of obs: 1144, groups:  LIT_yr, 4
+Fixed Effects:
+             (Intercept)            log(length_mm)  log(f2t_length_mm + 120)          log(emerged + 1)  
+                 -6.9117                    1.8140                    0.6255                    0.6338  
+optimizer (nloptwrap) convergence code: 0 (OK) ; 0 optimizer warnings; 1 lme4 warnings 
+Linear mixed model fit by REML. t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: log(mass_mg) ~ log(length_mm) + (log(length_mm) | LIT_yr) + log(f2t_length_mm +  
+    120) + (log(f2t_length_mm + 120) | LIT_yr) + log(emerged +      1) + (log(emerged + 1) | LIT_yr)
+   Data: wg_d2m
+
+REML criterion at convergence: 1994.7
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-4.6972 -0.5025  0.1025  0.6319  4.9676 
+
+Random effects:
+ Groups   Name                     Variance Std.Dev. Corr 
+ LIT_yr   (Intercept)               0.00000 0.0000        
+          log(length_mm)            0.00000 0.0000    NaN 
+ LIT_yr.1 (Intercept)              11.59191 3.4047        
+          log(f2t_length_mm + 120)  0.53719 0.7329   -1.00
+ LIT_yr.2 (Intercept)               0.06516 0.2553        
+          log(emerged + 1)          0.42033 0.6483   -1.00
+ Residual                           0.32547 0.5705        
+Number of obs: 1144, groups:  LIT_yr, 4
+
+Fixed effects:
+                         Estimate Std. Error       df t value Pr(>|t|)    
+(Intercept)               -6.9117     1.9064  16.3125  -3.625  0.00221 ** 
+log(length_mm)             1.8140     0.1092 752.2744  16.608  < 2e-16 ***
+log(f2t_length_mm + 120)   0.6255     0.4547  27.1947   1.376  0.18017    
+log(emerged + 1)           0.6338     0.4437   3.2327   1.429  0.24221    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+            (Intr) lg(l_) l(2_+1
+lg(lngth_m)  0.336              
+lg(2__+120) -0.975 -0.525       
+log(mrgd+1)  0.218  0.491 -0.364
+optimizer (nloptwrap) convergence code: 0 (OK)
+boundary (singular) fit: see ?isSingular
+
+evaluating addition of (log(length_mm)|LIT_yr) to model
+	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	boundary (singular) fit: see ?isSingular
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+	not adding (log(length_mm)|LIT_yr) to model
+evaluating addition of (log(f2t_length_mm+120)|LIT_yr) to model
+	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	boundary (singular) fit: see ?isSingular
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+	not adding (log(f2t_length_mm+120)|LIT_yr) to model
+evaluating addition of (log(emerged+1)|LIT_yr) to model
+	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	boundary (singular) fit: see ?isSingular
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+	not adding (log(emerged+1)|LIT_yr) to model
+log file is /var/folders/c_/7dhljxbs4j116mdk8jxwhmyw0000gn/T//RtmpRdfHPN/ffRanefLMER_log_Wed_Nov__3_19-49-28_2021.txt 
+Linear mixed model fit by REML. t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: log(mass_mg) ~ log(length_mm) + (log(length_mm) | LIT_yr) + log(f2t_length_mm +  
+    120) + (log(f2t_length_mm + 120) | LIT_yr) + log(emerged +      1) + (log(emerged + 1) | LIT_yr)
+   Data: wg_d2m
+
+REML criterion at convergence: 1994.7
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-4.6972 -0.5025  0.1025  0.6319  4.9676 
+
+Random effects:
+ Groups   Name                     Variance Std.Dev. Corr 
+ LIT_yr   (Intercept)               0.00000 0.0000        
+          log(length_mm)            0.00000 0.0000    NaN 
+ LIT_yr.1 (Intercept)              11.59191 3.4047        
+          log(f2t_length_mm + 120)  0.53719 0.7329   -1.00
+ LIT_yr.2 (Intercept)               0.06516 0.2553        
+          log(emerged + 1)          0.42033 0.6483   -1.00
+ Residual                           0.32547 0.5705        
+Number of obs: 1144, groups:  LIT_yr, 4
+
+Fixed effects:
+                         Estimate Std. Error       df t value Pr(>|t|)    
+(Intercept)               -6.9117     1.9064  16.3125  -3.625  0.00221 ** 
+log(length_mm)             1.8140     0.1092 752.2744  16.608  < 2e-16 ***
+log(f2t_length_mm + 120)   0.6255     0.4547  27.1947   1.376  0.18017    
+log(emerged + 1)           0.6338     0.4437   3.2327   1.429  0.24221    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+            (Intr) lg(l_) l(2_+1
+lg(lngth_m)  0.336              
+lg(2__+120) -0.975 -0.525       
+log(mrgd+1)  0.218  0.491 -0.364
+optimizer (nloptwrap) convergence code: 0 (OK)
+boundary (singular) fit: see ?isSingular
+
+evaluating addition of (log(length_mm)|LIT_yr) to model
+	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	boundary (singular) fit: see ?isSingular
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+	not adding (log(length_mm)|LIT_yr) to model
+evaluating addition of (log(f2t_length_mm+120)|LIT_yr) to model
+	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	boundary (singular) fit: see ?isSingular
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+	not adding (log(f2t_length_mm+120)|LIT_yr) to model
+evaluating addition of (log(emerged+1)|LIT_yr) to model
+	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	boundary (singular) fit: see ?isSingular
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+	not adding (log(emerged+1)|LIT_yr) to model
+log file is wg_d2m_m3_log.txt 
