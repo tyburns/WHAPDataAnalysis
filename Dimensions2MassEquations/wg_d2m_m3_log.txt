@@ -1,0 +1,28 @@
+evaluating addition of (log(length_mm)|LIT_yr) to model
+	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	boundary (singular) fit: see ?isSingular
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+	not adding (log(length_mm)|LIT_yr) to model
+evaluating addition of (log(f2t_length_mm+120)|LIT_yr) to model
+	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	boundary (singular) fit: see ?isSingular
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+	not adding (log(f2t_length_mm+120)|LIT_yr) to model
+evaluating addition of (log(emerged+1)|LIT_yr) to model
+	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	boundary (singular) fit: see ?isSingular
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+ 	Warning in log(emerged + 1) : NaNs produced
+	not adding (log(emerged+1)|LIT_yr) to model
+log file is wg_d2m_m3_log.txt 

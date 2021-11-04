@@ -24,6 +24,9 @@ library(caret)
 
 sh_dim <- read_excel("SeedDimensionsMDC2021.xlsx", sheet = "dimensions")
 
+table(sh_dim$spp, sh_dim$taxonID) # One error in Swamp timothy to correct in Excel
+# I already corrected the version in GitHub, but not the file in FWS server.
+
 sh_mass <- read_excel("SeedDimensionsMDC2021.xlsx", sheet = "weights")
 
 ```
@@ -200,7 +203,7 @@ bwplot(results)
 
 The two models perform almost identically. Model sw_m5 is preferred because it is simpler.
 
-```{r sw_saveModel}
+```{r sw_saveData}
 
 saveRDS(sw_dim, "swdat.rds")
 
