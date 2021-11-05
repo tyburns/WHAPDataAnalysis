@@ -141,10 +141,10 @@ For each group *grp* in the set of LIT_yr groups:
 
 ### Function to evaluate Option 1
 
-
-```{r evalOpt1Fun}
-
-model_eval_fnc <- function(the_data = NULL){ # Start function definition ******
+```{r evalFun}
+# Model option mld.opt has to be either "fixed" or "mixed"
+model_eval_fnc <- function(the_data = NULL,
+                           mdl.opt = "fixed"){ # Start f() definition ******
   
   grps <- unique(the_data$LIT_yr)
   
@@ -173,17 +173,35 @@ model_eval_fnc <- function(the_data = NULL){ # Start function definition ******
     mutate(.row = row_number())
   
   # Define model
-  lm_model <-
-    linear_reg() %>%
-    set_mode("regression") %>%
-    set_engine("lm")
-  
-  # Define formula
-  m_formula <- if(spp == "SwampTimothy") {
-    formula(mass_mg ~ length_mm)
+  if(mdl.opt == "mixed"){
+    lm_model <-
+      linear_reg() %>%
+      set_mode("regression") %>%
+      set_engine("lm")
   } else {
-    formula(mass_mg ~ length_mm + f2t_length_mm + emerged)
+    lm_model <-
+      linear_reg() %>%
+      set_mode("regression") %>%
+      set_engine("lmer")
   }
+  
+  
+  # Define formulae
+  frmls <- list(SwampTimothy =
+                   list(fixed = mass_mg ~ length_mm,
+                        mixed = mass_mg ~ length_mm +
+                                          (length_mm|LIT_yr)),
+                 Watergrass =
+                   list(fixed = mass_mg ~ length_mm +
+                                          f2t_length_mm +
+                                          emerged,
+                        mixed = mass_mg ~ length_mm +
+                                          f2t_length_mm +
+                                          (0 + f2t_length_mm | LIT_yr) +
+                                          emerged + (0 + emerged | LIT_yr)))
+  
+  
+  m_formula <- frmls[[spp]][[mdl.opt]]
   
   for (grp in grps){ # Start loop over LIT_yr groups ******
     
@@ -253,7 +271,14 @@ model_eval_fnc <- function(the_data = NULL){ # Start function definition ******
     all_fit <- fit(lm_model, m_formula, data = df_train_juiced)
     
     df_test %<>% 
-      mutate(.pred = predict(all_fit, new_data = df_test_baked)$.pred,
+      mutate(.pred = if(mdl.opt == "fixed") {
+               predict(all_fit,new_data = df_test_baked)$.pred
+        } else {
+          predict(all_fit,
+                  new_data = df_test_baked,
+                  type = "raw",
+                  opts = list(allow.new.levels = TRUE))
+        },
              logmass = log(mass_mg))
     
     test_data4graphs <- df_test %>%
@@ -277,9 +302,6 @@ model_eval_fnc <- function(the_data = NULL){ # Start function definition ******
 } # End function definition ******
 
 ```
-
-### Function to evaluate Option 2
-
 
 
 ## Models for Swamp Timothy
@@ -408,7 +430,7 @@ Models should also be compared in terms of the impact on estimated mass of seed 
 
 ```{r evalSwampTimothyOpt1}
 
-st_model_eval <- model_eval_fnc(the_data = st_d2m)
+st_model_eval <- model_eval_fnc(the_data = st_d2m, mdl.opt = "mixed")
 
 # Make tables and graphs of results saved in st_model_eval
 
@@ -505,39 +527,27 @@ Journal of Applied Statistics, 44:3, 402-415, DOI: 10.1080/02664763.2016.1174195
 ```{r wg_modelRandomGroups}
 
 wg_d2m_m2 <- lmer(log(mass_mg) ~ log(length_mm) +
-                    (log(length_mm) | LIT_yr) +
+                    (0 + log(length_mm) | LIT_yr) +
                     log(f2t_length_mm + 120) +
-                    (log(f2t_length_mm + 120) | LIT_yr) +
+                    (0 + log(f2t_length_mm + 120) | LIT_yr) +
                     log(emerged + 1) +
-                    (log(emerged + 1) | LIT_yr),
+                    (0 + log(emerged + 1) | LIT_yr) +
+                    (1 | LIT_yr),
                   data = wg_d2m)
 
 summary(wg_d2m_m2)
 
-ranef(wg_d2m_m2)
-
-plot(wg_d2m_m2)
-
-
-
-wg_d2m_m3 <- ffRanefLMER.fnc(wg_d2m_m2,
-                             ran.effects = c("(log(length_mm) | LIT_yr)",
-                                             "(log(f2t_length_mm + 120) | LIT_yr)",
-                                             "(log(emerged + 1) | LIT_yr)"),
-                             log.file = "wg_d2m_m3_log.txt")
-
-update(wg_d2m_m2, . ~ . - (log(length_mm)|LIT_yr))
+wg_d2m_m3 <- update(wg_d2m_m2, . ~ . - (0 + log(length_mm) | LIT_yr))
 
 summary(wg_d2m_m3)
 
-wg_d2m_m4 <- update(wg_d2m_m3, . ~ . -(log(emerged + 1) | LIT_yr) +
-                                      (0 + log(emerged + 1) | LIT_yr)) 
+wg_d2m_m4 <- update(wg_d2m_m3, . ~ . -(1 | LIT_yr)) 
 
 summary(wg_d2m_m4)
 
 anova(wg_d2m_m2, wg_d2m_m3)
 
-anova(wg_d2m_m2, wg_d2m_m4)
+anova(wg_d2m_m2, wg_d2m_m4) # wg_d2m_m4 is the best
 
 ```
 
@@ -546,6 +556,7 @@ anova(wg_d2m_m2, wg_d2m_m4)
 ### Check results for MDC
 
 Results are correct. The rsq is calculated as the squared correlation between predicted and observed values, which ignores the bias in predictions.
+
 ```{r checkMDC}
 
 mdc_train <- wg_d2m %>%
@@ -553,7 +564,7 @@ mdc_train <- wg_d2m %>%
 
 mdc_m1 <- lm(log(mass_mg) ~ (log(length_mm) +
                                   log(f2t_length_mm + 120) +
-                                  log(emerged + 1)),
+                                  log(emerged + 0.5)),
                 data = mdc_train)
 
 opar <- par(mfrow = c(2,2)); plot(mdc_m1); par(opar)
