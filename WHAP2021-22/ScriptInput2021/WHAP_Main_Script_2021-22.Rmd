@@ -155,8 +155,8 @@ qdt0 %<>%
 
 # Fix column names for PC users
 # In Rebeca's computer some escape characters are added to the beginning of the file
-colnames(vps0)[1] <- "GlobalID"
-colnames(cps0)[1] <- "GlobalID"
+# colnames(vps0)[1] <- "GlobalID"
+# colnames(cps0)[1] <- "GlobalID"
 
 ```
 
@@ -373,7 +373,7 @@ str(qdt_wg)
 ```{r qdt_sw}
 
 # SW quadrat info -> table with LIT, stratum and mass of seed per m2
-
+# Why is this only passing MDC???
 qdt_sw <- qdt0 %>%
   dplyr::filter(vernacularName == "Smartweed" & stratum != "") %>%
   pivot_wider(names_from = measurementType,
@@ -507,12 +507,14 @@ st_rlm3 <- rlm(bcPower(mass_g_m2, lambda = st_lambda) ~ LIT_Strat,
 
 ```{r wg.modelStrata}
 
-with(qdt_wg, table(LIT, Stratum)) # only one quadrat in KRN; remove
+with(qdt_wg, table(LIT, stratum)) # only one quadrat in KRN; remove
 
-qdt_wg <- qdt_wg %>% # Assumes there is no Watergrass in KRN
-  filter(LIT != "KRN") %>%
-  mutate(LIT = factor(LIT),
-         LIT_Strat = factor(LIT_Strat))
+# Note appropriate for 2021 data because KRN has wg
+# qdt_wg <- qdt_wg %>% # Assumes there is no Watergrass in KRN
+#   filter(LIT != "KRN") %>%
+#   mutate(LIT = factor(LIT),
+#          LIT_Strat = factor(LIT_Strat))
+
 # Get lambda for wg
 wg_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
                                 na.action = na.exclude,
@@ -647,10 +649,10 @@ seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg, .qdt_sw) {
       na.omit()
     
     return(result)},
-    
-    error = function(e) return(NULL)
-  )
-}
+     
+     error = function(e) return(NULL)
+   )
+ }
 
 ```
 
@@ -677,7 +679,7 @@ qdt_mass_g_m2 %>%
                 subunitName,
                 wg_g_m2,
                 st_g_m2,
-                sw_g_m2
+                sw_g_m2,
                 tot_g_m2,
                 area_ha) %>%
   kable(caption = "Average seed mass per subunit area. Total mass of seed estimated for the subunit divided by the total area of the subunit. These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass.", 
