@@ -10,6 +10,7 @@ editor_options:
 ```{r setup, include=FALSE}
 
 knitr::opts_chunk$set(echo = TRUE)
+library(kableExtra)
 library(tidyverse)
 library(car)
 library(magrittr)
@@ -22,6 +23,7 @@ library(recipes)
 library(tidymodels)
 library(LMERConvenienceFunctions)
 library(multilevelmod)
+library(knitr)
 
 ```
 
@@ -140,10 +142,11 @@ For each group *grp* in the set of LIT_yr groups:
 
 <br/>
 
-### Function to evaluate Option 1
+### Function to evaluate models
 
 ```{r evalFun}
-# Model option mld.opt has to be either "fixed" or "mixed"
+# Model option mld.opt has to be either "fixed" or anything else. Anything else
+# results in the "mixed" model.
 model_eval_fnc <- function(the_data = NULL,
                            mdl.opt = "fixed"){ # Start f() definition ******
   
@@ -175,7 +178,7 @@ model_eval_fnc <- function(the_data = NULL,
     mutate(.row = row_number())
   
   # Define model
-  if(mdl.opt == "fixed"){
+  if (mdl.opt == "fixed") {
     lm_model <-
       linear_reg() %>%
       set_engine("lm")
@@ -188,22 +191,23 @@ model_eval_fnc <- function(the_data = NULL,
   
   # Define formulae
   frmls <- list(SwampTimothy =
-                   list(fixed = mass_mg ~ length_mm,
-                        mixed = mass_mg ~ length_mm +
-                                          (length_mm|LIT_yr)),
-                 Watergrass =
-                   list(fixed = mass_mg ~ length_mm +
-                                          f2t_length_mm +
-                                          emerged,
-                        mixed = mass_mg ~ length_mm +
-                                          f2t_length_mm +
-                                          (0 + f2t_length_mm | LIT_yr) +
-                                          emerged + (0 + emerged | LIT_yr)))
+                  list(fixed = log(mass_mg) ~ log(length_mm),
+                       mixed = log(mass_mg) ~ log(length_mm) +
+                         (log(length_mm) | LIT_yr)),
+                Watergrass =
+                  list(fixed = mass_mg ~ log(length_mm) +
+                         log(f2t_length_mm + 120) +
+                         log(emerged + 0.5),
+                       mixed = log(mass_mg) ~ log(length_mm) +
+                         log(f2t_length_mm + 120) +
+                         (0 + log(f2t_length_mm + 120) | LIT_yr) +
+                         log(emerged + 0.5) +
+                         (0 + log(emerged + 0.5) | LIT_yr)))
   
   
   m_formula <- frmls[[spp]][[mdl.opt]]
   
-  for (grp in grps){ # Start loop over LIT_yr groups ******
+  for (grp in grps) { # Start loop over LIT_yr groups ******
     
     # Split data leaving one group out at a time as testing data.
     indices <-
@@ -218,41 +222,29 @@ model_eval_fnc <- function(the_data = NULL,
                          repeats = 3,
                          strata = LIT_yr)
     
-    # Create recipe for feature engineering
-    df_rec <- if(spp == "SwampTimothy") {
-      recipe(x = df_train) %>%
-        step_log(all_outcomes()) %>%
-        step_log(all_predictors(), -all_nominal())
-    } else {
-      recipe(x = df_train) %>%
-        step_log(all_outcomes()) %>%
-        step_log(length_mm) %>%
-        step_log(f2t_length_mm, offset = 120) %>%
-        step_log(emerged, offset = 0.5)
-    }
-    
+
     # Extract analysis/training and assessment/testing data
     cv_out <- mutate(df_vfold,
-                     df_ana = map (splits,  analysis),
-                     df_ass = map (splits,  assessment)) %>%
-      # prep, juice, bake data for fitting
-      mutate(
-        recipe =  map(df_ana, ~prep(df_rec, training = .x)),
-        df_ana =  map(recipe, juice),
-        df_ass = map2(recipe, df_ass, ~bake(.x, new_data = .y))) %>% 
+                     df_cv_trn = map(splits,  analysis),
+                     df_cv_tst = map(splits,  assessment)) %>%
+      # # prep, juice, bake data for fitting
+      # mutate(
+      #   recipe =  map(df_cv_trn, ~prep(df_rec, training = .x)),
+      #   df_cv_trn =  map(recipe, juice),
+      #   df_cv_tst = map2(recipe, df_cv_tst, ~bake(.x, new_data = .y))) %>% 
       # Fit model to all folds
       mutate(
-        model_fit  = map(df_ana, ~fit(lm_model, m_formula, data = .x))) %>% 
+        model_fit  = map(df_cv_trn, ~fit(lm_model, m_formula, data = .x))) %>% 
       # Predict on assessment fold and save observed and predicted
       mutate(
-        model_pred = map2(model_fit, df_ass, ~predict(.x, new_data = .y))) %>% 
-      mutate(res = map2(df_ass, model_pred, ~data.frame(mass_mg = .x$mass_mg,
-                                                        .pred = .y$.pred))) %>% 
+        model_pred = map2(model_fit, df_cv_tst, ~predict(.x, new_data = .y))) %>% 
+      mutate(res = map2(df_cv_tst, model_pred, ~data.frame(log_mass_mg = log(.x$mass_mg),
+                                                           .pred = .y$.pred))) %>% 
       select(id, res) %>% 
       tidyr::unnest(res) %>% 
       group_by(id) %>%
       # Get metrics to evaluate model
-      metrics(truth = mass_mg, estimate = .pred) %>%
+      metrics(truth = log_mass_mg, estimate = .pred) %>%
       mutate(grp_out = grp) %>%
       dplyr::select(grp_out,
                     id, .metric,
@@ -260,19 +252,19 @@ model_eval_fnc <- function(the_data = NULL,
       bind_rows(cv_out, .)
     
     # Fit model to all training data for prediction in testing data (grp)
-    recipe <- df_train %>% prep(df_rec, training = .)
+    # recipe <- df_train %>% prep(df_rec, training = .)
+    # 
+    # df_train_juiced <- recipe %>%
+    #   juice()
+    # 
+    # df_test_baked <- recipe %>%
+    #   bake(new_data = df_test)
     
-    df_train_juiced <- recipe %>%
-      juice()
-    
-    df_test_baked <- recipe %>%
-      bake(new_data = df_test)
-    
-    all_fit <- fit(lm_model, m_formula, data = df_train_juiced)
+    all_fit <- fit(lm_model, m_formula, data = df_train)
     
     df_test %<>% 
-      mutate(.pred = if(mdl.opt == "fixed") {
-               predict(all_fit, new_data = df_test_baked)$.pred
+      mutate(.pred = if (mdl.opt == "fixed") {
+               predict(all_fit, new_data = df_test)$.pred
         } else {
           predict(all_fit,
                   new_data = df_test,
@@ -295,11 +287,54 @@ model_eval_fnc <- function(the_data = NULL,
   } # End loop over LIT_yr groups *****
   
   return(list(species = spp,
+              model = mdl.opt,
               cross_val = cv_out,
               test = test_out,
               d4graphs = test_data4graphs))
   
 } # End function definition ******
+
+```
+
+### Function to summarize results of each evaulation
+
+This function takes the list created by the previous function, summarizes and plots results.
+
+```{r summarizePLot}
+
+summarize_plot_fnc(rslt_list = NULL) {# Start summarize_plot function definition
+
+# Checks for correctness of list, etc. TBA
+  
+  # Cross validation summary
+  cross_val_metrics <- rslt_list$cross_val %>%
+    group_by(grp_out, .metric) %>%
+    summarise(.estimate = mean(.estimate),
+              .groups = "drop") %>%
+    pivot_wider(names_from = .metric,
+                values_from = .estimate)
+  
+  Tbl_cap <- paste("Table of cross validation results for ", spp, " when data for each refuge is kept out for final testing and not used at all in the cv. A ", mdl.opt, " model was used. Keep in mind that the Rsq does not consider deviations from the 1:1 line but from a fitted line between observed and predicted values.", sep = "")
+  
+    # Cross validation table
+  knitr::kable(cross_val_metrics,
+               digits = c(0, 3, 3, 3),
+               caption = Tbl_cap) %>%
+    kable_styling(full_width = FALSE)
+  
+  # Cross validation figure
+  ggplot(data = cross_val_metrics, aes(x = rmse, y = rsq)) +
+    geom_point(color = "blue", size = 3) + 
+    geom_label(aes(label = paste("NOT ", grp_out, sep = "")),
+               hjust = 0.0,
+               vjust = 0.0) +
+    xlab("Root mean squared error in cross-validation") +
+    ylab("R-squared in cross-validation")
+  
+  
+  # Validation
+
+}
 
 ```
 
@@ -387,7 +422,7 @@ st_d2m_m5 <- update(st_d2m_m3, . ~ log(length_mm) + (1|LIT_yr))
 
 anova(st_d2m_m3, st_d2m_m4)
 
-anova(st_d2m_m3, st_d2m_m5)
+anova(st_d2m_m4, st_d2m_m5) # Model 4 is slightly better.
 
 ```
 
@@ -416,7 +451,7 @@ ggplot(data = rnf_st_d2m_m3,
                      xmax = cond_Incpt_Ranef + cond_Incpt_sd),
                  color = "orange") +
   geom_label(aes(label = grp), hjust = 0.5, vjust = 0.3) +
-  xlab(" Random effect on intercept") +
+  xlab("Random effect on intercept") +
   ylab("Random effect on slope")
 
 ```
@@ -426,7 +461,7 @@ Population-level predictions and estimates are identical in both approaches.
 
 Models should also be compared in terms of the impact on estimated mass of seed heads in sub units and refuges. Statistically significant differences do not necessarily translate into differences of practical significance, particularly when there are other sources of larger variance in the estimates, and considering that it is more time costly to create new models for each location and year.
 
-### Comparison of options for models
+### Comparison of options for  Swamp Timoty models
 
 ```{r evalSwampTimothy}
 
@@ -532,8 +567,8 @@ wg_d2m_m2 <- lmer(log(mass_mg) ~ log(length_mm) +
                     (0 + log(length_mm) | LIT_yr) +
                     log(f2t_length_mm + 120) +
                     (0 + log(f2t_length_mm + 120) | LIT_yr) +
-                    log(emerged + 1) +
-                    (0 + log(emerged + 1) | LIT_yr) +
+                    log(emerged + 0.5) +
+                    (0 + log(emerged + 0.5) | LIT_yr) +
                     (1 | LIT_yr),
                   data = wg_d2m)
 
@@ -549,15 +584,32 @@ summary(wg_d2m_m4)
 
 anova(wg_d2m_m2, wg_d2m_m3)
 
-anova(wg_d2m_m2, wg_d2m_m4) # wg_d2m_m4 is the best
+anova(wg_d2m_m2, wg_d2m_m4) # wg_d2m_m4 is better
+
+wg_d2m_m5 <- update(wg_d2m_m4,
+                    . ~ . -log(f2t_length_mm + 120) -
+                      (0 + log(emerged + 0.5) | LIT_yr)) 
+
+anova(wg_d2m_m5, wg_d2m_m2)
+
+```
+
+### Comparison of options for Watergrass models
+
+```{r evalWatergrass}
+
+wg_model_eval1 <- model_eval_fnc(the_data = wg_d2m, mdl.opt = "fixed")
+
+wg_model_eval2 <- model_eval_fnc(the_data = wg_d2m, mdl.opt = "mixed")
+
+# Make tables and graphs of results saved in st_model_eval
 
 ```
 
 
-
 ### Check results for MDC
 
-Results are correct. The rsq is calculated as the squared correlation between predicted and observed values, which ignores the bias in predictions.
+Results are correct. The rsq metric of yardstick is calculated as the squared correlation between predicted and observed values, which ignores the bias in predictions.
 
 ```{r checkMDC}
 
