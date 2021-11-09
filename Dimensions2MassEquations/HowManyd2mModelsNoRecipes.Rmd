@@ -193,9 +193,9 @@ model_eval_fnc <- function(the_data = NULL,
   frmls <- list(SwampTimothy =
                   list(fixed = log(mass_mg) ~ log(length_mm),
                        mixed = log(mass_mg) ~ log(length_mm) +
-                         (log(length_mm) | LIT_yr)),
+                         (0 + log(length_mm) | LIT_yr)),
                 Watergrass =
-                  list(fixed = mass_mg ~ log(length_mm) +
+                  list(fixed = log(mass_mg) ~ log(length_mm) +
                          log(f2t_length_mm + 120) +
                          log(emerged + 0.5),
                        mixed = log(mass_mg) ~ log(length_mm) +
@@ -214,7 +214,7 @@ model_eval_fnc <- function(the_data = NULL,
       list(analysis   = the_data$.row[the_data$LIT_yr != grp], 
            assessment = the_data$.row[the_data$LIT_yr == grp])
     
-    df_split <- make_splits(indices, the_data %>% select(-.row))
+    df_split <- make_splits(indices, the_data %>% dplyr::select(-.row))
     df_train <- training(df_split)
     df_test  <- testing(df_split)
     df_vfold <- vfold_cv(df_train,
@@ -240,7 +240,7 @@ model_eval_fnc <- function(the_data = NULL,
         model_pred = map2(model_fit, df_cv_tst, ~predict(.x, new_data = .y))) %>% 
       mutate(res = map2(df_cv_tst, model_pred, ~data.frame(log_mass_mg = log(.x$mass_mg),
                                                            .pred = .y$.pred))) %>% 
-      select(id, res) %>% 
+      dplyr::select(id, res) %>% 
       tidyr::unnest(res) %>% 
       group_by(id) %>%
       # Get metrics to evaluate model
@@ -302,7 +302,7 @@ This function takes the list created by the previous function, summarizes and pl
 
 ```{r summarizePLot}
 
-summarize_plot_fnc(rslt_list = NULL) {# Start summarize_plot function definition
+summarize_plot_fnc <- function(rslt_list = NULL) {# Start summarize_plot function definition
 
 # Checks for correctness of list, etc. TBA
   
@@ -314,26 +314,66 @@ summarize_plot_fnc(rslt_list = NULL) {# Start summarize_plot function definition
     pivot_wider(names_from = .metric,
                 values_from = .estimate)
   
-  Tbl_cap <- paste("Table of cross validation results for ", spp, " when data for each refuge is kept out for final testing and not used at all in the cv. A ", mdl.opt, " model was used. Keep in mind that the Rsq does not consider deviations from the 1:1 line but from a fitted line between observed and predicted values.", sep = "")
+  Tbl_cv_cap <- paste("Table of cross validation results for ", rslt_list$species, " when data for each refuge is kept out for final testing and not used at all in the cv. A ", rslt_list$model, " model was used. Keep in mind that the Rsq does not consider deviations from the 1:1 line but from a fitted line between observed and predicted values.", sep = "")
   
-    # Cross validation table
-  knitr::kable(cross_val_metrics,
-               digits = c(0, 3, 3, 3),
-               caption = Tbl_cap) %>%
+  # Cross validation table
+  tbl_cv <-  knitr::kable(cross_val_metrics,
+                       digits = c(0, 3, 3, 3),
+                       caption = Tbl_cv_cap) %>%
     kable_styling(full_width = FALSE)
   
-  # Cross validation figure
-  ggplot(data = cross_val_metrics, aes(x = rmse, y = rsq)) +
+  # Cross validation metrics figure
+  fig_cv <-  ggplot(data = cross_val_metrics, aes(x = rmse, y = rsq)) +
     geom_point(color = "blue", size = 3) + 
     geom_label(aes(label = paste("NOT ", grp_out, sep = "")),
                hjust = 0.0,
                vjust = 0.0) +
     xlab("Root mean squared error in cross-validation") +
-    ylab("R-squared in cross-validation")
+    ylab("R-squared in cross-validation") +
+    xlim(0, 1.4) +
+    ylim(0, 1) +
+    annotate("text", x = 1.2, y = 0.96, label = rslt_list$species) +
+    annotate("text", x = 1.2, y = 0.92, label = rslt_list$model)
   
   
-  # Validation
+  # Validation summary
+    val_metrics <- rslt_list$test %>%
+    pivot_wider(names_from = .metric,
+                values_from = .estimate)
+  
+  Tbl_v_cap <- paste("Table of final validation results for ", rslt_list$species, " when data for each refuge is kept out from model creation and used for final testing. A ", rslt_list$model, " model was used. This test provides a realistic estimate of the error expected when using data from an observed set of refuge-year combinations to predict seed head mass in a new combination. Keep in mind that the Rsq does not consider deviations from the 1:1 line but from a fitted line between observed and predicted values.", sep = "")
+  
+  # Validation table
+  tbl_v <-  knitr::kable(val_metrics,
+                       digits = c(0, 3, 3, 3),
+                       caption = Tbl_v_cap) %>%
+    kable_styling(full_width = FALSE)
+  
+  # Validation metrics figure
+  fig_v <-  ggplot(data = val_metrics, aes(x = rmse, y = rsq)) +
+    geom_point(color = "blue", size = 3) + 
+    geom_label(aes(label = paste("NOT ", grp_out, sep = "")),
+               hjust = 0.0,
+               vjust = 0.0) +
+    xlab("Root mean squared error in cross-validation") +
+    ylab("R-squared in cross-validation") +
+    xlim(0, 1.4) +
+    ylim(0, 1)
+    annotate("text", x = 1.2, y = 0.96, label = rslt_list$species) +
+    annotate("text", x = 1.2, y = 0.92, label = rslt_list$model)
 
+    # Validation obs. vs pred. figure
+    fig_v2 <- ggplot(data = d4graphs,
+                     aes(x = exp(.pred),
+                         y = mass_mg,
+                         groups = LIT_yr,
+                         color = LIT_yr))
+
+return(list(cv_table = tbl_cv,
+            cv_fig = fig_cv,
+            v_table = tbl_v,
+            v_fig = fig_v))
+    
 }
 
 ```
@@ -465,11 +505,15 @@ Models should also be compared in terms of the impact on estimated mass of seed 
 
 ```{r evalSwampTimothy}
 
-st_model_eval1 <- model_eval_fnc(the_data = st_d2m, mdl.opt = "fixed")
+st_model_eval_fxd <- model_eval_fnc(the_data = st_d2m, mdl.opt = "fixed")
 
-st_model_eval2 <- model_eval_fnc(the_data = st_d2m, mdl.opt = "mixed")
+st_model_eval_mxd <- model_eval_fnc(the_data = st_d2m, mdl.opt = "mixed")
 
 # Make tables and graphs of results saved in st_model_eval
+
+vis_st_fxd <-  summarize_plot_fnc(rslt_list = st_model_eval_fxd)
+
+vis_st_mxd <-  summarize_plot_fnc(rslt_list = st_model_eval_mxd)
 
 ```
 
@@ -596,7 +640,7 @@ anova(wg_d2m_m5, wg_d2m_m2)
 
 ### Comparison of options for Watergrass models
 
-```{r evalWatergrass}
+```{r evalWatergrass, warning=FALSE}
 
 wg_model_eval1 <- model_eval_fnc(the_data = wg_d2m, mdl.opt = "fixed")
 
@@ -611,7 +655,7 @@ wg_model_eval2 <- model_eval_fnc(the_data = wg_d2m, mdl.opt = "mixed")
 
 Results are correct. The rsq metric of yardstick is calculated as the squared correlation between predicted and observed values, which ignores the bias in predictions.
 
-```{r checkMDC}
+```{r checkMDC, eval=FALSE, include=FALSE}
 
 mdc_train <- wg_d2m %>%
   dplyr::filter(LIT_yr != "MDC_2021")
