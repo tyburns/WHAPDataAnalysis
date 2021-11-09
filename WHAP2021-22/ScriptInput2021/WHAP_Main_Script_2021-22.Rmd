@@ -88,8 +88,8 @@ WG_len2mass <- lm(log(mass_per_sh_mg  + 20) ~ sh_len_cm +
 
 ```{r SW_len2mass}
 
-SW_dim2mass <- lm(bcPower(mass_mg, lambda = 0.33) ~ log(vol_mm3) + length_mm,
-            data = sw_dat)
+SW_dim2mass <- lm(bcPower(mass_mg, lambda =0.2671952) ~ log(length_mm),
+                  data = sw_dim)
 
 ```
 

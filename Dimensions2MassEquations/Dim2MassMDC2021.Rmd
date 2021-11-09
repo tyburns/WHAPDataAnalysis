@@ -71,9 +71,14 @@ scatterplot(mass_mg ~ vol_mm3, sw_dim, log = "xy") # Log transf. is promising
 
 sw_dim[which.max(sw_dim$vol_mm3), ] # extreme volume
 
-sw_dim %<>% dplyr::filter(vol_mm3 != max(vol_mm3)) # to exclude oddball
+sw_dim %>% dplyr::select(length_mm, width_mm) %>% plot()
+abline(0, 1) # One seed head has width 8 larger than width; nonsense. remove
 
-sw_dim %>% dplyr::select(mass_mg, length_mm, width_mm, vol_mm3) %>% pairs()
+which(sw_dim$length_mm < 4 & sw_dim$width_mm == 8)
+
+sw_dim %<>% dplyr::filter(
+  not(vol_mm3 == max(vol_mm3) | (sw_dim$length_mm < 4 & sw_dim$width_mm == 8))
+) # to exclude oddballs
 
 ```
 
@@ -104,7 +109,7 @@ $$ Y' = \frac{Y^\lambda - 1}{\lambda} \qquad \quad \text{for lambda not 0, and} 
 \quad\\
 Y' = log(Y) \qquad \quad \text{for lambda = 0}$$
 
-Predictiions resulting from the model have to be backtransformed into mg by the inverse transformation (only the case for lambda not 0 shown):
+Predictions resulting from the model have to be backtransformed into mg by the inverse transformation (only the case for lambda not 0 shown):
 
 
 $$ Y = (\lambda \enspace Y' + 1)^ {\enspace (1/\lambda)}$$
@@ -138,25 +143,61 @@ summary(sw_m3)
 ```
 
 
+#### Length as a single predictor
+
+Width was not measured in any refuge other than MDC in 2021. In order to calculate mass of smartweed for the other refuges we need to make a model with lenght as a single predictor. Keep in mind that the only training data available for d2m is from MDC.
+
+```{r sw_transformedLength, warning=FALSE}
+
+# Get optimal lambda
+sw_lamb2 <- powerTransform(lm(mass_mg ~ log(length_mm),
+                              data = sw_dim)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+# Fit model with transformed Y
+sw_m4 <- lm(bcPower(mass_mg, lambda = sw_lamb2) ~ length_mm,
+               data = sw_dim)
+
+opar <- par(mfrow = c(2,2)); plot(sw_m4); par(opar)
+
+# Some nonlinearity remains, which increases the variance at the right side
+# Try an additional transformation in volume
+
+sw_m5 <- lm(bcPower(mass_mg, lambda = sw_lamb2) ~ log(length_mm),
+               data = sw_dim)
+
+opar <- par(mfrow = c(2,2)); plot(sw_m5); par(opar) # outlier 380
+
+summary(sw_m5)
+
+```
+
+
 #### Multiple predictors
 
 ```{r sw_multiplePreds}
 
-sw_m4 <- lm(bcPower(mass_mg, lambda = sw_lamb1) ~ log(vol_mm3) +
+sw_lamb3 <- powerTransform(lm(mass_mg ~ log(vol_mm3) + width_mm + length_mm,
+                              data = sw_dim)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+sw_m6 <- lm(bcPower(mass_mg, lambda = sw_lamb3) ~ log(vol_mm3) +
               width_mm + length_mm,
             data = sw_dim)
 
-opar <- par(mfrow = c(2,2)); plot(sw_m4); par(opar)
+opar <- par(mfrow = c(2,2)); plot(sw_m6); par(opar)
 
-summary(sw_m4)
+summary(sw_m6)
 
 
-sw_m5 <- lm(bcPower(mass_mg, lambda = sw_lamb1) ~ log(vol_mm3) + length_mm,
+sw_m7 <- lm(bcPower(mass_mg, lambda = sw_lamb3) ~ log(vol_mm3) + length_mm,
             data = sw_dim)
 
-opar <- par(mfrow = c(2,2)); plot(sw_m5); par(opar)
+opar <- par(mfrow = c(2,2)); plot(sw_m7); par(opar)
 
-summary(sw_m5)
+summary(sw_m7)
 
 ```
 
@@ -168,32 +209,32 @@ Models sw_m4 and sw_m5 are both good. It is necessary to determine which one is 
 ```{r sw_cv}
 
 # Add transformed response to data
-sw_dim %<>% mutate(bc_mass_gm = bcPower(mass_mg, lambda = sw_lamb1))
+sw_dim %<>% mutate(bc_mass_gm = bcPower(mass_mg, lambda = sw_lamb3))
 
 # Training control
 train_control <- trainControl(method = "repeatedcv",
                               number = 10,
                               repeats = 3)
 
-sw_m4_cv <- train(bc_mass_gm ~
+sw_m6_cv <- train(bc_mass_gm ~
                     log(vol_mm3) +
                     width_mm +
                     length_mm,
                   data = sw_dim,
-                  method="lm",
+                  method = "lm",
                   trControl = train_control)
 
 
-sw_m5_cv <- train(bc_mass_gm ~
+sw_m7_cv <- train(bc_mass_gm ~
                     log(vol_mm3) +
                     length_mm,
                   data = sw_dim,
-                  method="lm",
+                  method = "lm",
                   trControl = train_control)
 
 # Collect results for comparison
-results <- resamples(list(sw_m4_cv = sw_m4_cv,
-                          sw_m5_cv = sw_m5_cv))
+results <- resamples(list(sw_m6_cv = sw_m6_cv,
+                          sw_m7_cv = sw_m7_cv))
 
 # Summarize and plot the distributions
 summary(results)
@@ -201,7 +242,7 @@ bwplot(results)
 
 ```
 
-The two models perform almost identically. Model sw_m5 is preferred because it is simpler.
+Model sw_m6 performs slightly better.
 
 ```{r sw_saveData}
 
