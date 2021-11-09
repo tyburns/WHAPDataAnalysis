@@ -153,7 +153,6 @@ cps0 %<>%
 qdt0 %<>%
   mutate(subunitName = ifelse(subunitName == "", unitName, subunitName))
 
-# Fix column names for PC users
 # In Rebeca's computer some escape characters are added to the beginning of the file
 # colnames(vps0)[1] <- "GlobalID"
 # colnames(cps0)[1] <- "GlobalID"
@@ -533,8 +532,6 @@ wg_rlm3 <- rlm(bcPower(mass_g_m2, lambda = wg_lambda) ~ LIT_Strat,
 
 ```{r sw.modelStrata}
 
-# need anything before this?
-
 # Get lambda for sw
 sw_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
                                 na.action = na.exclude,
@@ -650,7 +647,7 @@ seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg, .qdt_sw) {
     
     return(result)},
      
-     error = function(e) return(NULL)
+    error = function(e) return(NULL)
    )
  }
 
@@ -906,7 +903,7 @@ Xm2 <- p_Area %>%
                 p_Swamp_Timothy_c.High,
                 p_Watergrass_a.Low,
                 p_Watergrass_b.Med, 
-                p_Watergrass_c.High
+                p_Watergrass_c.High,
                 p_Smartweed_a.Low,
                 p_Smartweed_b.Med, 
                 p_Smartweed_c.High) %>%
