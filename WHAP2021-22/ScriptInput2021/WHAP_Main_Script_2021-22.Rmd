@@ -88,8 +88,8 @@ WG_len2mass <- lm(log(mass_per_sh_mg  + 20) ~ sh_len_cm +
 
 ```{r SW_len2mass}
 
-SW_dim2mass <- lm(bcPower(mass_mg, lambda =0.2671952) ~ log(length_mm),
-                  data = sw_dim)
+SW_dim2mass <- lm(bcPower(mass_mg, lambda = 0.2671952) ~ log(length_mm),
+                  data = sw_dat)
 
 ```
 
@@ -154,8 +154,8 @@ qdt0 %<>%
   mutate(subunitName = ifelse(subunitName == "", unitName, subunitName))
 
 # In Rebeca's computer some escape characters are added to the beginning of the file
-# colnames(vps0)[1] <- "GlobalID"
-# colnames(cps0)[1] <- "GlobalID"
+colnames(vps0)[1] <- "GlobalID"
+colnames(cps0)[1] <- "GlobalID"
 
 ```
 
@@ -371,33 +371,29 @@ str(qdt_wg)
 
 ```{r qdt_sw}
 
-# SW quadrat info -> table with LIT, stratum and mass of seed per m2
-# Why is this only passing MDC???
 qdt_sw <- qdt0 %>%
   dplyr::filter(vernacularName == "Smartweed" & stratum != "") %>%
   pivot_wider(names_from = measurementType,
               values_from = measurementValue) %>%
   arrange(GlobalID_seed) %>%
-  mutate(vol_mm3 = pi * (sh_width_mm/2)^2 * sh_length_mm) %>%
+  #mutate(vol_mm3 = pi * (sh_width_mm/2)^2 * sh_length_mm) %>%
   group_by(GlobalID,
            LIT,
            unitName,
            subunitName,
            stratum,
            quadratSize) %>%
-  summarise(length_mm = mean(sh_length_mm, na.rm = TRUE),
-            vol_mm3 = mean(vol_mm3, na.rm = TRUE)) %>%
+  summarise(length_mm = mean(sh_length_mm, na.rm = TRUE)) %>%
   mutate(qdt_m2 = ifelse(quadratSize == "15x15", 0.15^2,
                          ifelse(quadratSize == "5x5", 0.05^2, 0.10))) %>%
   dplyr::select(LIT,
                 unitName,
                 subunitName,
                 stratum,
-                vol_mm3,
                 length_mm) %>%
   na.omit() %>%
   ungroup() %>%
-  mutate(mass_g_m2 = unname((0.33 * predict(SW_dim2mass, newdata = .) + 1)^(1/0.33)) / 1000) %>%
+  mutate(mass_g_m2 = unname((0.2671952 * predict(SW_dim2mass, newdata = .) + 1)^(1/0.2671952)) / 1000) %>%
   mutate(stratum = dplyr::recode(stratum,
                                  `low` = "a.Low",
                                  `medium` = "b.Med",
