@@ -88,8 +88,16 @@ WG_len2mass <- lm(log(mass_per_sh_mg  + 20) ~ sh_len_cm +
 
 ```{r SW_len2mass}
 
-SW_dim2mass <- lm(bcPower(mass_mg, lambda =0.2671952) ~ log(length_mm),
-                  data = sw_dim)
+# Get lambda for swd2m
+swd2m_lambda <- powerTransform(lm(mass_mg ~ log(length_mm),
+                                na.action = na.exclude,
+                                data = sw_dat)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+
+SW_dim2mass <- lm(bcPower(mass_mg, lambda = swd2m_lambda) ~ log(length_mm),
+                  data = sw_dat)
 
 ```
 
@@ -378,26 +386,24 @@ qdt_sw <- qdt0 %>%
   pivot_wider(names_from = measurementType,
               values_from = measurementValue) %>%
   arrange(GlobalID_seed) %>%
-  mutate(vol_mm3 = pi * (sh_width_mm/2)^2 * sh_length_mm) %>%
   group_by(GlobalID,
            LIT,
            unitName,
            subunitName,
            stratum,
            quadratSize) %>%
-  summarise(length_mm = mean(sh_length_mm, na.rm = TRUE),
-            vol_mm3 = mean(vol_mm3, na.rm = TRUE)) %>%
+  summarise(length_mm = mean(sh_length_mm, na.rm = TRUE)) %>%
   mutate(qdt_m2 = ifelse(quadratSize == "15x15", 0.15^2,
                          ifelse(quadratSize == "5x5", 0.05^2, 0.10))) %>%
   dplyr::select(LIT,
                 unitName,
                 subunitName,
                 stratum,
-                vol_mm3,
                 length_mm) %>%
   na.omit() %>%
   ungroup() %>%
-  mutate(mass_g_m2 = unname((0.33 * predict(SW_dim2mass, newdata = .) + 1)^(1/0.33)) / 1000) %>%
+  mutate(mass_g_m2 = unname(
+    invBoxCox(predict(SW_dim2mass, newdata = .), swd2m_lambda) / 1000)) %>%
   mutate(stratum = dplyr::recode(stratum,
                                  `low` = "a.Low",
                                  `medium` = "b.Med",
@@ -408,7 +414,7 @@ qdt_sw <- qdt0 %>%
   arrange(LIT, unitName, subunitName, stratum)
 
 str(qdt_sw)
-  
+
 
 ```
 
@@ -506,7 +512,7 @@ st_rlm3 <- rlm(bcPower(mass_g_m2, lambda = st_lambda) ~ LIT_Strat,
 
 ```{r wg.modelStrata}
 
-with(qdt_wg, table(LIT, stratum)) # only one quadrat in KRN; remove
+with(qdt_wg, table(LIT, stratum))
 
 # Note appropriate for 2021 data because KRN has wg
 # qdt_wg <- qdt_wg %>% # Assumes there is no Watergrass in KRN
@@ -615,8 +621,10 @@ seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg, .qdt_sw) {
                                        as.character(oLIT_Strat),
                                        NA))) %>%
       mutate(wg_g_m2 = invBoxCox(unname(predict(.wg_rlm3, newdata = .)),
-                                 lambda = .wg_lambda)) %>%
-             #LIT_Strat = oLIT_Strat, # not selected below, so it's useless
+                                 lambda = .wg_lambda),
+             LIT_Strat = factor(ifelse(oLIT_Strat %in% .sw_rlm3$xlevels[[1]],
+                                       as.character(oLIT_Strat),
+                                       NA))) %>%
       mutate(sw_g_m2 = invBoxCox(unname(predict(.sw_rlm3, newdata = .)),
                                  lambda = .sw_lambda),
              sw_g_m2 = replace_na(sw_g_m2, 0),
