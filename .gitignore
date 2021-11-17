@@ -27,3 +27,4 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 CompareYears.html
+WHAP_viability_graphs_tables.html
