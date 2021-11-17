@@ -379,6 +379,11 @@ str(qdt_wg)
 
 ```{r qdt_sw}
 
+# Define function to invert the Box-Cox transformation
+invBoxCox <- function(x, lambda) {
+  if (lambda == 0) exp(x) else (lambda * x + 1) ^ (1 / lambda)}
+
+
 # SW quadrat info -> table with LIT, stratum and mass of seed per m2
 # Why is this only passing MDC???
 qdt_sw <- qdt0 %>%
@@ -446,7 +451,7 @@ See <http://www.analyticalgroup.com/download/WEIGHTED_MEAN.pdf> for var(weighted
 # the area of the observed cps and vps.
 
 p_Area <- vpcp %>%
-  group_by(subunit_ID) %>%
+  group_by(LIT, subunit_ID) %>%
   summarise(across(starts_with("p_"), ~weighted.mean(.x, areaVisible_ac))) %>%
   arrange(subunit_ID)
 
@@ -488,11 +493,6 @@ v_Area_c <- se_Area_c %>%
 In 2021 this part of the code was modified to use a log transformation of the mass/m2 to correct for heterogeneity of variance and normality.
 
 ```{r st.modelStrata}
-
-# Define function to invert the Box-Cox transformation
-invBoxCox <- function(x, lambda) {
-  if (lambda == 0) exp(x) else (lambda * x + 1) ^ (1 / lambda)}
-
 
 # Get lambda for st
 st_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,

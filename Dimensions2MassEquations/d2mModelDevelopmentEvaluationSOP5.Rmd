@@ -138,6 +138,10 @@ st_d2m <- d2m_data %>%
   dplyr::filter(spp == "SwampTimothy") %>%
   arrange(LIT, year)
 
+sw_d2m <- d2m_data %>%
+  dplyr::filter(spp == "Smartweed") %>%
+  arrange(LIT, year)
+
 ```
 
 # Model development
@@ -387,30 +391,32 @@ Some models use an a priori combination of dimensions to calculate volume and th
 
 ```{r sw_exploreData}
 
-sw_dim <- sh_dim_mass %>%
-  dplyr::filter(spp == "Smartweed") %>%
+sw_d2m %<>%
   mutate(vol_mm3 = pi * (width_mm/2)^2 * length_mm)
 
-sw_dim %>% dplyr::select(mass_mg, length_mm, width_mm, vol_mm3) %>% pairs()
+sw_d2m %>% dplyr::select(mass_mg, length_mm, width_mm, vol_mm3) %>% pairs()
 
-scatterplot(mass_mg ~ vol_mm3, sw_dim, log = "xy") # Log transf. is promising
+scatterplot(mass_mg ~ vol_mm3, sw_d2m, log = "xy") # Log transf. is promising
 
-sw_dim[which.max(sw_dim$vol_mm3), ] # extreme volume
+sw_d2m[which.max(sw_d2m$vol_mm3), ] # extreme volume
 
-sw_dim %>% dplyr::select(length_mm, width_mm) %>% plot()
+sw_d2m %>% dplyr::select(length_mm, width_mm) %>% plot()
 abline(0, 1) # One seed head has width 8 larger than width; nonsense. remove
 
-which(sw_dim$length_mm < 4 & sw_dim$width_mm == 8)
+which(sw_d2m$length_mm < 4 & sw_d2m$width_mm == 8)
 
-sw_dim %<>% dplyr::filter(
-  not(vol_mm3 == max(vol_mm3) | (sw_dim$length_mm < 4 & sw_dim$width_mm == 8))
+sw_d2m %<>% dplyr::filter(
+  not(vol_mm3 == max(vol_mm3) | (sw_d2m$length_mm < 4 & sw_d2m$width_mm == 8))
 ) # to exclude oddballs
 
 ```
 
-An outlier with unusual width was removed.
+An outlier with unusual width and one with extreme volume were removed.
 
 A quick read of several papers reporting equations to assess seed mass based on plant dimensions revealed that none of their equations included transformations. I find it hard to believe that their variances about predicted values were the same, regardless of the size of seed heads and plants. It is almost a physical necessity that larger plants exhibit more variance (in absolute terms) than smaller plants. Because of the restriction to be positive, it is almost impossible for small plants or seedheads to have the same variance as larger ones. Strictly speaking, mass cannot have a normal distribution, and it is very likely to deviate more from normality as the mean becomes small (thus, the lognormal distribution, or the log transformation of mass).
+
+
+
 
 ### Model
 
