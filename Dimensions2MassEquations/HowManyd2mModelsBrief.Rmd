@@ -30,7 +30,7 @@ library(ggpubr)
 
 ## Introduction
 
-WHAP measures linear dimensions of seed heads in the field but attempts to estimate mass of seedheads produced. Dimensions-to-mass (d2m) models are developed and used to transform linear dimensions to estimated mass of seed heads. Then, number of seedheads per unit area and average seed head dimensions are used to estimate mass of seed heads per unit area in each of the abundance strata (low, medium and high) for each species.
+WHAP measures linear dimensions of seed heads in the field but attempts to estimate mass of seedheads produced. Dimensions-to-mass (d2m) models are developed and used to transform linear dimensions to estimated mass of seed heads. Then, number of seed heads per unit area and average seed head dimensions are used to estimate mass of seed heads per unit area in each of the abundance strata (low, medium and high) for each species.
 
 Is it necessary to create a different d2m model for each location and year or is it sufficient to create one model that is applicable over refuges and years? Of course, this question can only be answered for past years and observed locations. One can assume that differences (or lack of differences) persist into the future and decide this once and for all or one can continue to test over time. This document is about exploring the answer to the question using data about seed head dimensions and mass collected in several refuges in 2019 and in Modoc in 2021.
 
@@ -385,6 +385,8 @@ wg_rslts <- summarize_plot_fnc(rslt_list = wg_model_eval)
 
 ```
 
+## Swamp Timothy
+
 ### Swamp Timothy graphical results
 
 ```{r displayGraphsSwampTimothy, echo=FALSE}
@@ -411,6 +413,8 @@ st_rslts$v_table %>%
 
 
 ```
+
+## Watergrass
 
 ### Watergrass graphical results
 
@@ -439,5 +443,17 @@ wg_rslts$v_table %>%
 
 ```
 
+### How does this compare with the rest of the uncertainty?
 
+Calculate effect of adding this uncertainty to the whole calculation.
 
+### Add model development and transform it into a report.
+
+"Two" questions:
+
+When to sample the sample the same refuge again?
+Don't know. Measure all refuges in 3 years. Describe strategy based on results: If it is space, stop. 
+How well do models work for unsampled refuge?
+How well do models work for sampled refuges?
+
+Title of SOP 5 should reference article titles that have been published about d2m models.

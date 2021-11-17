@@ -84,7 +84,7 @@ sw_dim %<>% dplyr::filter(
 
 An outlier with unusual width was removed.
 
-A quick read of several papers reporting equations to assess seed mass based on plant dimensions revealed that none of their equations included transformations. I find it hard to believe that their variances about predicted values were the same, regradless of the size of seed heads and plants. It is almost a physical necessity that larger plants exhibit more variance (in absolute terms) than smaller plants. Because of the restriction to be positive, it is almost impossible for small plants or seedheads to have the same variance as larger ones. Strictly speaking, mass cannot have a normal distribution, and it is very likely to deviate more from normality as the mean becomes small (thus, the lognormal distribution, or the log transformation of mass).
+A quick read of several papers reporting equations to assess seed mass based on plant dimensions revealed that none of their equations included transformations. I find it hard to believe that their variances about predicted values were the same, regardless of the size of seed heads and plants. It is almost a physical necessity that larger plants exhibit more variance (in absolute terms) than smaller plants. Because of the restriction to be positive, it is almost impossible for small plants or seedheads to have the same variance as larger ones. Strictly speaking, mass cannot have a normal distribution, and it is very likely to deviate more from normality as the mean becomes small (thus, the lognormal distribution, or the log transformation of mass).
 
 
 ## Modeling
