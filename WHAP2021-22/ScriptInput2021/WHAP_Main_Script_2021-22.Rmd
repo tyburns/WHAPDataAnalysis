@@ -107,13 +107,17 @@ Based on this description, the overlapping species are effectively separated by 
 
 ```{r readFiles}
 
-vps0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_VantagePolygons_20210831.csv")
+vps0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_VantagePolygons_20210831.csv",
+                 stringsAsFactors = FALSE)
 
-cps0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_CirclePlots_20210901.csv")
+cps0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_CirclePlots_20210901.csv",
+                 stringsAsFactors = FALSE)
 
-qdt0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_Quadrats_20210923.csv")
+qdt0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_Quadrats_20210923.csv",
+                 stringsAsFactors = FALSE)
 
-mus0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_ManagementUnits_20210902.csv")
+mus0 <- read.csv("WHAP_2021_ProcessedData_20210902/WHAP_2021_ManagementUnits_20210902.csv",
+                 stringsAsFactors = FALSE)
 
 ```
 
