@@ -610,16 +610,19 @@ seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg, .qdt_sw) {
                                        as.character(oLIT_Strat),
                                        NA))) %>%
       mutate(st_g_m2 = invBoxCox(unname(predict(.st_rlm3, newdata = .)),
-                                 lambda = .st_lambda),
-             LIT_Strat = factor(ifelse(oLIT_Strat %in% .wg_rlm3$xlevels[[1]],
+                                 lambda = .st_lambda)) %>%
+      mutate(LIT_Strat = factor(ifelse(oLIT_Strat %in% .wg_rlm3$xlevels[[1]],
                                        as.character(oLIT_Strat),
                                        NA))) %>%
       mutate(wg_g_m2 = invBoxCox(unname(predict(.wg_rlm3, newdata = .)),
                                  lambda = .wg_lambda)) %>%
              #LIT_Strat = oLIT_Strat, # not selected below, so it's useless
+      mutate(LIT_Strat = factor(ifelse(oLIT_Strat %in% .sw_rlm3$xlevels[[1]],
+                                       as.character(oLIT_Strat),
+                                       NA))) %>%
       mutate(sw_g_m2 = invBoxCox(unname(predict(.sw_rlm3, newdata = .)),
-                                 lambda = .sw_lambda),
-             sw_g_m2 = replace_na(sw_g_m2, 0),
+                                 lambda = .sw_lambda)) %>%
+      mutate(sw_g_m2 = replace_na(sw_g_m2, 0),
              st_g_m2 = replace_na(st_g_m2, 0),
              wg_g_m2 = replace_na(wg_g_m2, 0)) %>%
       dplyr::select(LIT,
