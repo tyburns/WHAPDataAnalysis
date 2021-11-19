@@ -387,7 +387,7 @@ Some models use an a priori combination of dimensions to calculate volume and th
 
 ```{r sw_exploreData}
 
-sw_dim <- sh_dim_mass %>%
+sw_dim <- d2m_data %>%
   dplyr::filter(spp == "Smartweed") %>%
   mutate(vol_mm3 = pi * (width_mm/2)^2 * length_mm)
 

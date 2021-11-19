@@ -88,7 +88,14 @@ WG_len2mass <- lm(log(mass_per_sh_mg  + 20) ~ sh_len_cm +
 
 ```{r SW_len2mass}
 
-SW_dim2mass <- lm(bcPower(mass_mg, lambda = 0.2671952) ~ log(length_mm),
+# Get optimal lambda
+sw_lamb2 <- powerTransform(lm(mass_mg ~ log(length_mm),
+                              data = sw_dat)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+# Fit model with transformed Y
+SW_dim2mass <- lm(bcPower(mass_mg, lambda = sw_lamb2) ~ log(length_mm),
                   data = sw_dat)
 
 ```
@@ -396,18 +403,23 @@ qdt_sw <- qdt0 %>%
            subunitName,
            stratum,
            quadratSize) %>%
-  summarise(length_mm = mean(sh_length_mm, na.rm = TRUE)) %>%
+  summarise(length_mm = mean(sh_length_mm, na.rm = TRUE),
+            nSeedHeads = mean(nSeedHeads, na.rm = TRUE)) %>%
   mutate(qdt_m2 = ifelse(quadratSize == "15x15", 0.15^2,
                          ifelse(quadratSize == "5x5", 0.05^2, 0.10))) %>%
+  ungroup() %>%
   dplyr::select(LIT,
                 unitName,
                 subunitName,
                 stratum,
+                qdt_m2,
+                nSeedHeads,
                 length_mm) %>%
   na.omit() %>%
-  ungroup() %>%
-  mutate(mass_g_m2 = unname((0.2671952 * predict(SW_dim2mass, newdata = .) + 1)^(1/0.2671952)) / 1000) %>%
-  mutate(stratum = dplyr::recode(stratum,
+  mutate(sh_mass_mg = unname(invBoxCox(predict(SW_dim2mass, newdata = .),
+                                       lambda = sw_lamb2)),
+         mass_g_m2 = nSeedHeads * sh_mass_mg / (1000 * qdt_m2),
+         stratum = dplyr::recode(stratum,
                                  `low` = "a.Low",
                                  `medium` = "b.Med",
                                  `high` = "c.High"),
@@ -417,7 +429,7 @@ qdt_sw <- qdt0 %>%
   arrange(LIT, unitName, subunitName, stratum)
 
 str(qdt_sw)
-  
+
 
 ```
 
@@ -629,8 +641,7 @@ seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg, .qdt_sw) {
       mutate(sw_g_m2 = replace_na(sw_g_m2, 0),
              st_g_m2 = replace_na(st_g_m2, 0),
              wg_g_m2 = replace_na(wg_g_m2, 0)) %>%
-      dplyr::select(LIT,
-                    unitName,
+      dplyr::select(unitName,
                     subunitName,
                     subunit_ID,
                     stratum,
@@ -648,7 +659,7 @@ seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg, .qdt_sw) {
              sw_g_m2 = rowSums(dplyr::select(., starts_with("sw")) *
                                  dplyr::select(., starts_with("p_Smartweed"))),
              tot_g_m2 = wg_g_m2 + st_g_m2 + sw_g_m2) %>%
-      full_join(su_areas, by = c(c("LIT", "unitName", "subunitName"))) %>%
+      full_join(su_areas, by = c("LIT", "unitName", "subunitName")) %>%
       dplyr::select(-starts_with("p_"), -area_ac) %>%
       na.omit()
     
