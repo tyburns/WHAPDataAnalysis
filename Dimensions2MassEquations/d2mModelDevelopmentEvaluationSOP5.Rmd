@@ -49,11 +49,14 @@ Finally, based on the results of the analyses, we propose a feasible strategy to
 
 We should keep in mind that the uncertainty due to these models is NOT incorporated in the final mass estimates in the current protocol. Thus, the effect of choice of approach on precision is mostly invisible.
 
+Models should also be compared in terms of the impact on estimated mass of seed heads in sub units and refuges. Statistically significant differences do not necessarily translate into differences of practical significance, particularly when there are other sources of larger variance in the estimates, and considering that it is more time costly to create new models for each location and year.
+
 
 # Data
 
 We have data for Swamp Timothy in six, and for Watergrass in four, different combinations of locations and years. Smartweed was sampled only in Modoc in 2021. No refuge was sampled more than once to create d2m models. Thus, the variation among groups is mostly spatial, and we cannot assess the temporal variation. There are no data to estimate the possible variation within a refuge among years.
 
+The data are in R files `st_all_noO.rds`, `wgdat.rds` and `sh_dim_MDC2021.rds`. The first two are based on data collected in 2019, whereas the last one is based on data collected in Modoc in 2021.
 
 ```{r data, echo=FALSE}
 
@@ -135,6 +138,7 @@ wg_d2m <- d2m_data %>%
   dplyr::filter(!is.nan(log_emerged))
 
 st_d2m <- d2m_data %>%
+  dplyr::select(-c(f2t_length_mm, log_f2t_length_mm)) %>%
   dplyr::filter(spp == "SwampTimothy") %>%
   arrange(LIT, year)
 
@@ -161,9 +165,9 @@ The scatterplot has both axis in logarithmic scale, which accounts for the incre
 
 ### Random-effect approach Swamp Timothy
 
-Each group of observations within a refuge and year can be considered a random draw of all possible groups. This creates a basis to estimate seed head mass for unobserved groups. In the case of the observed groups we make predictions that include the random effect of the group and exclude the uncertainty due to group. In the case of unobserved new groups, predictions are made at the population level and uncertainty includes a variance component due to deviations of groups about the population.
+Each group of observations within a refuge and year can be considered a random draw of all possible groups. This creates a basis to estimate seed head mass for unobserved groups. In the case of the observed groups we make predictions that include the random effect of the group and exclude the uncertainty due to group. In the case of unobserved new groups, predictions are made at the population level and uncertainty includes a variance component due to deviations of groups about the population (Gelman and Hill, 2007).
 
-In this approach, the question of whether a new refuge or year need to be sampled can be addressed by exploring the magnitude of group-level variance in slope and intercept.
+In this approach, the question of whether a new refuge or year need to be sampled can be addressed by exploring the magnitude of group-level variance in slope and intercept. A lot of variance in either or both of the estimated parameters indicates that groups can differ greatly from each other, and thus, a new group would have a large probability of being very different from the average of groups observed. Large variance suggests sampling all new groups to avoid the uncertainty among groups. Small variance indicates that marginal predictions might be sufficient. Variance magnitude is evaluated using the second-order coefficient of variation (Kvalseth 2017).
 
 ```{r st_modelRandomGroups, echo=FALSE}
 
@@ -195,11 +199,6 @@ ranef(st_d2m_m3) %>%
   kable_styling(full_width = FALSE)
 
 plot(st_d2m_m3) # Residual plot is OK
-
-scatterplot(log_mass_mg ~ fitted(st_d2m_m3) | LIT_yr,
-            smooth = FALSE,
-            data = st_d2m)
-abline(0, 1, lty = 2)
 
 ```
 
@@ -233,12 +232,12 @@ ggplot(data = rnf_st_d2m_m3,
 
 ```
 
-The graphical display of group effects on intercept and slope
+The graphical display of group effects on intercept and slope shows that one group, SAC_2019 seems to deviate greatly from the rest.
 
-```{r plotStAllData}
+```{r st_plotAllData}
 
 ggplot(data = st_d2m,
-       aes(x = predict(st_d2m_m4),
+       aes(x = predict(st_d2m_m3),
            y = log_mass_mg,
            color = LIT_yr,
            groups = LIT_yr)) +
@@ -251,11 +250,86 @@ ggplot(data = st_d2m,
   theme(legend.position = "none")
 ```
 
+The last two graphs show that when all groups are in the training data, predictions are accurate, but because there are groups that deviate from the the rest, not including all groups in the training data could introduce bias in the predictions for the absent groups. The potential magnitude of bias is assessed in the external validation section below.
 
-Population-level predictions and estimates are identical in both approaches.
+```{r st_estimates, echo=FALSE}
 
-Models should also be compared in terms of the impact on estimated mass of seed heads in sub units and refuges. Statistically significant differences do not necessarily translate into differences of practical significance, particularly when there are other sources of larger variance in the estimates, and considering that it is more time costly to create new models for each location and year.
+St_CoefVar <- st_d2m %>%
+  group_by(LIT_yr) %>%
+  summarise(log_length_mm = log(mean(length_mm, na.rm = TRUE)),
+            .groups = "drop")
 
+myPred <- function(.) {
+  exp(predict(., newdata = St_CoefVar, re.form = NULL))
+}
+
+# Based on
+# https://cran.r-project.org/web/packages/merTools/vignettes/Using_predictInterval.html
+sumBoot <- function(merBoot) {
+  return(
+    data.frame(
+      mass_median = apply(merBoot$t,
+                          2,
+                          function(x) as.numeric(quantile(x,
+                                                          probs = 0.500,
+                                                          na.rm = TRUE))),
+      mass_mean = apply(merBoot$t,
+                        2,
+                        function(x) as.numeric(mean(x,
+                                                    na.rm = TRUE))),
+      lwr = apply(merBoot$t,
+                  2, function(x) as.numeric(quantile(x,
+                                                     probs = .025,
+                                                     na.rm = TRUE))),
+      upr = apply(merBoot$t,
+                  2, function(x) as.numeric(quantile(x,
+                                                     probs = .975,
+                                                     na.rm = TRUE))),
+      se = apply(merBoot$t,
+                 2, function(x) as.numeric(sd(x,
+                                              na.rm = TRUE)))
+    )
+  )
+}
+
+# Use bootMer to get estimates of prediction intervals and se's
+
+boot1 <- lme4::bootMer(st_d2m_m3,
+                       myPred,
+                       nsim = 1000,
+                       use.u = FALSE,
+                       type = "parametric")
+
+
+St_CoefVar %<>%
+  bind_cols(sumBoot(boot1)) %>%
+  mutate(cv2 = sqrt(se^2 / (mass_mean^2 + se^2)))
+
+rownames(St_CoefVar) <- NULL
+
+my_hist <- function(x, y) hist(x,
+                            breaks = 25,
+                            xlim = c(5, 60),
+                            freq = FALSE,
+                            col = "skyblue",
+                            xlab = "Prediction (mg)",
+                            main = y)
+
+colnames(boot1$t) <- St_CoefVar$LIT_yr
+
+
+opar <- par(mfrow = c(3,2)); map2(.x = as.data.frame(boot1$t),
+                                  .y = colnames(boot1$t),
+                                  ~my_hist(.x, .y)); par(opar)
+
+St_CoefVar %>% 
+  kable(caption = "Estimated seed head mass (mg) and coefficient of variation for swamp timothy seedheads of average dimensions.",
+        digits = c(0, 1, 1, 1, 1, 1, 2, 2)) %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+The coefficient of variation is very small to small, indicating high precision in the estimates. Second-order coefficients of variation smaller than 0.20 (20%) are very small and between 0.2 and 0.4 are small (Kvålset, 2017).
 
 
 
@@ -287,61 +361,7 @@ scatterplot(mass_mg ~ log_emerged | LIT_yr,
 
 ```
 
-Predictors have some, but not excessive, collinearity. I surmise that `length_mm` is the size dimension, whereas the combination of `f2t_length_mm` and `emerged` is a measure of phenological development.
-
 **Question: should predictions be done for the measured degree of seed head development or for a fixed level selected to correct for degree of development when seed heads were measured?**
-
-### Test of effects of group (LIT_yr)
-
-```{r wg_modelFixedGroups, echo=FALSE}
-
-# Get optimal lambda
-wg_lamb1 <- powerTransform(lm(mass_mg ~ log_length_mm +
-                                log_f2t_length_mm +
-                                log(emerged + 1),
-                              data = wg_d2m)) %>%
-  coef(round = TRUE) %>%
-  unname()
-
-wg_lamb1 # = 0, log transform
-
-wg_d2m_m1 <- lm(log_mass_mg ~ (log_length_mm +
-                                  log_f2t_length_mm +
-                                  log(emerged + 1)) * LIT_yr,
-                data = wg_d2m)
-
-opar <- par(mfrow = c(2,2)); plot(wg_d2m_m1); par(opar)
-
-anova(wg_d2m_m1)
-Anova(wg_d2m_m1)
-
-summary(wg_d2m_m1)
-
-```
-
-In this case there is a clear effect of group on the relationship between seed head mass and dimensions. Modoc 2021 is the group that differs the most from the rest. The specific differences are studied below when using a mixed model approach, which is more appropriate for testing the need to have random effects for groups on slopes and intercept.
-
-```{r wg_estimates, echo=FALSE}
-
-avg_length <- mean(wg_d2m$length_mm)
-avg_f2t <- mean(wg_d2m$f2t_length_mm)
-avg_emerged <- mean(wg_d2m$emerged)
-
-yhat_at_xbar = emmeans(wg_d2m_m1,
-                       "LIT_yr",
-                       at = list(length_mm = avg_length,
-                                 f2t_length_mm = avg_f2t,
-                                 emerged = avg_emerged)) %>%
-  as_tibble() %>%
-  mutate(mass_mg = exp(emmean),
-         lower.CL_mg = exp(lower.CL),
-         upper.CL_mg = exp(upper.CL),
-         coeff.var2 = SE/sqrt(SE^2 + emmean^2))
-
-```
-
-The coefficient of variation (second order CV, Tarald O. Kvålseth (2017) Coefficient of variation: the second-order alternative,
-Journal of Applied Statistics, 44:3, 402-415, DOI: 10.1080/02664763.2016.1174195) is very small, indicating high precision in the estimates.
 
 ### Random-effect approach Watergrass
 
@@ -358,7 +378,7 @@ wg_d2m_m2 <- lmer(log_mass_mg ~ log_length_mm +
 
 summary(wg_d2m_m2)
 
-wg_d2m_m3 <- update(wg_d2m_m2, . ~ . - (0 + log_length_mm | LIT_yr))
+wg_d2m_m3 <- update(wg_d2m_m2, . ~ . - (0 + log_f2t_length_mm | LIT_yr))
 
 summary(wg_d2m_m3)
 
@@ -375,6 +395,57 @@ wg_d2m_m5 <- update(wg_d2m_m4,
                       (0 + log_f2t_length_mm | LIT_yr)) 
 
 anova(wg_d2m_m5, wg_d2m_m4)
+
+```
+
+
+```{r wg_estimates, echo=FALSE}
+
+Wg_CoefVar <- wg_d2m %>%
+  group_by(LIT_yr) %>%
+  summarise(log_length_mm = log(mean(length_mm, na.rm = TRUE)),
+            log_f2t_length_mm = log(mean(f2t_length_mm, na.rm = TRUE)),
+            log_emerged = log(mean(emerged, na.rm = TRUE)),
+            .groups = "drop")
+
+myPred <- function(.) {
+  exp(predict(., newdata = Wg_CoefVar, re.form = NULL))
+}
+
+# Use bootMer to get estimates of prediction intervals and se's
+
+boot1 <- lme4::bootMer(wg_d2m_m2,
+                       myPred,
+                       nsim = 1000,
+                       use.u = FALSE,
+                       type = "parametric")
+
+
+Wg_CoefVar %<>%
+  bind_cols(sumBoot(boot1)) %>%
+  mutate(cv2 = sqrt(se^2 / (mass_mean^2 + se^2)))
+
+rownames(Wg_CoefVar) <- NULL
+
+my_hist <- function(x, y) hist(x,
+                            breaks = 25,
+                            xlim = c(5, 60),
+                            freq = FALSE,
+                            col = "skyblue",
+                            xlab = "Prediction (mg)",
+                            main = y)
+
+colnames(boot1$t) <- Wg_CoefVar$LIT_yr
+
+
+opar <- par(mfrow = c(3,2)); map2(.x = as.data.frame(boot1$t),
+                                  .y = colnames(boot1$t),
+                                  ~my_hist(.x, .y)); par(opar)
+
+Wg_CoefVar %>% 
+  kable(caption = "Estimated seed head mass (mg) and coefficient of variation for swamp timothy seedheads of average dimensions.",
+        digits = c(0, 1, 1, 1, 1, 1, 2, 2)) %>%
+  kable_styling(full_width = FALSE)
 
 ```
 
@@ -408,9 +479,8 @@ sw_dim %<>% dplyr::filter(
 
 ```
 
-An outlier with unusual width was removed.
+An outlier with unusual width and one with extreme volume were removed.
 
-A quick read of several papers reporting equations to assess seed mass based on plant dimensions revealed that none of their equations included transformations. I find it hard to believe that their variances about predicted values were the same, regardless of the size of seed heads and plants. It is almost a physical necessity that larger plants exhibit more variance (in absolute terms) than smaller plants. Because of the restriction to be positive, it is almost impossible for small plants or seedheads to have the same variance as larger ones. Strictly speaking, mass cannot have a normal distribution, and it is very likely to deviate more from normality as the mean becomes small (thus, the lognormal distribution, or the log transformation of mass).
 
 ### Model
 
@@ -523,42 +593,6 @@ sw_m7 <- lm(bcPower(mass_mg, lambda = sw_lamb3) ~ log(vol_mm3) + length_mm,
 opar <- par(mfrow = c(2,2)); plot(sw_m7); par(opar)
 
 summary(sw_m7)
-
-```
-
-```{r sw_cv}
-
-# Add transformed response to data
-sw_dim %<>% mutate(bc_mass_gm = bcPower(mass_mg, lambda = sw_lamb3))
-
-# Training control
-train_control <- trainControl(method = "repeatedcv",
-                              number = 10,
-                              repeats = 3)
-
-sw_m6_cv <- train(bc_mass_gm ~
-                    log(vol_mm3) +
-                    width_mm +
-                    length_mm,
-                  data = sw_dim,
-                  method = "lm",
-                  trControl = train_control)
-
-
-sw_m7_cv <- train(bc_mass_gm ~
-                    log(vol_mm3) +
-                    length_mm,
-                  data = sw_dim,
-                  method = "lm",
-                  trControl = train_control)
-
-# Collect results for comparison
-results <- resamples(list(sw_m6_cv = sw_m6_cv,
-                          sw_m7_cv = sw_m7_cv))
-
-# Summarize and plot the distributions
-summary(results)
-bwplot(results)
 
 ```
 
@@ -923,7 +957,31 @@ wg_rslts$v_table %>%
 
 ### Smartweed metrics
 
-## Discussion of evaluation results
+# Discussion of evaluation results
+
+Models to estimate mass based on linear dimensions of see heads were developed by several research groups across the US:
+
+Gray, M. J., Foster, M. A., & Peña Peniche, L. A. (2009). New Technology for Estimating Seed Production of Moist-Soil Plants. Journal of Wildlife Management, 73(7). https://doi.org/10.2193/2008-468
+
+Hillhouse, H. L., Zilli, L., & Anderson, B. E. (2018). Timing and Protocols for Estimating Seed Production in Moist-Soil and Phalaris arundinacea Dominated Areas in Rainwater Basin Wetlands. Wetlands, 38(3). https://doi.org/10.1007/s13157-017-0991-4
+
+LAUBHAN, M. K., & FREDRICKSON, L. H. (1992). ESTIMATING SEED PRODUCTION OF COMMON PLANTS IN SEASONALLY FLOODED WETLANDS. JOURNAL OF WILDLIFE MANAGEMENT, 56(2), 329-337. https://doi.org/10.2307/3808831
+
+HAUKOS, D. A., & SMITH, L. M. (1993). MOIST-SOIL MANAGEMENT OF PLAYA LAKES FOR MIGRATING AND WINTERING DUCKS. WILDLIFE SOCIETY BULLETIN, 21(3), 288-298.
+
+Sherfy, M. H., & Kirkpatrick, R. L. (1999). Additional regression equations for predicting seed yield of moist-soil plants. WETLANDS, 19(3), 709-714. https://doi.org/10.1007/BF03161707
+
+Gray, M. J., Kaminski, R. M., & Brasher, M. G. (1999). A new method to predict seed yield of moist-soil plants. JOURNAL OF WILDLIFE MANAGEMENT, 63(4), 1269-1272. https://doi.org/10.2307/3802844
+
+Gray, M. J., Kaminski, R. M., & Weerakkody, G. (1999). Predicting seed yield of moist-soil plants. JOURNAL OF WILDLIFE MANAGEMENT, 63(4), 1261-1268. https://doi.org/10.2307/3802843
+
+Osborn, J. M., Hagy, H. M., McClanahan, M. D., & Gray, M. J. (2017). Temporally Robust Models for Predicting Seed Yield of Moist-Soil Plants. WILDLIFE SOCIETY BULLETIN, 41(1), 157-161. https://doi.org/10.1002/wsb.735
+
+Collins, D. P., Conway, W. C., Mason, C. D., & Gunnels, J. W. (2017). Seed Yield Prediction Models of Four Common Moist-Soil Plant Seed Yield Prediction Models of Four Common Moist-Soil Plant Species in Texas Species in Texas. The Texas Journal of Agriculture and Natural Resources, 30, 78-86. https://scholarworks.sfasu.edu/agriculture_facultypubs/28
+
+A quick read of several papers reporting equations to assess seed mass based on plant dimensions revealed that none of their equations included transformations (except for a couple in Gray et al., (2009). I find it hard to believe that their variances about predicted values were the same, regardless of the size of seed heads and plants. It is almost a physical necessity that larger plants exhibit more variance (in absolute terms) than smaller plants. Because of the restriction to be positive, it is almost impossible for small plants or seedheads to have the same variance as larger ones. Strictly speaking, mass cannot have a normal distribution, and it is very likely to deviate more from normality as the mean becomes small (thus, the lognormal distribution, or the log transformation of mass).
+
+Most articles seem to emphasize the coefficient fo determination as measure of model performance. We should keep in mind that prediction performance should be focused on the accuracy and precision of predictions, which can be evaluated by cross-validation and external validation.
 
 How well do models work for unsampled refuge?
 How well do models work for sampled refuges?
@@ -939,6 +997,14 @@ Based on an ad hoc assessment of feasibility and costs of getting additional d2m
 Conditional predictions incorporate the random effects of refuge-year groups, under the assumption that random effects are associated with refuge and remain constant over years. Marginal predictions are also known as population-level predictions and they do not incorporate any random effects, because in the absence of estimated random effects, the best guess is the average across all groups. For more detail about the difference between predicting for observed vs. new groups see pages 272-274 of Gelman, A., & Hill, J. (2007). Data analysis using regression and multilevel/hierarchical models. Cambridge: Cambridge University Press.
 
 After three years or whenever feasible, collect data for all species in all refuges. Analyze the cumulative data with mixed models that include random effects for slopes and intercepts for refuge,  year and their interaction. Evaluate the impact of making predictions that do not incorporate the random effects of year or interaction. If bias introduced by ignoring those effects or the rmse is not acceptable, refuges have to be sampled every year.
+
+
+# References
+
+Tarald O. Kvålseth (2017) Coefficient of variation: the second-order alternative,
+Journal of Applied Statistics, 44:3, 402-415, DOI: 10.1080/02664763.2016.1174195)
+
+
 
 
 
