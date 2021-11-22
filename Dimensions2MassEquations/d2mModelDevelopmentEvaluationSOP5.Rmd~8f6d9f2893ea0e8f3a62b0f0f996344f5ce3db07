@@ -1,0 +1,951 @@
+---
+title: "d2m Model development and evaluation. SOP 5"
+author: "Emilio A. Laca"
+date: "11/13/2021"
+output: word_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE, echo=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(kableExtra)
+library(tidyverse)
+library(car)
+library(magrittr)
+library(readxl)
+library(emmeans)
+library(lme4)
+library(lmerTest)
+library(rsample)
+library(recipes)
+library(tidymodels)
+library(LMERConvenienceFunctions)
+library(multilevelmod)
+library(knitr)
+library(ggpubr)
+
+```
+
+# Introduction
+
+WHAP measures linear dimensions of seed heads in the field and attempts to estimate mass of seed heads produced. Dimensions-to-mass (d2m) models are developed and used to transform linear dimensions to estimated mass of seed heads. Then, number of seed heads per unit area and average seed head dimensions are used to estimate mass of seed heads per unit area in each of the abundance strata (low, medium and high) for each species.
+
+This section of the document addresses three aspects of using seed head dimensions and models to estimate seed head mass:
+
+A. Model development.
+B. Assessment of model performance.
+C. Need and strategy to update models.
+
+Model development consists of finding best models to produce mass estimates. For example, in this stage we determine the form of the functional relationship between dimensions and mass, and whether transformations are necessary.
+
+Once the best models are identified, we determine how good they are using generic measures such as root mean squared error and man absolute deviation. Models are assessed by k-fold cross validation and validation on subsets of data not used to fit the model.
+
+In the last stage (C) we ask: Is it necessary to create a different d2m model for each location and year or is it sufficient to create one model that is applicable over refuges and years? Of course, this question can only be answered for past years and observed locations. One can assume that differences (or lack of differences) persist into the future and decide this once and for all or one can continue to test over time. This document is about exploring the answer to the question using data about seed head dimensions and mass collected in several refuges in 2019 and in Modoc in 2021.
+
+Finally, based on the results of the analyses, we propose a feasible strategy to update models in the future. 
+
+We should keep in mind that the uncertainty due to these models is NOT incorporated in the final mass estimates in the current protocol. Thus, the effect of choice of approach on precision is mostly invisible.
+
+
+# Data
+
+We have data for Swamp Timothy in six, and for Watergrass in four, different combinations of locations and years. Smartweed was sampled only in Modoc in 2021. No refuge was sampled more than once to create d2m models. Thus, the variation among groups is mostly spatial, and we cannot assess the temporal variation. There are no data to estimate the possible variation within a refuge among years.
+
+
+```{r data, echo=FALSE}
+
+st_2019 <- readRDS("st_all_noO.rds") %>%
+  rename_with(~gsub(".", "_", .x, fixed = TRUE)) %>%
+  mutate(year = 2019,
+         spp = "SwampTimothy",
+         f2t_length_mm = NA,
+         length_mm = avg_length_mm,
+         width_mm = NA,
+         mass_mg = mass_per_sh_mg,
+         LIT = substr(id, 1, 3)) %>%
+  dplyr::select(LIT,
+                year,
+                spp,
+                f2t_length_mm,
+                length_mm,
+                width_mm,
+                mass_mg)
+
+wg_2019 <- readRDS("wgdat.rds") %>%
+  rename_with(~gsub(".", "_", .x, fixed = TRUE)) %>%
+  mutate(year = 2019,
+         spp = "Watergrass",
+         f2t_length_mm = F2T_cm * 10,
+         length_mm = sh_len_cm * 10,
+         width_mm = NA,
+         mass_mg = mass_per_sh_mg,
+         LIT = refuge) %>%
+  dplyr::select(LIT,
+                year,
+                spp,
+                f2t_length_mm,
+                length_mm,
+                width_mm,
+                mass_mg)
+
+mdc_2021 <- readRDS("sh_dim_MDC2021.rds") %>%
+  mutate(year = 2021) %>%
+  dplyr::select(LIT,
+                year,
+                spp,
+                f2t_length_mm,
+                length_mm,
+                width_mm,
+                mass_mg)
+
+d2m_data <- bind_rows(st_2019, wg_2019, mdc_2021)
+
+unique(d2m_data$LIT)
+
+# Fix LIT codes
+LitKey <- c(CLS = "CLS",
+            KRN = "KRN",
+            PXL = "PIX",
+            SAC = "SAC",
+            STL = "SLW",
+            PIX = "PIX",
+            SL_ = "SLW",
+            Colusa = "CLS",
+            Sacramento = "SAC",
+            StoneLakes = "SLW",
+            MDC = "MDC")
+
+d2m_data$LIT <- dplyr::recode(d2m_data$LIT, !!!LitKey)
+
+# Create a grouping variable for LIT and year
+d2m_data %<>% mutate(LIT_yr = paste(LIT, year, sep = "_"),
+                     log_mass_mg = log(mass_mg),
+                     log_length_mm = log(length_mm),
+                     log_f2t_length_mm = log(f2t_length_mm + 120))
+
+
+wg_d2m <- d2m_data %>%
+  dplyr::filter(spp == "Watergrass") %>%
+  mutate(emerged = f2t_length_mm / length_mm,
+         log_emerged = log(emerged + 0.5)) %>%
+  arrange(LIT, year) %>%
+  dplyr::filter(!is.nan(log_emerged))
+
+st_d2m <- d2m_data %>%
+  dplyr::filter(spp == "SwampTimothy") %>%
+  arrange(LIT, year)
+
+sw_d2m <- d2m_data %>%
+  dplyr::filter(spp == "Smartweed") %>%
+  arrange(LIT, year)
+
+```
+
+# Model development
+
+This section is organized by species. Data for each species are explored numerically and graphically to get a first idea of what models might work and what transformation may be necessary. Then, several models are tried and compared using statistics such as MSE, Rsq and AIC. A final model is selected to be used and evaluated in cross-validation and external validation.
+
+## Models for Swamp Timothy
+
+### Data exploration
+
+```{r st_plotData, echo=FALSE}
+
+scatterplot(mass_mg ~ length_mm | LIT_yr,
+            smooth = FALSE,
+            log = "xy",
+            data = st_d2m)
+
+```
+
+The scatterplot has both axis in logarithmic scale, which accounts for the increasing variance as seed heads get longer. Data and regression lines for all groups cluster closely, with the exception of SAC_-_2019. There is some indication that SAC had heavier Swamp Timothy seed heads than the rest of the groups for any given seed head length.
+
+### Random-effect approach Swamp Timothy
+
+Each group of observations within a refuge and year can be considered a random draw of all possible groups. This creates a basis to estimate seed head mass for unobserved groups. In the case of the observed groups we make predictions that include the random effect of the group and exclude the uncertainty due to group. In the case of unobserved new groups, predictions are made at the population level and uncertainty includes a variance component due to deviations of groups about the population.
+
+In this approach, the question of whether a new refuge or year need to be sampled can be addressed by exploring the magnitude of group-level variance in slope and intercept.
+
+```{r st_modelRandomGroups, echo=FALSE}
+
+# Get optimal lambda
+st_lamb1 <- powerTransform(lmer(mass_mg ~ log_length_mm +
+                                  (log_length_mm|LIT_yr),
+                                data = st_d2m)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+# Lambda is 0, so a log transformation is used.
+
+st_d2m_m3 <- lmer(log_mass_mg ~ log_length_mm + (log_length_mm|LIT_yr),
+                  data = st_d2m)
+
+summary(st_d2m_m3)
+
+ranef(st_d2m_m3) %>%
+  as.data.frame() %>%
+  dplyr::select(term,
+                grp,
+                condval) %>%
+  pivot_wider(names_from = term,
+              values_from = condval) %>%
+  rename(Group = grp,
+         Intercept = `(Intercept)`,
+         Slope = log_length_mm) %>%
+  kable(digits = c(0, 3, 3), caption = "Random effects of group on the slope and intercept of the relationship between log mass and log length of Swamp Timothy seed heads.") %>%
+  kable_styling(full_width = FALSE)
+
+plot(st_d2m_m3) # Residual plot is OK
+
+scatterplot(log_mass_mg ~ fitted(st_d2m_m3) | LIT_yr,
+            smooth = FALSE,
+            data = st_d2m)
+abline(0, 1, lty = 2)
+
+```
+
+The linear log-log model does not show need for additional terms. Fitted and observed values are linearly related and centered about the 1:1 line. The magnitude of random effects shown in the table give an idea of the potential bias introduced by making marginal predictions. The size of this component of the total error (bias plus variance) can also be assessed in relation to the residual variance in the model summary above. These effects are visualized more easily in the section about evaluation of prediction alternatives presented below.
+
+```{r st_plotRanef, echo=FALSE}
+
+rnf_st_d2m_m3 <- ranef(st_d2m_m3) %>%
+  as.data.frame() %>%
+  pivot_wider(id_cols = "grp",
+              values_from = c(condval, condsd),
+              names_from = "term") %>%
+  rename(cond_Incpt_Ranef = `condval_(Intercept)`,
+         cond_slope_Ranef = `condval_log_length_mm`,
+         cond_Incpt_sd = `condsd_(Intercept)`,
+         cond_slope_sd = `condsd_log_length_mm`)
+
+ggplot(data = rnf_st_d2m_m3,
+       aes(x = cond_Incpt_Ranef,
+           y = cond_slope_Ranef)) +
+  geom_point(color = "blue", size = 3) + 
+  geom_errorbar(aes(ymin = cond_slope_Ranef - cond_slope_sd,
+                    ymax = cond_slope_Ranef + cond_slope_sd),
+                color = "blue") +
+  geom_errorbarh(aes(xmin = cond_Incpt_Ranef - cond_Incpt_sd,
+                     xmax = cond_Incpt_Ranef + cond_Incpt_sd),
+                 color = "orange") +
+  geom_label(aes(label = grp), hjust = 0.5, vjust = 0.3) +
+  xlab("Random effect on intercept") +
+  ylab("Random effect on slope")
+
+```
+
+The graphical display of group effects on intercept and slope
+
+```{r plotStAllData}
+
+ggplot(data = st_d2m,
+       aes(x = predict(st_d2m_m4),
+           y = log_mass_mg,
+           color = LIT_yr,
+           groups = LIT_yr)) +
+  geom_point() +
+  geom_smooth(method = "lm",
+              se = TRUE) +
+  geom_abline() +
+  facet_wrap(~LIT_yr,
+             ncol = 3) +
+  theme(legend.position = "none")
+```
+
+
+Population-level predictions and estimates are identical in both approaches.
+
+Models should also be compared in terms of the impact on estimated mass of seed heads in sub units and refuges. Statistically significant differences do not necessarily translate into differences of practical significance, particularly when there are other sources of larger variance in the estimates, and considering that it is more time costly to create new models for each location and year.
+
+
+
+
+## Models for Watergrass
+
+### Data Exploration
+
+```{r wg_plotData, echo=FALSE}
+
+pairs(wg_d2m[ c("length_mm", "f2t_length_mm", "emerged")])
+
+biplot(prcomp(wg_d2m[c("length_mm", "f2t_length_mm", "emerged")], scale. = TRUE))
+
+scatterplot(mass_mg ~ length_mm | LIT_yr,
+            smooth = FALSE,
+            log = "xy",
+            data = wg_d2m)
+
+scatterplot(mass_mg ~ log_f2t_length_mm | LIT_yr,
+            smooth = FALSE,
+            log = "y",
+            data = wg_d2m)
+
+scatterplot(mass_mg ~ log_emerged | LIT_yr,
+            smooth = FALSE,
+            log = "y",
+            data = wg_d2m)
+
+
+```
+
+Predictors have some, but not excessive, collinearity. I surmise that `length_mm` is the size dimension, whereas the combination of `f2t_length_mm` and `emerged` is a measure of phenological development.
+
+**Question: should predictions be done for the measured degree of seed head development or for a fixed level selected to correct for degree of development when seed heads were measured?**
+
+### Test of effects of group (LIT_yr)
+
+```{r wg_modelFixedGroups, echo=FALSE}
+
+# Get optimal lambda
+wg_lamb1 <- powerTransform(lm(mass_mg ~ log_length_mm +
+                                log_f2t_length_mm +
+                                log(emerged + 1),
+                              data = wg_d2m)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+wg_lamb1 # = 0, log transform
+
+wg_d2m_m1 <- lm(log_mass_mg ~ (log_length_mm +
+                                  log_f2t_length_mm +
+                                  log(emerged + 1)) * LIT_yr,
+                data = wg_d2m)
+
+opar <- par(mfrow = c(2,2)); plot(wg_d2m_m1); par(opar)
+
+anova(wg_d2m_m1)
+Anova(wg_d2m_m1)
+
+summary(wg_d2m_m1)
+
+```
+
+In this case there is a clear effect of group on the relationship between seed head mass and dimensions. Modoc 2021 is the group that differs the most from the rest. The specific differences are studied below when using a mixed model approach, which is more appropriate for testing the need to have random effects for groups on slopes and intercept.
+
+```{r wg_estimates, echo=FALSE}
+
+avg_length <- mean(wg_d2m$length_mm)
+avg_f2t <- mean(wg_d2m$f2t_length_mm)
+avg_emerged <- mean(wg_d2m$emerged)
+
+yhat_at_xbar = emmeans(wg_d2m_m1,
+                       "LIT_yr",
+                       at = list(length_mm = avg_length,
+                                 f2t_length_mm = avg_f2t,
+                                 emerged = avg_emerged)) %>%
+  as_tibble() %>%
+  mutate(mass_mg = exp(emmean),
+         lower.CL_mg = exp(lower.CL),
+         upper.CL_mg = exp(upper.CL),
+         coeff.var2 = SE/sqrt(SE^2 + emmean^2))
+
+```
+
+The coefficient of variation (second order CV, Tarald O. Kvålseth (2017) Coefficient of variation: the second-order alternative,
+Journal of Applied Statistics, 44:3, 402-415, DOI: 10.1080/02664763.2016.1174195) is very small, indicating high precision in the estimates.
+
+### Random-effect approach Watergrass
+
+```{r wg_modelRandomGroups, echo=FALSE}
+
+wg_d2m_m2 <- lmer(log_mass_mg ~ log_length_mm +
+                    (0 + log_length_mm | LIT_yr) +
+                    log_f2t_length_mm +
+                    (0 + log_f2t_length_mm | LIT_yr) +
+                    log_emerged +
+                    (0 + log_emerged | LIT_yr) +
+                    (1 | LIT_yr),
+                  data = wg_d2m)
+
+summary(wg_d2m_m2)
+
+wg_d2m_m3 <- update(wg_d2m_m2, . ~ . - (0 + log_length_mm | LIT_yr))
+
+summary(wg_d2m_m3)
+
+wg_d2m_m4 <- update(wg_d2m_m3, . ~ . -(1 | LIT_yr)) 
+
+summary(wg_d2m_m4)
+
+anova(wg_d2m_m2, wg_d2m_m3)
+
+anova(wg_d2m_m2, wg_d2m_m4) # wg_d2m_m4 is better
+
+wg_d2m_m5 <- update(wg_d2m_m4,
+                    . ~ . -log_f2t_length_mm -
+                      (0 + log_f2t_length_mm | LIT_yr)) 
+
+anova(wg_d2m_m5, wg_d2m_m4)
+
+```
+
+
+## Models for Smartweed
+
+### Data Exploration
+
+Some models use an a priori combination of dimensions to calculate volume and then regress mass on volume.
+
+```{r sw_exploreData}
+
+sw_d2m %<>%
+  mutate(vol_mm3 = pi * (width_mm/2)^2 * length_mm)
+
+sw_d2m %>% dplyr::select(mass_mg, length_mm, width_mm, vol_mm3) %>% pairs()
+
+scatterplot(mass_mg ~ vol_mm3, sw_d2m, log = "xy") # Log transf. is promising
+
+sw_d2m[which.max(sw_d2m$vol_mm3), ] # extreme volume
+
+sw_d2m %>% dplyr::select(length_mm, width_mm) %>% plot()
+abline(0, 1) # One seed head has width 8 larger than width; nonsense. remove
+
+which(sw_d2m$length_mm < 4 & sw_d2m$width_mm == 8)
+
+sw_d2m %<>% dplyr::filter(
+  not(vol_mm3 == max(vol_mm3) | (sw_d2m$length_mm < 4 & sw_d2m$width_mm == 8))
+) # to exclude oddballs
+
+```
+
+An outlier with unusual width and one with extreme volume were removed.
+
+A quick read of several papers reporting equations to assess seed mass based on plant dimensions revealed that none of their equations included transformations. I find it hard to believe that their variances about predicted values were the same, regardless of the size of seed heads and plants. It is almost a physical necessity that larger plants exhibit more variance (in absolute terms) than smaller plants. Because of the restriction to be positive, it is almost impossible for small plants or seedheads to have the same variance as larger ones. Strictly speaking, mass cannot have a normal distribution, and it is very likely to deviate more from normality as the mean becomes small (thus, the lognormal distribution, or the log transformation of mass).
+
+
+
+
+### Model
+
+Data for Smartweed comes only from Modoc in 2021. Therefore, there are no groups and the model includes only  fixed effects. The model development process consists in finding the appropriate functional form to use.
+
+#### Volume as single predictor
+First we try a simple linear model with volume.
+
+```{r sw_linearVolume, warning=FALSE}
+
+sw_m1 <- lm(mass_mg ~ vol_mm3, data = sw_dim)
+
+summary(sw_m1)
+
+opar <- par(mfrow = c(2,2)); plot(sw_m1); par(opar)
+
+```
+
+Variance increases with fitted value and there is indication of slight non-linearity. Try a Box-Cox transformation. This transformation is
+
+$$ Y' = \frac{Y^\lambda - 1}{\lambda} \qquad \quad \text{for lambda not 0, and} \\
+\quad\\
+Y' = log(Y) \qquad \quad \text{for lambda = 0}$$
+
+Predictions resulting from the model have to be backtransformed into mg by the inverse transformation (only the case for lambda not 0 shown):
+
+
+$$ Y = (\lambda \enspace Y' + 1)^ {\enspace (1/\lambda)}$$
+
+which in R code is `(Y = lambda * Y_prime + 1) ^ (1/lambda)`.
+
+```{r sw_transformedVolume, warning=FALSE}
+
+# Get optimal lambda
+sw_lamb1 <- powerTransform(lm(mass_mg ~ vol_mm3,
+                              data = sw_dim)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+# Fit model with transformed Y
+sw_m2 <- lm(bcPower(mass_mg, lambda = sw_lamb1) ~ vol_mm3,
+               data = sw_dim)
+
+opar <- par(mfrow = c(2,2)); plot(sw_m2); par(opar)
+
+# Some nonlinearity remains, which increases the variance at the right side
+# Try an additional transformation in volume
+
+sw_m3 <- lm(bcPower(mass_mg, lambda = sw_lamb1) ~ log(vol_mm3),
+               data = sw_dim)
+
+opar <- par(mfrow = c(2,2)); plot(sw_m3); par(opar)
+
+summary(sw_m3)
+
+```
+
+
+#### Length as a single predictor
+
+Width was not measured in any refuge other than MDC in 2021. In order to calculate mass of smartweed for the other refuges we need to make a model with lenght as a single predictor. Keep in mind that the only training data available for d2m is from MDC.
+
+```{r sw_transformedLength, warning=FALSE}
+
+# Get optimal lambda
+sw_lamb2 <- powerTransform(lm(mass_mg ~ log(length_mm),
+                              data = sw_dim)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+# Fit model with transformed Y
+sw_m4 <- lm(bcPower(mass_mg, lambda = sw_lamb2) ~ length_mm,
+               data = sw_dim)
+
+opar <- par(mfrow = c(2,2)); plot(sw_m4); par(opar)
+
+# Some nonlinearity remains, which increases the variance at the right side
+# Try an additional transformation in volume
+
+sw_m5 <- lm(bcPower(mass_mg, lambda = sw_lamb2) ~ log(length_mm),
+               data = sw_dim)
+
+opar <- par(mfrow = c(2,2)); plot(sw_m5); par(opar) # outlier 380
+
+summary(sw_m5)
+
+```
+
+#### Multiple predictors
+
+```{r sw_multiplePreds}
+
+sw_lamb3 <- powerTransform(lm(mass_mg ~ log(vol_mm3) + width_mm + length_mm,
+                              data = sw_dim)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+sw_m6 <- lm(bcPower(mass_mg, lambda = sw_lamb3) ~ log(vol_mm3) +
+              width_mm + length_mm,
+            data = sw_dim)
+
+opar <- par(mfrow = c(2,2)); plot(sw_m6); par(opar)
+
+summary(sw_m6)
+
+
+sw_m7 <- lm(bcPower(mass_mg, lambda = sw_lamb3) ~ log(vol_mm3) + length_mm,
+            data = sw_dim)
+
+opar <- par(mfrow = c(2,2)); plot(sw_m7); par(opar)
+
+summary(sw_m7)
+
+```
+
+```{r sw_cv}
+
+# Add transformed response to data
+sw_dim %<>% mutate(bc_mass_gm = bcPower(mass_mg, lambda = sw_lamb3))
+
+# Training control
+train_control <- trainControl(method = "repeatedcv",
+                              number = 10,
+                              repeats = 3)
+
+sw_m6_cv <- train(bc_mass_gm ~
+                    log(vol_mm3) +
+                    width_mm +
+                    length_mm,
+                  data = sw_dim,
+                  method = "lm",
+                  trControl = train_control)
+
+
+sw_m7_cv <- train(bc_mass_gm ~
+                    log(vol_mm3) +
+                    length_mm,
+                  data = sw_dim,
+                  method = "lm",
+                  trControl = train_control)
+
+# Collect results for comparison
+results <- resamples(list(sw_m6_cv = sw_m6_cv,
+                          sw_m7_cv = sw_m7_cv))
+
+# Summarize and plot the distributions
+summary(results)
+bwplot(results)
+
+```
+
+Model sw_m6 performs slightly better.
+
+Models sw_m4 and sw_m5 are both good. It is necessary to determine which one is better. sw_m4 appears to be slightly better in terms of residual variance, but it may not be as good in prediction errors. This is assessed with cross validation.
+
+```{r sw_cv}
+
+# Add transformed response to data
+sw_dim %<>% mutate(bc_mass_gm = bcPower(mass_mg, lambda = sw_lamb3))
+
+# Training control
+train_control <- trainControl(method = "repeatedcv",
+                              number = 10,
+                              repeats = 3)
+
+sw_m6_cv <- train(bc_mass_gm ~
+                    log(vol_mm3) +
+                    width_mm +
+                    length_mm,
+                  data = sw_dim,
+                  method = "lm",
+                  trControl = train_control)
+
+
+sw_m7_cv <- train(bc_mass_gm ~
+                    log(vol_mm3) +
+                    length_mm,
+                  data = sw_dim,
+                  method = "lm",
+                  trControl = train_control)
+
+# Collect results for comparison
+results <- resamples(list(sw_m6_cv = sw_m6_cv,
+                          sw_m7_cv = sw_m7_cv))
+
+# Summarize and plot the distributions
+summary(results)
+bwplot(results)
+
+```
+
+# Model Evaluation
+
+## Approach and functions
+
+With these data we have the following alternatives:
+
+1. Collect d2m data for each new LIT_yr group. Augment the data base and create a model that always includes effects of all LIT_yr groups ever observed. Always make group-specific predictions whose uncertainty excludes the variance of random effects.
+
+The performance of this option is assessed with the present data by k-fold cross-validation with folds balanced by groups.
+
+2. Take all d2m data and create a model that includes effects of LIT_yr groups. No more data about d2m are collected and this model is not updated. Except for the LIT_yr groups present in the data, predictions are made at the population level and random effect variances contribute to the uncertainty of estimates.
+
+The performance of this option is assessed with the present data by leaving each group out at a time, developing the model with the rest of the groups and using it in the group left out.
+
+Three metrics are used to assess the performance of the options:
+
+1. Means absolute deviation (mae) is a measure of accuracy and error.
+2. Root mean squared error (rmse) is a measure of accuracy and total error.
+3. R squared (rsq) is the square of the correlation between observed and predicted values and it is a measure of consistency.
+
+Predictions that deviate from observed values in a linear relationship can have very large rsq (good) and also large rsme (bad). If the slope of the relationship is null the bias is constant over X. If the slope is different from 0, the bias changes as X changes.
+
+
+### Function to evaluate alternatives
+
+```{r evalFun, echo=FALSE}
+# Model option mld.opt has to be either "fixed" or anything else. Anything else
+# results in the "mixed" model.
+model_eval_fnc <- function(the_data = NULL) { # Start f() definition ******
+  
+  # Make vector of LIT_yr groups to loop over
+  grps <- unique(the_data$LIT_yr)
+  
+  # Create data frames to receive output from validation (test)
+  test_metrics <- tibble(grp_out = character(),
+                         .metric =  character(),
+                         .estimate = double())
+  
+  test_data4graphs <- tibble(LIT_yr = character(),
+                             mass_mg =  double(),
+                             .pred = double())
+  
+  # Determine what species is being analyzed
+  spp <- the_data %>%
+    pluck("spp") %>%
+    unique()
+  
+  #Prepare data for manual initial split by LIT_yr
+  the_data %<>%
+    arrange(LIT_yr) %>%
+    mutate(.row = row_number())
+  
+  # Define model
+  lm_model <-
+    linear_reg() %>%
+    set_engine("lmer")
+  
+  
+  # Define formulae
+  frmls <- list(SwampTimothy = log_mass_mg ~
+                  log_length_mm +
+                  (1 | LIT_yr),
+                Watergrass = log_mass_mg ~
+                  log_length_mm +
+                  log_f2t_length_mm +
+                  (0 + log_f2t_length_mm | LIT_yr) +
+                  log_emerged +
+                  (0 + log_emerged | LIT_yr))
+  
+  
+  m_formula <- frmls[[spp]]
+  
+  # Start of cross-validation to assess option 1
+  df_vfold <- vfold_cv(the_data,
+                       v = 6,
+                       repeats = 1,
+                       strata = LIT_yr,
+                       pool = 0.01)
+  
+  # Extract analysis and assessment data
+  cv_out <- mutate(df_vfold,
+                   df_cv_trn = map(splits,  analysis),
+                   df_cv_tst = map(splits,  assessment)) %>%
+    # Fit model to all folds
+    mutate(model_fit = map(df_cv_trn,
+                           ~fit(lm_model, 
+                                m_formula, 
+                                data = .x))) %>% 
+    # Predict on assessment fold and save observed and predicted
+    mutate(model_pred = map2(model_fit,
+                             df_cv_tst,
+                             ~predict(.x,
+                                      new_data = .y,
+                                      type = "raw",
+                                      opts = list(re.form = NULL)))) %>% 
+    mutate(res = map2(df_cv_tst,
+                      model_pred,
+                      ~data.frame(log_mass_mg = .x$log_mass_mg,
+                                  .pred = .y)))
+  
+  # Save test data and predictions for graphs
+  cv_out4graphs <- cv_out %>%
+    dplyr::select(df_cv_tst, model_pred) %>%
+    unnest(cols = c(df_cv_tst, model_pred))
+  
+  # Calculate and save metrics
+  cv_metrics <- cv_out %>%
+    dplyr::select(id, res) %>% 
+    tidyr::unnest(res) %>% 
+    group_by(id) %>%
+    # Get metrics to evaluate model
+    metrics(truth = log_mass_mg, estimate = .pred) %>%
+    dplyr::select(id,
+                  .metric,
+                  .estimate) %>%
+    pivot_wider(names_from = .metric,
+                values_from = .estimate)
+  
+  # Start of validation to assess option 2
+  for (grp in grps) { # Start loop over LIT_yr groups for validation
+    
+    # Split data leaving one group out at a time as testing data.
+    indices <-
+      list(analysis   = the_data$.row[the_data$LIT_yr != grp], 
+           assessment = the_data$.row[the_data$LIT_yr == grp])
+    
+    df_split <- make_splits(indices, the_data %>% dplyr::select(-.row))
+    df_train <- training(df_split)
+    df_test  <- testing(df_split)
+    
+    # Fit model to all training data for prediction in testing data (grp)
+    all_fit <- fit(lm_model, m_formula, data = df_train)
+    
+    df_test %<>% 
+      mutate(model_pred = predict(all_fit,
+                                  new_data = df_test,
+                                  type = "raw",
+                                  opts = list(allow.new.levels = TRUE)))
+    
+    test_metrics <- metrics(df_test, truth = log_mass_mg, estimate = model_pred) %>%
+      mutate(grp_out = grp) %>%
+      dplyr::select(grp_out, .metric, .estimate) %>%
+      bind_rows(test_metrics, .)
+    
+    test_data4graphs <- df_test %>%
+      bind_rows(test_data4graphs, .)
+    
+  } # End loop over LIT_yr groups *****
+  
+  test_metrics %<>%
+    pivot_wider(names_from = .metric,
+                values_from = .estimate)
+  
+  return(list(species = spp,
+              cv_metrics = cv_metrics,
+              cv_out4graphs = cv_out4graphs,
+              test_metrics = test_metrics,
+              test_data4graphs = test_data4graphs))
+  
+} # End function definition ******
+
+```
+
+### Function to summarize results of each evaluation
+
+This function takes the list created by the previous function, summarizes and plots results.
+
+```{r summarizePlotFun, echo=FALSE}
+
+summarize_plot_fnc <- function(rslt_list = NULL) {# Start summarize_plot function definition
+  
+  # Checks for correctness of list, etc. TBA
+
+  # Cross validation summary
+  cross_val_metrics <- rslt_list$cv_metrics %>%
+    dplyr::select(-id) %>%
+    summarize_all(mean) %>%
+    mutate(id = "Average") %>%
+    bind_rows(rslt_list$cv_metrics, .)
+  
+  Tbl_cv_cap <- paste("Table of cross validation results for ", rslt_list$species, ". These results represent how well the model performs when all groups have data for d2m.", sep = "")
+  
+  # Cross validation table
+  tbl_cv <-  knitr::kable(cross_val_metrics,
+                          digits = c(0, 3, 3, 3),
+                          caption = Tbl_cv_cap) %>%
+    kable_styling(full_width = FALSE)
+  
+  # Cross validation figure
+  fig_cv <-  ggplot(data = rslt_list$cv_out4graphs,
+                    aes(x = model_pred,
+                        y = log_mass_mg,
+                        color = LIT_yr,
+                        groups = LIT_yr)) +
+    geom_point() +
+    geom_smooth(method = "lm",
+                se = TRUE) +
+    geom_abline() +
+    facet_wrap(~LIT_yr,
+               ncol = 2) +
+    theme(legend.position = "none") + 
+    annotate("text",
+             x = 0.90 * max(rslt_list$cv_out4graphs$model_pred, na.rm = TRUE),
+             y = 0.15 * max(rslt_list$cv_out4graphs$log_mass_mg, na.rm = TRUE),
+             label = rslt_list$species)
+  
+  
+  # Validation summary
+  val_metrics <- rslt_list$test_metrics %>%
+    dplyr::select(-grp_out) %>%
+    summarize_all(mean) %>%
+    mutate(grp_out = "Average") %>%
+    bind_rows(rslt_list$test_metrics, .)
+  
+  Tbl_v_cap <- paste("Table of final validation results for ", rslt_list$species, " when data for each refuge is kept out from model creation and used for final testing. This test provides a realistic estimate of the error expected when using data from an observed set of refuge-year combinations to predict seed head mass in a new refuge-year.", sep = "")
+  
+  # Validation table
+  tbl_v <-  knitr::kable(val_metrics,
+                         digits = c(0, 3, 3, 3),
+                         caption = Tbl_v_cap) %>%
+    kable_styling(full_width = FALSE)
+  
+  # Validation metrics figure
+  fig_v <- ggplot(data = rslt_list$test_data4graphs,
+                  aes(x = model_pred,
+                      y = log_mass_mg,
+                      color = LIT_yr,
+                      groups = LIT_yr)) +
+    geom_point() +
+    geom_smooth(method = "lm",
+                se = TRUE) +
+    geom_abline() +
+    facet_wrap(~LIT_yr,
+               ncol = 2) +
+    theme(legend.position = "none") +
+    annotate("text",
+             x = 0.90 * max(rslt_list$test_data4graphs$model_pred, na.rm = TRUE),
+             y = 0.15 * max(rslt_list$test_data4graphs$log_mass_mg, na.rm = TRUE),
+             label = rslt_list$species)
+  
+  return(list(cv_table = tbl_cv,
+              cv_fig = fig_cv,
+              v_table = tbl_v,
+              v_fig = fig_v))
+  
+}
+
+```
+
+## Evaluation of prediction alternatives
+
+```{r evalOptions}
+
+# Swam Timothy
+st_model_eval <- model_eval_fnc(the_data = st_d2m)
+st_rslts <- summarize_plot_fnc(rslt_list = st_model_eval)
+
+# Watergrass
+wg_model_eval <- model_eval_fnc(the_data = wg_d2m)
+wg_rslts <- summarize_plot_fnc(rslt_list = wg_model_eval)
+
+```
+
+### Swamp Timothy graphical results
+
+```{r displayGraphsSwampTimothy, echo=FALSE}
+
+print("SWAMP TIMOTHY PREDICTIONS FOR SAMPLED REFUGES")
+st_rslts$cv_fig
+
+print("SWAMP TIMOTHY PREDICTIONS FOR NEW REFUGES")
+st_rslts$v_fig
+
+```
+
+### Swamp Timothy metrics
+
+```{r displayTablesSwampTimothy, echo=FALSE}
+
+st_rslts$cv_table %>%
+  kable_styling(full_width = FALSE,
+                position = "float_left")
+
+st_rslts$v_table %>%
+  kable_styling(full_width = FALSE,
+                position = "left")
+
+
+```
+
+### Watergrass graphical results
+
+```{r displayGraphsWatergrass, echo=FALSE}
+
+print("WATERGRASS PREDICTIONS FOR SAMPLED REFUGES")
+wg_rslts$cv_fig
+
+print("WATERGRASS PREDICTIONS FOR NEW REFUGES")
+wg_rslts$v_fig
+
+```
+
+### Watergrass metrics
+
+```{r displayTablesWatergrass, echo=FALSE}
+
+wg_rslts$cv_table %>%
+  kable_styling(full_width = FALSE,
+                position = "float_left")
+
+wg_rslts$v_table %>%
+  kable_styling(full_width = FALSE,
+                position = "left")
+
+
+```
+
+### Smartweed graphical results
+
+### Smartweed metrics
+
+## Discussion of evaluation results
+
+How well do models work for unsampled refuge?
+How well do models work for sampled refuges?
+
+### How does this compare with the rest of the uncertainty?
+
+Calculate effect of adding this uncertainty to the whole calculation.
+
+## Strategy to update models
+
+Based on an ad hoc assessment of feasibility and costs of getting additional d2m data we recommend that the models developed up to time of this report be used for three additional years. Conditional predictions of mass should be used for refuges for which there is d2m data. Marginal predictions should be used for new refuges.
+
+Conditional predictions incorporate the random effects of refuge-year groups, under the assumption that random effects are associated with refuge and remain constant over years. Marginal predictions are also known as population-level predictions and they do not incorporate any random effects, because in the absence of estimated random effects, the best guess is the average across all groups. For more detail about the difference between predicting for observed vs. new groups see pages 272-274 of Gelman, A., & Hill, J. (2007). Data analysis using regression and multilevel/hierarchical models. Cambridge: Cambridge University Press.
+
+After three years or whenever feasible, collect data for all species in all refuges. Analyze the cumulative data with mixed models that include random effects for slopes and intercepts for refuge,  year and their interaction. Evaluate the impact of making predictions that do not incorporate the random effects of year or interaction. If bias introduced by ignoring those effects or the rmse is not acceptable, refuges have to be sampled every year.
+
+
+
+Title of SOP 5 should reference article titles that have been published about d2m models.
