@@ -198,7 +198,7 @@ ranef(st_d2m_m3) %>%
   kable(digits = c(0, 3, 3), caption = "Random effects of group on the slope and intercept of the relationship between log mass and log length of Swamp Timothy seed heads.") %>%
   kable_styling(full_width = FALSE)
 
-plot(st_d2m_m3) # Residual plot is OK
+
 
 ```
 
@@ -259,7 +259,7 @@ St_CoefVar <- st_d2m %>%
   summarise(log_length_mm = log(mean(length_mm, na.rm = TRUE)),
             .groups = "drop")
 
-myPred <- function(.) {
+myPred_st <- function(.) {
   exp(predict(., newdata = St_CoefVar, re.form = NULL))
 }
 
@@ -271,7 +271,7 @@ sumBoot <- function(merBoot) {
       mass_median = apply(merBoot$t,
                           2,
                           function(x) as.numeric(quantile(x,
-                                                          probs = 0.500,
+                                                          probs = 0.50,
                                                           na.rm = TRUE))),
       mass_mean = apply(merBoot$t,
                         2,
@@ -279,11 +279,11 @@ sumBoot <- function(merBoot) {
                                                     na.rm = TRUE))),
       lwr = apply(merBoot$t,
                   2, function(x) as.numeric(quantile(x,
-                                                     probs = .025,
+                                                     probs = .05,
                                                      na.rm = TRUE))),
       upr = apply(merBoot$t,
                   2, function(x) as.numeric(quantile(x,
-                                                     probs = .975,
+                                                     probs = .95,
                                                      na.rm = TRUE))),
       se = apply(merBoot$t,
                  2, function(x) as.numeric(sd(x,
@@ -294,42 +294,50 @@ sumBoot <- function(merBoot) {
 
 # Use bootMer to get estimates of prediction intervals and se's
 
-boot1 <- lme4::bootMer(st_d2m_m3,
-                       myPred,
+boot1_st <- lme4::bootMer(st_d2m_m3,
+                       myPred_st,
                        nsim = 1000,
                        use.u = FALSE,
                        type = "parametric")
 
 
 St_CoefVar %<>%
-  bind_cols(sumBoot(boot1)) %>%
+  bind_cols(sumBoot(boot1_st)) %>%
   mutate(cv2 = sqrt(se^2 / (mass_mean^2 + se^2)))
 
 rownames(St_CoefVar) <- NULL
 
 my_hist <- function(x, y) hist(x,
                             breaks = 25,
-                            xlim = c(5, 60),
+                            xlim = c(0, 60),
                             freq = FALSE,
                             col = "skyblue",
                             xlab = "Prediction (mg)",
                             main = y)
 
-colnames(boot1$t) <- St_CoefVar$LIT_yr
+colnames(boot1_wg$t) <- St_CoefVar$LIT_yr
 
 
 opar <- par(mfrow = c(3,2)); map2(.x = as.data.frame(boot1$t),
                                   .y = colnames(boot1$t),
                                   ~my_hist(.x, .y)); par(opar)
 
-St_CoefVar %>% 
-  kable(caption = "Estimated seed head mass (mg) and coefficient of variation for swamp timothy seedheads of average dimensions.",
+St_CoefVar %>%
+  dplyr::select(LIT_yr,
+                mass_median,
+                lwr,
+                mass_mean,
+                upr,
+                se,
+                cv2) %>%
+    mutate(MOE = (upr - lwr) / (upr + lwr)) %>%
+  kable(caption = "Estimated seed head mass (mg), coefficient of variation (cv2), margin of error (MOE) and 90% CI for swamp timothy seedheads of average dimensions.",
         digits = c(0, 1, 1, 1, 1, 1, 2, 2)) %>%
   kable_styling(full_width = FALSE)
 
 ```
 
-The coefficient of variation is very small to small, indicating high precision in the estimates. Second-order coefficients of variation smaller than 0.20 (20%) are very small and between 0.2 and 0.4 are small (Kvålset, 2017).
+The coefficient of variation is very small to small, indicating high precision in the estimates. Second-order coefficients of variation smaller than 0.20 (20%) are very small and between 0.2 and 0.4 are small (Kvålset, 2017). The margin of error achieved at 90% confidence varies between 0.30 and 0.37, which may be considred too high according to default standards (FIND REFERENCES). 
 
 
 
@@ -340,8 +348,6 @@ The coefficient of variation is very small to small, indicating high precision i
 ```{r wg_plotData, echo=FALSE}
 
 pairs(wg_d2m[ c("length_mm", "f2t_length_mm", "emerged")])
-
-biplot(prcomp(wg_d2m[c("length_mm", "f2t_length_mm", "emerged")], scale. = TRUE))
 
 scatterplot(mass_mg ~ length_mm | LIT_yr,
             smooth = FALSE,
@@ -360,6 +366,8 @@ scatterplot(mass_mg ~ log_emerged | LIT_yr,
 
 
 ```
+
+Scatterplot show differences among groups in the responses to predictors.
 
 **Question: should predictions be done for the measured degree of seed head development or for a fixed level selected to correct for degree of development when seed heads were measured?**
 
@@ -414,7 +422,7 @@ myPred <- function(.) {
 
 # Use bootMer to get estimates of prediction intervals and se's
 
-boot1 <- lme4::bootMer(wg_d2m_m2,
+boot1.wg <- lme4::bootMer(wg_d2m_m2,
                        myPred,
                        nsim = 1000,
                        use.u = FALSE,
@@ -422,33 +430,44 @@ boot1 <- lme4::bootMer(wg_d2m_m2,
 
 
 Wg_CoefVar %<>%
-  bind_cols(sumBoot(boot1)) %>%
+  bind_cols(sumBoot(boot1_wg)) %>%
   mutate(cv2 = sqrt(se^2 / (mass_mean^2 + se^2)))
 
 rownames(Wg_CoefVar) <- NULL
 
 my_hist <- function(x, y) hist(x,
                             breaks = 25,
-                            xlim = c(5, 60),
+                            xlim = c(5, 600),
                             freq = FALSE,
                             col = "skyblue",
                             xlab = "Prediction (mg)",
                             main = y)
 
-colnames(boot1$t) <- Wg_CoefVar$LIT_yr
+colnames(boot1_wg$t) <- Wg_CoefVar$LIT_yr
 
 
 opar <- par(mfrow = c(3,2)); map2(.x = as.data.frame(boot1$t),
                                   .y = colnames(boot1$t),
                                   ~my_hist(.x, .y)); par(opar)
 
-Wg_CoefVar %>% 
-  kable(caption = "Estimated seed head mass (mg) and coefficient of variation for swamp timothy seedheads of average dimensions.",
-        digits = c(0, 1, 1, 1, 1, 1, 2, 2)) %>%
+Wg_CoefVar %>%
+  dplyr::select(LIT_yr,
+                mass_median,
+                lwr,
+                mass_mean,
+                upr,
+                se,
+                cv2) %>%
+  mutate(MOE = (upr - lwr) / (upr + lwr)) %>%
+  kable(caption = "Estimated seed head mass (mg), coefficient of variation (cv2), margin of error (MOE) and 90% CI for watergrass seedheads of average dimensions.",
+        digits = c(0, 0, 0, 0, 0, 1, 2, 2)) %>%
   kable_styling(full_width = FALSE)
+
+
 
 ```
 
+Coefficients of variation for watergrass are small to medium range. The margin of error (half CI width) is in the order of 145%,
 
 ## Models for Smartweed
 
