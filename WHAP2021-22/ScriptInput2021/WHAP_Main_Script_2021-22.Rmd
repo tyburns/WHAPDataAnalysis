@@ -505,17 +505,15 @@ In 2021 this part of the code was modified to use a log transformation of the ma
 ```{r st.modelStrata}
 
 # Get lambda for st
-st_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
+st_lambda <- powerTransform(lm(mass_g_m2 ~ LIT_Strat,
                                 na.action = na.exclude,
-                                maxit = 40,
                                 data = qdt_st)) %>%
   coef(round = TRUE) %>%
   unname()
 
-# Use robust linear model
-st_rlm3 <- rlm(bcPower(mass_g_m2, lambda = st_lambda) ~ LIT_Strat,
+# Use linear model
+st_lm3 <- lm(bcPower(mass_g_m2, lambda = st_lambda) ~ LIT_Strat,
                na.action = na.exclude,
-               maxit = 40,
                data = qdt_st)
 
 ```
@@ -531,17 +529,15 @@ with(qdt_wg, table(LIT, stratum)) # only one quadrat in KRN; remove
 #          LIT_Strat = factor(LIT_Strat))
 
 # Get lambda for wg
-wg_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
+wg_lambda <- powerTransform(lm(mass_g_m2 ~ LIT_Strat,
                                 na.action = na.exclude,
-                                maxit = 40,
                                 data = qdt_wg)) %>%
   coef(round = TRUE) %>%
   unname()
 
-# Use robust linear model
-wg_rlm3 <- rlm(bcPower(mass_g_m2, lambda = wg_lambda) ~ LIT_Strat,
+# Use linear model
+wg_lm3 <- lm(bcPower(mass_g_m2, lambda = wg_lambda) ~ LIT_Strat,
                na.action = na.exclude,
-               maxit = 40,
                data = qdt_wg)
 
 ```
@@ -549,70 +545,62 @@ wg_rlm3 <- rlm(bcPower(mass_g_m2, lambda = wg_lambda) ~ LIT_Strat,
 ```{r sw.modelStrata}
 
 # Get lambda for sw
-sw_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
+sw_lambda <- powerTransform(lm(mass_g_m2 ~ LIT_Strat,
                                 na.action = na.exclude,
-                                maxit = 40,
                                 data = qdt_sw)) %>%
   coef(round = TRUE) %>%
   unname()
 
-# Use robust linear model
-sw_rlm3 <- rlm(bcPower(mass_g_m2, lambda = sw_lambda) ~ LIT_Strat,
+# Use linear model
+sw_lm3 <- lm(bcPower(mass_g_m2, lambda = sw_lambda) ~ LIT_Strat,
                na.action = na.exclude,
-               maxit = 40,
                data = qdt_sw)
 
 ```
 
 
-Make a data frame with the seed mass per unit area for each stratum, and species (columns) for each subunit (rows). `seed_mass_fun` is a function that takes the file `p_Area`, and the models for g.m2 by subunitName and stratum ("st_rlm3" and "wg_rlm3") as arguments and yields the seed mass of st and wg per unit area of each subunit, and the area of each subunit. The resulting file can be used to calculate refuge-level yields.
+Make a data frame with the seed mass per unit area for each stratum, and species (columns) for each subunit (rows). `seed_mass_fun` is a function that takes the file `p_Area`, and the models for g.m2 by subunitName and stratum ("st_lm3" and "wg_lm3") as arguments and yields the seed mass of st and wg per unit area of each subunit, and the area of each subunit. The resulting file can be used to calculate refuge-level yields.
 
 ```{r seed_mass_fun}
 
-seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg, .qdt_sw) {
+seed_mass_fun <- function(.qdt_st, .qdt_wg, .qdt_sw, .p_Area = p_Area) {
   tryCatch({
     
     # Get lambda for st
-    .st_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
+    .st_lambda <- powerTransform(lm(mass_g_m2 ~ LIT_Strat,
                                      na.action = na.exclude,
-                                     maxit = 40,
                                      data = .qdt_st)) %>%
       coef(round = TRUE) %>%
       unname()
     
-    # Use robust linear model
-    .st_rlm3 <- rlm(bcPower(mass_g_m2, lambda = .st_lambda) ~ LIT_Strat,
+    # Use linear model
+    .st_lm3 <- lm(bcPower(mass_g_m2, lambda = .st_lambda) ~ LIT_Strat,
                     na.action = na.exclude,
-                    maxit = 40,
                     data = .qdt_st)
     
     # Get lambda for wg
-    .wg_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
+    .wg_lambda <- powerTransform(lm(mass_g_m2 ~ LIT_Strat,
                                      na.action = na.exclude,
-                                     maxit = 40,
                                      data = .qdt_wg)) %>%
       coef(round = TRUE) %>%
       unname()
     
-    # Use robust linear model
-    .wg_rlm3 <- rlm(bcPower(mass_g_m2, lambda = .wg_lambda) ~ LIT_Strat,
+    # Use linear model
+    .wg_lm3 <- lm(bcPower(mass_g_m2, lambda = .wg_lambda) ~ LIT_Strat,
                     na.action = na.exclude,
-                    maxit = 40,
                     data = .qdt_wg)
     
     # Get lambda for sw
-    .sw_lambda <- powerTransform(rlm(mass_g_m2 ~ LIT_Strat,
+    .sw_lambda <- powerTransform(lm(mass_g_m2 ~ LIT_Strat,
                                 na.action = na.exclude,
-                                maxit = 40,
                                 data = .qdt_sw)) %>%
       coef(round = TRUE) %>%
       unname()
   
 
-    # Use robust linear model
-    .sw_rlm3 <- rlm(bcPower(mass_g_m2, lambda = .sw_lambda) ~ LIT_Strat,
+    # Use linear model
+    .sw_lm3 <- lm(bcPower(mass_g_m2, lambda = .sw_lambda) ~ LIT_Strat,
                    na.action = na.exclude,
-                   maxit = 40,
                    data = .qdt_sw)
     
     result <- .p_Area %>% # create file to predict mass/area by stratum & LIT
@@ -622,21 +610,21 @@ seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg, .qdt_sw) {
       mutate(su = subunit_ID) %>%
       separate(su, sep = "_", into = c("LIT", "unitName", "subunitName")) %>%
       mutate(oLIT_Strat = factor(paste(LIT, stratum, sep = "_"))) %>%
-      mutate(LIT_Strat = factor(ifelse(oLIT_Strat %in% .st_rlm3$xlevels[[1]],
+      mutate(LIT_Strat = factor(ifelse(oLIT_Strat %in% .st_lm3$xlevels[[1]],
                                        as.character(oLIT_Strat),
                                        NA))) %>%
-      mutate(st_g_m2 = invBoxCox(unname(predict(.st_rlm3, newdata = .)),
+      mutate(st_g_m2 = invBoxCox(unname(predict(.st_lm3, newdata = .)),
                                  lambda = .st_lambda)) %>%
-      mutate(LIT_Strat = factor(ifelse(oLIT_Strat %in% .wg_rlm3$xlevels[[1]],
+      mutate(LIT_Strat = factor(ifelse(oLIT_Strat %in% .wg_lm3$xlevels[[1]],
                                        as.character(oLIT_Strat),
                                        NA))) %>%
-      mutate(wg_g_m2 = invBoxCox(unname(predict(.wg_rlm3, newdata = .)),
+      mutate(wg_g_m2 = invBoxCox(unname(predict(.wg_lm3, newdata = .)),
                                  lambda = .wg_lambda)) %>%
              #LIT_Strat = oLIT_Strat, # not selected below, so it's useless
-      mutate(LIT_Strat = factor(ifelse(oLIT_Strat %in% .sw_rlm3$xlevels[[1]],
+      mutate(LIT_Strat = factor(ifelse(oLIT_Strat %in% .sw_lm3$xlevels[[1]],
                                        as.character(oLIT_Strat),
                                        NA))) %>%
-      mutate(sw_g_m2 = invBoxCox(unname(predict(.sw_rlm3, newdata = .)),
+      mutate(sw_g_m2 = invBoxCox(unname(predict(.sw_lm3, newdata = .)),
                                  lambda = .sw_lambda)) %>%
       mutate(sw_g_m2 = replace_na(sw_g_m2, 0),
              st_g_m2 = replace_na(st_g_m2, 0),
@@ -677,13 +665,14 @@ seed_mass_fun <- function(.p_Area, .qdt_st, .qdt_wg, .qdt_sw) {
 
 ```{r mass_per_subunit}
 
-qdt_mass_g_m2 <- seed_mass_fun(p_Area, qdt_st, qdt_wg, qdt_sw) %>%
+qdt_mass_g_m2 <- seed_mass_fun(qdt_st, qdt_wg, qdt_sw, p_Area) %>%
   arrange(subunit_ID) %>%
   na.omit()
 
 attr(qdt_mass_g_m2, "notes") <- "These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass."
 
 str(qdt_mass_g_m2)
+
 ```
 
 ```{r table_, results='asis'}
@@ -763,13 +752,16 @@ system.time(
                           apparent = TRUE,
                           strata = LIT_Strat) %>%
                  rename(qdt_sw = splits)), by = c("id")) %>%
-    mutate(mass_su = map2(.x = qdt_st,
-                          .y = qdt_wg,
-                          .z = qdt_sw,
-                          ~seed_mass_fun(p_Area,
-                                         .qdt_st = analysis(.x),
-                                         .qdt_wg = analysis(.y),
-                                         .qdt_sw = analysis(.z))))
+    mutate(qdt_st = map(qdt_st, ~analysis(.x)),
+           qdt_wg = map(qdt_wg, ~analysis(.x)),
+           qdt_sw = map(qdt_sw, ~analysis(.x)),
+           mass_su = pmap(.l = list(..1 = qdt_st,
+                                    ..2 = qdt_wg,
+                                    ..3 = qdt_sw),
+                          .f = ~seed_mass_fun(.qdt_st = ..1,
+                                              .qdt_wg = ..2,
+                                              .qdt_sw = ..3,
+                                              .p_Area = p_Area)))
 )
 
 ```
@@ -813,7 +805,7 @@ mass.su.CI %>%
 
 ```
 
-The results of bootstrapping are arranged in a matrix where bootstrap samples are rows and subunits are columns. Note that this matrix results from bootstrapping quadrats, which yields boot samples for the mass in each species-stratum combinations. Thus, the boot variation in subunit estimates comes only from those 3 or fewer values per species. The estimates of proportion of area covered do not vary in the calculation of boot_mat. As a result, the estimates of mass for subunits are all highly correlated. The first 2 eigenvalues account for 98% of the total variance, and the first 5 eigenvalues account for 99.9% of the variance.
+The results of bootstrapping are arranged in a matrix where bootstrap samples are rows and subunits are columns. Note that this matrix results from bootstrapping quadrats, which yields boot samples for the mass in each species-stratum combinations. Thus, the boot variation in subunit estimates comes only from those 3 or fewer values per species. The estimates of proportion of area covered do not vary in the calculation of boot_mat. As a result, the estimates of mass for subunits are all highly correlated.
 
 ```{r BootstrapSamples}
 
@@ -830,38 +822,98 @@ boot_mat <- qdt_bt %>%
 
 ```
 
-In this section, the bootstrap samples are used to estimate total mass of seed heads per refuge. **To Do: incorporate covariance between subunit estimates** The current calculation assumes that estimates are indepentent, which is overly optimistic.
+```{r checkBoot_Mat, include=FALSE, echo=FALSE}
+pca_wg <- boot_mat %>%
+  as_tibble() %>%
+  dplyr::select(contains("wg_")) %>%
+  dplyr::select(which(colSums(.) != 0)) %>%
+  prcomp(scale. = TRUE)
+
+summary(pca_wg)
+
+pca_wg$center
+
+```
+
+In this section, the bootstrap samples are used to estimate total mass of seed heads per refuge. Because one refuge total is calculated for each bootstrap sample, the covariances between estimates are implicitly taken into account.
 
 ```{r mass_kg_LIT_CI}
 
 mass_kg_LIT_CI <- qdt_bt %>%
   dplyr::filter(unlist(map(mass_su, ~!is.null(.x)))) %>%
   mutate(mass_su = map(.x = mass_su, ~drop_na(.x)),
-         mass_lit = map(.x = mass_su,
-                        ~group_by(.x, LIT) %>%
-                          summarise(mass_kg_lit = sum(tot_g_m2 * area_ha * 10),
-                                    tot_ha = sum(area_ha),
-                                    kg_ha = mass_kg_lit / tot_ha,
-                                    .groups = "drop"))) %>%
+         mass_lit = map(
+           .x = mass_su,
+           ~group_by(.x, LIT) %>%
+             summarise(tot_mass_kg_lit = sum(tot_g_m2 * area_ha * 10),
+                       st_mass_kg_lit = sum(st_g_m2 * area_ha * 10),
+                       wg_mass_kg_lit = sum(wg_g_m2 * area_ha * 10),
+                       sw_mass_kg_lit = sum(sw_g_m2 * area_ha * 10),
+                       tot_ha = sum(area_ha),
+                       tot_kg_ha = tot_mass_kg_lit / tot_ha,
+                       st_kg_ha = st_mass_kg_lit / tot_ha,
+                       wg_kg_ha = wg_mass_kg_lit / tot_ha,
+                       sw_kg_ha = sw_mass_kg_lit / tot_ha, 
+                       .groups = "drop"))) %>%
   dplyr::select(mass_lit) %>%
   unnest(cols = mass_lit) %>%
   group_by(LIT) %>%
-  summarise(mass_kg_lit_q10 = quantile(mass_kg_lit, 0.10, na.rm = TRUE),
-            mass_kg_lit_q90 = quantile(mass_kg_lit, 0.90, na.rm = TRUE),
-            mass_kg_lit_mean = mean(mass_kg_lit, na.rm = TRUE),
-            kg_ha_q10 = quantile(kg_ha, 0.10, na.rm = TRUE),
-            kg_ha_q90 = quantile(kg_ha, 0.90, na.rm = TRUE),
-            kg_ha_mean = mean(kg_ha, na.rm = TRUE),
-            tot_ha = mean(tot_ha, 0.10, na.rm = TRUE), .groups = "drop")
+  summarise(
+    tot_mass_kg_lit_q10 = unname(quantile(tot_mass_kg_lit, 0.10, na.rm = TRUE)),
+    tot_mass_kg_lit_q90 = unname(quantile(tot_mass_kg_lit, 0.90, na.rm = TRUE)),
+    tot_mass_kg_lit_mean = mean(tot_mass_kg_lit, na.rm = TRUE),
+    tot_kg_ha_q10 = unname(quantile(tot_kg_ha, 0.10, na.rm = TRUE)),
+    tot_kg_ha_q90 = unname(quantile(tot_kg_ha, 0.90, na.rm = TRUE)),
+    tot_kg_ha_mean = mean(tot_kg_ha, na.rm = TRUE),
+    st_mass_kg_lit_q10 = unname(quantile(st_mass_kg_lit, 0.10, na.rm = TRUE)),
+    st_mass_kg_lit_q90 = unname(quantile(st_mass_kg_lit, 0.90, na.rm = TRUE)),
+    st_mass_kg_lit_mean = mean(st_mass_kg_lit, na.rm = TRUE),
+    st_kg_ha_q10 = unname(quantile(st_kg_ha, 0.10, na.rm = TRUE)),
+    st_kg_ha_q90 = unname(quantile(st_kg_ha, 0.90, na.rm = TRUE)),
+    st_kg_ha_mean = mean(st_kg_ha, na.rm = TRUE),
+    wg_mass_kg_lit_q10 = unname(quantile(wg_mass_kg_lit, 0.10, na.rm = TRUE)),
+    wg_mass_kg_lit_q90 = unname(quantile(wg_mass_kg_lit, 0.90, na.rm = TRUE)),
+    wg_mass_kg_lit_mean = mean(wg_mass_kg_lit, na.rm = TRUE),
+    wg_kg_ha_q10 = unname(quantile(wg_kg_ha, 0.10, na.rm = TRUE)),
+    wg_kg_ha_q90 = unname(quantile(wg_kg_ha, 0.90, na.rm = TRUE)),
+    wg_kg_ha_mean = mean(wg_kg_ha, na.rm = TRUE),
+    sw_mass_kg_lit_q10 = unname(quantile(sw_mass_kg_lit, 0.10, na.rm = TRUE)),
+    sw_mass_kg_lit_q90 = unname(quantile(sw_mass_kg_lit, 0.90, na.rm = TRUE)),
+    sw_mass_kg_lit_mean = mean(sw_mass_kg_lit, na.rm = TRUE),
+    sw_kg_ha_q10 = unname(quantile(sw_kg_ha, 0.10, na.rm = TRUE)),
+    sw_kg_ha_q90 = unname(quantile(sw_kg_ha, 0.90, na.rm = TRUE)),
+    sw_kg_ha_mean = mean(sw_kg_ha, na.rm = TRUE),
+    tot_ha = mean(tot_ha, 0.10, na.rm = TRUE), .groups = "drop")
 
 attr(mass_kg_LIT_CI, "notes") <- "These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass, but they do include the uncertainty due to sampling quadrats."
 
 mass_kg_LIT_CI %>%
+  dplyr::select(LIT, contains("tot_"), - tot_ha) %>%
   kable(digits = 0,
         format = "html",
-        caption = "Seed head mass per unit area (g/m2) and 90% CI by refuge. These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass, but they include the uncertainty due to sampling quadrats.") %>%
+        caption = "Total (all three species) seed head mass per unit area (kg/ha) and per refuge, and 90% CI by refuge. These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass, but they include the uncertainty due to sampling quadrats.") %>%
   kable_styling(full_width = FALSE)
 
+mass_kg_LIT_CI %>%
+  dplyr::select(LIT, contains("st_")) %>%
+  kable(digits = 0,
+        format = "html",
+        caption = "Swamp Timothy seed head mass per unit area (kg/ha) and per refuge, and 90% CI by refuge. These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass, but they include the uncertainty due to sampling quadrats.") %>%
+  kable_styling(full_width = FALSE)
+
+mass_kg_LIT_CI %>%
+  dplyr::select(LIT, contains("wg_")) %>%
+  kable(digits = 0,
+        format = "html",
+        caption = "Watergrass seed head mass per unit area (kg/ha) and per refuge, and 90% CI by refuge. These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass, but they include the uncertainty due to sampling quadrats.") %>%
+  kable_styling(full_width = FALSE)
+
+mass_kg_LIT_CI %>%
+  dplyr::select(LIT, contains("sw_")) %>%
+  kable(digits = 0,
+        format = "html",
+        caption = "Smartweed seed head mass per unit area (kg/ha) and per refuge, and 90% CI by refuge. These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass, but they include the uncertainty due to sampling quadrats.") %>%
+  kable_styling(full_width = FALSE)
 
 ```
 
@@ -1338,7 +1390,7 @@ write.csv(p_Area, "../Output2021/p_Area2021.csv")
 
 # Swamp Timothy ====================
 
-st_qdt_means <- emmeans(st_rlm3, "LIT_Strat", type = "response") %>%
+st_qdt_means <- emmeans(st_lm3, "LIT_Strat", type = "response") %>%
   as.tibble() %>%
   arrange(as.character(LIT_Strat)) %>%
   dplyr::select(-df) %>%
@@ -1354,7 +1406,7 @@ write.csv(st_qdt_means,
 
 # Watergrass ====================
 
-wg_qdt_means <- emmeans(wg_rlm3, "LIT_Strat", type = "response") %>%
+wg_qdt_means <- emmeans(wg_lm3, "LIT_Strat", type = "response") %>%
   as.tibble() %>%
   arrange(as.character(LIT_Strat)) %>%
   dplyr::select(-df) %>%
@@ -1370,7 +1422,7 @@ write.csv(wg_qdt_means,
 
 # Smartweed ====================
 
-sw_qdt_means <- emmeans(sw_rlm3, "LIT_Strat", type = "response") %>%
+sw_qdt_means <- emmeans(sw_lm3, "LIT_Strat", type = "response") %>%
   as.tibble() %>%
   arrange(as.character(LIT_Strat)) %>%
   dplyr::select(-df) %>%
