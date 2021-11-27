@@ -417,12 +417,14 @@ Wg_CoefVar <- wg_d2m %>%
             .groups = "drop")
 
 myPred <- function(.) {
-  exp(predict(., newdata = Wg_CoefVar, re.form = NULL))
+  exp(predict(.,
+              newdata = Wg_CoefVar,
+              re.form = NULL))
 }
 
 # Use bootMer to get estimates of prediction intervals and se's
 
-boot1.wg <- lme4::bootMer(wg_d2m_m2,
+boot1_wg <- lme4::bootMer(wg_d2m_m2,
                        myPred,
                        nsim = 1000,
                        use.u = FALSE,
@@ -446,8 +448,8 @@ my_hist <- function(x, y) hist(x,
 colnames(boot1_wg$t) <- Wg_CoefVar$LIT_yr
 
 
-opar <- par(mfrow = c(3,2)); map2(.x = as.data.frame(boot1$t),
-                                  .y = colnames(boot1$t),
+opar <- par(mfrow = c(2,2)); map2(.x = as.data.frame(boot1_wg$t),
+                                  .y = colnames(boot1_wg$t),
                                   ~my_hist(.x, .y)); par(opar)
 
 Wg_CoefVar %>%
@@ -467,7 +469,7 @@ Wg_CoefVar %>%
 
 ```
 
-Coefficients of variation for watergrass are small to medium range. The margin of error (half CI width) is in the order of 145%,
+Coefficients of variation for watergrass are  in the small to medium range. The margin of error (half CI width) is 0.49 to 60. These values are larger than the corresponding ones for Swamp Timothy and should probably be improved. Improvememt of predictions can be obttained by measuring more seed head dimensions, such as length of extended bottom panicle branches, or by obtaining larger samples. If more dimensions are used, keep in mind that those will have to be measured in seed heads for each quadrat every year.
 
 ## Models for Smartweed
 
@@ -588,6 +590,7 @@ summary(sw_m5)
 
 ```
 
+<!-- Worked down to here ======= -->
 #### Multiple predictors
 
 ```{r sw_multiplePreds}
