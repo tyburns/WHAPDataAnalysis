@@ -888,7 +888,7 @@ mass_kg_LIT_CI <- qdt_bt %>%
 attr(mass_kg_LIT_CI, "notes") <- "These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass, but they do include the uncertainty due to sampling quadrats."
 
 mass_kg_LIT_CI %>%
-  dplyr::select(LIT, contains("tot_"), - tot_ha) %>%
+  dplyr::select(LIT, contains("tot_"), -tot_ha) %>%
   kable(digits = 0,
         format = "html",
         caption = "Total (all three species) seed head mass per unit area (kg/ha) and per refuge, and 90% CI by refuge. These estimations exclude the uncertainty due to the proportion of area covered by each stratum in each unit, and the uncertainty of the model to convert seed number and seed length into mass, but they include the uncertainty due to sampling quadrats.") %>%
@@ -967,6 +967,7 @@ Xs2 <- v_Area_c %>%
                 p_Smartweed_c.High)
 
 Xm2 <- p_Area %>%
+  ungroup() %>%
   arrange(subunit_ID) %>%
   dplyr::select(p_Swamp_Timothy_a.Low, # means of proportion of areas
                 p_Swamp_Timothy_b.Med, 
