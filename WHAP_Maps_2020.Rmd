@@ -1,0 +1,318 @@
+---
+title: "WHAP Maps 11-29-2021"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+# Data requirements for this script
+- Management units (shape file): sub units by refuge with geometry
+- Viability Analysis: Refuge with Poor to Very good parameters
+- Seed estimates: Seed estimates by Sub Unit for all species of interest. - Surveyed units: All sub units for each refuge with indications for surveyed or not surveyed. 
+
+# Issues
+- Use theme_void() when axis are worked out. See Kern heat map 
+- Fix viability so Poor->Very Good
+- Axis on maps are uneven. Issue with projections? 
+- Modoc and Stone Lakes labels are small and hard to see
+- Is there a way to add the compass and have it automatically set itself. Currently I am manually shifting it so it doesn't overlap with the map
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+packages = c("sf", "tidyr", "dplyr","ggplot2",
+             "viridis",  "MASS", "readr","RColorBrewer","ggspatial")
+
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }
+  }
+)
+setwd("~/WHAP2021/WHAP_mapping_2020")
+
+# Loading shape files 
+mus_krn <- read_sf('KRN_MU_2021.shp')
+mus_mdc<-read_sf('~/WHAP2021/Modoc_MU/Modoc_ManagementUnits_20210419.shp')
+mus_slw <- read_sf('~/WHAP2021/WHAP_mapping_2019/SLW_MU_2019.shp')
+mus_pix <- read_sf('~/WHAP2021/WHAP_mapping_2019/PIX_MU_2019.shp')
+
+# fixing columns
+colnames(mus_pix)[colnames(mus_pix)=="UnitName"] <- "Sub_Unit"
+colnames(mus_krn)[colnames(mus_krn)=="MU_SubUnit"] <- "Sub_Unit"
+colnames(mus_krn)[colnames(mus_krn)=="Lit"] <- "LIT"
+colnames(mus_slw)[colnames(mus_slw)=="UnitName"] <- "Sub_Unit"
+colnames(mus_mdc)[colnames(mus_mdc)=="MU_Name"] <- "Sub_Unit"
+
+# fixing the weird Kern 4A-3, 4A-5, and 4A-6 issue
+mus_krn[which(mus_krn$MU_Name=="4A-3"),c("Sub_Unit")]<-c("4A-3")
+mus_krn[which(mus_krn$MU_Name=="4A-5"),c("Sub_Unit")]<-c("4A-5")
+mus_krn[which(mus_krn$MU_Name=="4A-6"),c("Sub_Unit")]<-c("4A-6")
+
+# Loading 2020 mass g m2 data and splitting it up by refuge and cleaning up column names (#)
+seed_data2020<-read.csv('C:/Users/tyburns/OneDrive - DOI/Documents/WHAP2021/WHAP_mapping_2020/qdt_mass_g_m2_2020.txt')
+colnames(seed_data2020)[colnames(seed_data2020)=="Subunit_Name"] <- "Sub_Unit"
+
+slw_seed_2020<-seed_data2020 %>% 
+  filter(LIT=='SLW')
+
+krn_seed_2020<-seed_data2020 %>% 
+  filter(LIT=='KRN')
+
+pix_seed_2020<-seed_data2020 %>% 
+  filter(LIT=='PIX')
+
+mdc_seed_2020<-seed_data2020 %>% 
+  filter(LIT=='MDC')
+
+# Cleaning up column names
+
+colnames(slw_seed_2020)[colnames(slw_seed_2020)=="Sub_Unit"] <- "SubUnit_id"
+colnames(slw_seed_2020)[colnames(slw_seed_2020)=="Unit_Name"] <- "Sub_Unit"
+
+# Merging shape files with seed data
+
+slw_seedmu_2020 <- merge(mus_slw, slw_seed_2020, by='Sub_Unit')
+pix_seedmu_2020 <- merge(mus_pix, pix_seed_2020, by='Sub_Unit')
+krn_seedmu_2020 <- merge(mus_krn, krn_seed_2020, by='Sub_Unit')
+mdc_seedmu_2020 <- merge(mus_mdc, mdc_seed_2020, by='Sub_Unit')
+
+# Viability color vector
+vcolor <- c("Very Good" = "#9CC97D", "Good" = "#E2EFD9", "Fair" = "#FEF1C6","Poor" = "#F7D1D2")
+
+# Adding viability scales to the merged mu/seed data 
+
+pix_st_viability_2020<- pix_seedmu_2020 %>%
+  mutate(viability = if_else(st_g_m2 < 85, "Poor",
+                     if_else(st_g_m2 <180, "Fair",
+                     if_else(st_g_m2 <300, "Good", "Very Good")))) 
+
+krn_st_viability_2020<-krn_seedmu_2020 %>%
+  mutate(viability = if_else(st_g_m2 < 85, "Poor",
+                     if_else(st_g_m2 <180, "Fair",
+                     if_else(st_g_m2 <300, "Good", "Very Good"))))
+
+# Creating a df for surveyed/not surveyed management units
+## color ramp
+scolor <- c("Y" = "cadetblue3","N" = "gray89")
+
+## Kern
+krn_surveyed_2020<-read.csv('KRN_2020_surveyed.csv')
+krn_surveyedmu_2020 <- merge(mus_krn, krn_surveyed_2020, by='Sub_Unit')
+
+## Pixley
+pix_surveyed_2020<-read.csv('PIX_2020_surveyed.csv')
+pix_surveyedmu_2020 <- merge(x= mus_pix, y = pix_surveyed_2020, by='Sub_Unit', all = TRUE)
+
+## Stone Lakes
+slw_surveyed_2020<-read.csv('SLW_2020_surveyed.csv')
+slw_surveyedmu_2020 <- merge(mus_slw, slw_surveyed_2020, by='Sub_Unit')
+```
+
+# Swamp Timothy Heat Maps 2020
+## Stone Lakes
+```{r}
+#issue: why are the axis tic marks at such odd intervals?
+slw_st_map_2020<-ggplot(data =slw_seedmu_2020) +
+  geom_sf(aes(fill = st_g_m2))+
+  scale_fill_viridis(option = "F", limits = c(0, (1.6*max(slw_seedmu_2020$st_g_m2))), direction=-1, name="Timothy Seed Mass g/m2")+
+  labs(title="Stone Lakes Timothy Seed Production 2020", x="", y="")+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3, position="dodge")+
+  theme_bw()+
+  theme(aspect.ratio = 1)+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+ 
+slw_st_map_2020
+```
+
+## Pixley
+```{r}
+#issue: arrow not working
+pix_st_map_2020<-ggplot(data =pix_seedmu_2020) +
+  geom_sf(aes(fill = st_g_m2))+
+  scale_fill_viridis(option = "F", limits = c(0, (1.6*max(pix_seedmu_2020$st_g_m2))), direction = -1, name="Timothy Seed Mass g/m2")+
+  labs(title="Pixley Timothy Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3, position='dodge')+
+  theme_bw()+
+  theme(aspect.ratio = 1)+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+
+pix_st_map_2020
+```
+
+## Kern 
+```{r}
+krn_st_map_2020<-ggplot(data = krn_seedmu_2020) +
+  geom_sf(aes(fill = st_g_m2))+
+  coord_sf(expand = F)+
+  annotation_north_arrow(location = "bl", which_north = "true", 
+        pad_x = unit(1.5, "in"), pad_y = unit(0.1, "in"),
+        style = north_arrow_fancy_orienteering) +
+  scale_fill_viridis(option = "F", limits = c(0, (1.6*max(krn_seedmu_2020$st_g_m2))), direction =-1, name="Timothy Seed Mass g/m2")+
+  labs(title="Kern Timothy Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3, position="dodge")+
+  theme_void()
+
+krn_st_map_2020
+```
+
+## Modoc
+```{r}
+mdc_st_map_2020<-ggplot(data =mdc_seedmu_2020) +
+  geom_sf(aes(fill = st_g_m2))+
+    scale_fill_viridis(option = "F", limits = c(0, (1.6*max(mdc_seedmu_2020$st_g_m2))), direction =-1, name="Timothy Seed Mass g/m2")+
+  labs(title="Modoc Timothy Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=2, )+
+  theme_bw()+
+  theme(aspect.ratio = 1)+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+ 
+mdc_st_map_2020
+```
+
+# Swamp Timothy Viability Maps for 2020
+## Pixley 
+
+```{r}
+# Viability Maps
+# Pixley Viability Map 2020
+#TEST pix_st_viability_2020$viability <- factor(pix_st_viability_2020$viability, levels=c("Very Good", "Good", "Fair", "Poor"))
+ 
+pix_st_viability_map_2020<-ggplot(data =pix_st_viability_2020) +
+  geom_sf(aes(fill = viability))+
+  scale_fill_manual(values = vcolor, name= "Viability")+ 
+  theme(legend.position = "right")+
+  labs(title="Pixley Timothy Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3, position="dodge")+
+  theme_bw()+
+  theme(aspect.ratio = 1)+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+
+
+pix_st_viability_map_2020
+```
+
+## Kern 
+```{r}
+krn_st_viability_map_2020<-ggplot(data =krn_st_viability_2020) +
+  geom_sf(aes(fill = viability))+
+scale_fill_manual(values = vcolor, name= "Viability")+ 
+  theme(legend.position = "right")+
+  labs(title="Kern Timothy Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3, position="dodge")+
+  theme_bw()+
+  theme(aspect.ratio = 1)+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+
+krn_st_viability_map_2020
+```
+
+# Watergrass g/m2 Heat Maps 2020
+## Stone Lakes
+```{r}
+slw_wg_map_2020<-ggplot(data =slw_seedmu_2020) +
+  geom_sf(aes(fill = wg_g_m2))+
+  scale_fill_viridis(option = "F", limits = c(0,(1.6*max(slw_seedmu_2020$wg_g_m2))),direction=-1, name="Watergrass Seed Mass g/m2")+
+  labs(title="Stone Lakes Watergrass Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.text.x = element_text(angle=90))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3, position="dodge")+
+  theme_bw()+
+  theme(aspect.ratio = 1)+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+ 
+slw_wg_map_2020
+```
+
+## Pixley
+```{r}
+pix_wg_map_2020<-ggplot(data =pix_seedmu_2020) +
+  geom_sf(aes(fill = wg_g_m2))+
+  scale_fill_viridis(option ="F", direction = -1, limits = c(0,(1.6*max(pix_seedmu_2020$wg_g_m2))), name="Watergrass Seed Mass g/m2")+
+  labs(title="Pixley Watergrass Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3, position="dodge")+
+  theme_bw()+
+  theme(aspect.ratio = 1)+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+
+pix_wg_map_2020
+```
+
+## Modoc
+```{r}
+mdc_wg_map<-ggplot(data =mdc_seedmu_2020) +
+  geom_sf(aes(fill = wg_g_m2))+
+  scale_fill_viridis(option = "F", direction = -1, limits = c(0,(1.6*max(mdc_seedmu_2020$wg_g_m2))), name="Watergrass Seed Mass g/m2")+
+  labs(title="Modoc Watergrass Seed Production 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=2)+
+  theme_bw()+
+  theme(aspect.ratio = 1)+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+
+mdc_wg_map
+```
+
+# Map of surveyed and not surveyed units
+## Kern
+```{r}
+krn_surveyedmu_map_2020<-ggplot(data =krn_surveyedmu_2020) +
+  geom_sf(aes(fill = Surveyed))+
+scale_fill_manual(values = scolor, name= "Surveyed")+ 
+  theme(legend.position = "right")+
+  labs(title="Kern Sampled Management Units 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3, position="dodge")+
+  theme_bw()+
+  theme(aspect.ratio = 1)+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+
+krn_surveyedmu_map_2020
+```
+
+## Pixley 
+```{r}
+pix_surveyedmu_map_2020<-ggplot(data =pix_surveyedmu_2020) +
+  geom_sf(aes(fill = Surveyed))+
+scale_fill_manual(values = scolor, name= "Surveyed")+ 
+  theme(legend.position = "right")+
+  labs(title="Pixley Surveyed Management Units 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3, position="dodge")+
+  theme_bw()+
+  theme(aspect.ratio = 1)+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+
+pix_surveyedmu_map_2020
+```
+
+## Stone Lakes
+```{r}
+slw_surveyedmu_map_2020<-ggplot(data =slw_surveyedmu_2020) +
+  geom_sf(aes(fill = Surveyed))+
+scale_fill_manual(values = scolor, name= "Surveyed")+ 
+  theme(legend.position = "right")+
+  labs(title="Stone Lakes Surveyed Management Units 2020", x="", y="")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  geom_text(aes(geometry = geometry, label = Sub_Unit), stat = "sf_coordinates", size=3)+
+  theme_bw()+
+  theme(aspect.ratio = 1)+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+
+
+slw_surveyedmu_map_2020
+```
+
+#Modoc sampled not sampled? need!
+
+
+
+
