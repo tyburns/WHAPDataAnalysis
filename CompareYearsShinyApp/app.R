@@ -10,7 +10,7 @@ qdt_mass_g_m2_2019 <- read.csv("qdt_mass_g_m2_2019.txt") %>%
 qdt_mass_g_m2_2020 <- read.csv("qdt_mass_g_m2_2020.txt") %>%
     dplyr::select(-X)
 
-qdt_mass_g_m2_2020 <- read.csv("qdt_mass_g_m2_2021.txt") %>%
+qdt_mass_g_m2_2021 <- read.csv("qdt_mass_g_m2_2021.txt") %>%
     dplyr::select(-X)
 
 # Differences are tested for statistical significance by assuming that estimates
