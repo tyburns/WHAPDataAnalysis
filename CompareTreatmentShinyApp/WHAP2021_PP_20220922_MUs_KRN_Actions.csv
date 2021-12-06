@@ -1,0 +1,63 @@
+LIT,Unit_Name,Subunit_Name,Action,Action_yn
+KRN,4A,4A-1,,N
+KRN,4A,4A-2,disced 2017 and 2018,Y
+KRN,4A,4A-3,disced 2018 and 2019,Y
+KRN,4A,4A-4,disced 2019,Y
+KRN,4A,4A-5,disced 2016,Y
+KRN,4A,4A-6,disced 2019,Y
+KRN,4A,4A-7,disced 2020,Y
+KRN,4B,4B-1,disced 2017,Y
+KRN,4B,4B-2,,N
+KRN,4B,4B-3,disced 2019,Y
+KRN,4B,4B-4,disced 2020,Y
+KRN,5A,5A-1,,N
+KRN,5A,5A-3,,N
+KRN,5A,5A-4,,N
+KRN,5A,5A-5,disced 2020,Y
+KRN,5A,5A-6,disced 2019,Y
+KRN,5A,5A-7,,N
+KRN,5B,5B-1,,N
+KRN,5B,5B-2,,N
+KRN,5B,5B-3,,N
+KRN,5B,5B-5,,N
+KRN,5B,5B-6,,N
+KRN,5B,5B-7,disced 2017 and 2018,Y
+KRN,5B,5B-8,disced 2019,Y
+KRN,6A,6A-1,,N
+KRN,6A,6A-2,,N
+KRN,6A,6A-3,disced 2019 and 2020,Y
+KRN,6A,6A-4,,N
+KRN,6A,6A-5,,N
+KRN,14,14E-2,,N
+KRN,14,14E-1,,N
+KRN,14,14A-1,,N
+KRN,14,14A-2,,N
+KRN,14,14B-1,,N
+KRN,14,14B-2,,N
+KRN,14,14C-1,,N
+KRN,14,14C-2,,N
+KRN,14,14D-1,,N
+KRN,14,14D-2,,N
+KRN,14,14-F,,N
+KRN,14,14G-1,,N
+KRN,14,14G-2,,N
+PIX,2A,2A,disced 2016,Y
+PIX,2,2,graded 2016,Y
+PIX,3,3,graded 2016,Y
+PIX,4,4,graded 2016,Y
+PIX,3A,3A,graded 2016,Y
+PIX,4A,4A,graded 2016,Y
+PIX,7A,7A,graded 2016,Y
+PIX,7B,7B,graded 2016,Y
+PIX,8A,8A,graded 2016,Y
+PIX,8B,8B,graded 2016,Y
+PIX,9A,9A,graded 2016,Y
+PIX,9B,9B,graded 2016,Y
+PIX,1,1,,N
+PIX,6,6,,N
+SLW,Lewis 1,22,,
+SLW,Lewis 6,22,,
+SLW,LIC,57,,
+SLW,HQ-7,27a,,
+SLW,Beach Lake 1,Beach Lake 1,,
+SLW,Beach Lake 3,Beach Lake 3,,
