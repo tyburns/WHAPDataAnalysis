@@ -1,0 +1,29 @@
+Review Therese's figure for sources of error. DONE.
+
+Revise section on sources of error in Framework. DONE.
+
+Work with Rebeca on report 2020 table. DONE.
+
+Create model for SW and pass it on to Rebeca to run for 2021. DONE.
+
+Create CI's for refuge-level estimates. DONE.
+
+Write last section of SOP5: create and use model for dimension to seed head mass. Add model development and assessment section.
+
+Add statement about d2m model performance in Sources of error framework. Refer to SOP 5.
+
+Management tracking: make example of management data file.
+
+Add code to output all subunits sampled in each refuge each year as a excel table. SurveHistory_YYYY.xlsx Include management actions. Get dictionary for management actions.
+
+Post data processing script. Formalize.
+
+Estimate the effect of number of quadrats on precision. Use proportions for each group as observed in reality.
+
+Check if species-stratum mass/area are consistent across years.
+
+Check Miro tasks.
+
+Check GitHub issues.
+
+Kern separate unit 14?

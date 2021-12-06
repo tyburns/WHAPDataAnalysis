@@ -37,32 +37,7 @@ library(tictoc)
 
 # Introduction
 
-WHAP measures linear dimensions of seed heads in the field and attempts to estimate mass of seed heads produced. Dimensions-to-mass (d2m) models are developed and used to transform linear dimensions to estimated mass of seed heads. Then, number of seed heads per unit area and average seed head dimensions are used to estimate mass of seed heads per unit area in each of the abundance strata (low, medium and high) for each species.
-
-This section of the document addresses three aspects of using seed head dimensions and models to estimate seed head mass:
-
-A. Model development.
-B. Assessment of model performance.
-C. Need and strategy to update models.
-
-Model development consists of finding best models to produce mass estimates. For example, in this stage we determine the form of the functional relationship between dimensions and mass, and whether transformations are necessary.
-
-Once the best models are identified, we determine how good they are using generic measures such as root mean squared error and man absolute deviation. Models are assessed by k-fold cross validation and validation on subsets of data not used to fit the model.
-
-In the last stage (C) we ask: Is it necessary to create a different d2m model for each location and year or is it sufficient to create one model that is applicable over refuges and years? Of course, this question can only be answered for past years and observed locations. One can assume that differences (or lack of differences) persist into the future and decide this once and for all or one can continue to test over time. This document is about exploring the answer to the question using data about seed head dimensions and mass collected in several refuges in 2019 and in Modoc in 2021.
-
-Finally, based on the results of the analyses, we propose a feasible strategy to update models in the future. 
-
-We should keep in mind that the uncertainty due to these models is NOT incorporated in the final mass estimates in the current protocol. Thus, the effect of choice of approach on precision is mostly invisible.
-
-Models should also be compared in terms of the impact on estimated mass of seed heads in sub units and refuges. Statistically significant differences do not necessarily translate into differences of practical significance, particularly when there are other sources of larger variance in the estimates, and considering that it is more time costly to create new models for each location and year.
-
-
 # Data
-
-We have data for Swamp Timothy in six, and for Watergrass in four, different combinations of locations and years. Smartweed was sampled only in Modoc in 2021. No refuge was sampled more than once to create d2m models. Thus, the variation among groups is mostly spatial, and we cannot assess the temporal variation. There are no data to estimate the possible variation within a refuge among years.
-
-The data are in R files `st_all_noO.rds`, `wgdat.rds` and `sh_dim_MDC2021.rds`. The first two are based on data collected in 2019, whereas the last one is based on data collected in Modoc in 2021.
 
 ```{r data, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -157,13 +132,7 @@ sw_d2m <- d2m_data %>%
 
 # Model development
 
-This section is organized by species. Data for each species are explored numerically and graphically to get a first idea of what models might work and what transformation may be necessary. Then, several models are tried and compared using statistics such as MSE, Rsq and AIC. A final model is selected to be used and evaluated in cross-validation and external validation.
-
 ## Models for Swamp Timothy
-
-### Data exploration
-
-There are `r dim(st_d2m)[1]` observations in the Swamp Timothy d2m data set.
 
 ```{r st_plotData, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -174,25 +143,6 @@ scatterplot(mass_mg ~ length_mm | LIT_yr,
 
 ```
 
-The scatter plot has both axis in logarithmic scale, which accounts for the increasing variance as seed heads get longer. Data and regression lines for all groups cluster closely, with the exception of SAC_-_2019. There is some indication that SAC had heavier Swamp Timothy seed heads than the rest of the groups for any given seed head length.
-
-### Random-effect approach Swamp Timothy
-
-Each group of observations within a refuge and year can be considered a random draw of all possible groups. This creates a basis to estimate seed head mass for unobserved groups. In the case of the observed groups we make predictions that include the random effect of the group and exclude the uncertainty due to group. In the case of unobserved new groups, predictions are made at the population level and uncertainty includes a variance component due to deviations of groups about the population (Gelman and Hill, 2007).
-
-In this approach, the question of whether a new refuge or year need to be sampled can be addressed by exploring the magnitude of group-level variance in slope and intercept. A lot of variance in either or both of the estimated parameters indicates that groups can differ greatly from each other, and thus, a new group would have a large probability of being very different from the average of groups observed. Large variance suggests sampling all new groups to avoid the uncertainty among groups. Small variance indicates that marginal predictions might be sufficient. Variance magnitude is evaluated using the second-order coefficient of variation (Kvalseth 2017).
-
-Variance increases with fitted value in all data sets and there is indication of slight non-linearity. We try a Box-Cox transformation that is:
-
-$$ Y' = \frac{Y^\lambda - 1}{\lambda} \qquad \quad \text{for lambda not 0, and} \\
-\quad\\
-Y' = log(Y) \qquad \quad \text{for lambda = 0}$$
-
-Predictions resulting from the models where the response received a Box-Cox transformation have to be back transformed into mass in mg by the inverse transformation. When $\lambda = 0$ the transformation is the log of the response and it is inverted with the exponential. Otherwise the back transformation is:
-
-$$ Y = (\lambda \enspace Y' + 1)^ {\enspace (1/\lambda)}$$
-
-which in R code is `(Y = lambda * Y_prime + 1) ^ (1/lambda)`, where $Y$ is mass in mg and $Y'$ is the transformed value provided by using the model.
 
 ```{r defineInvBocCox}
 
@@ -235,8 +185,6 @@ ranef(st_d2m_m3) %>%
 
 
 ```
-
-The linear log-log model does not show need for additional terms. Fitted and observed values are linearly related and centered about the 1:1 line. The magnitude of random effects shown in the table give an idea of the potential bias introduced by making marginal predictions. The size of this component of the total error (bias plus variance) can also be assessed in relation to the residual variance in the model summary above. These effects are visualized more easily in the section about evaluation of prediction alternatives presented below.
 
 ```{r st_plotRanef, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE, eval=FALSE}
 
@@ -282,8 +230,6 @@ ggplot(data = st_d2m,
   theme(legend.position = "none")
 
 ```
-
-A numerical assessment of precision of estimates is performed by calculating bootstrap confidence intervals for prediction of mass of seed heads with average dimensions for each group. Coefficients of variation and margin of errors are calculated for each group and compared to desirable values.
 
 ```{r st_bootMer, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -377,14 +323,7 @@ St_CoefVar %>%
 
 ```
 
-The coefficients of variation are very small, indicating high precision in the estimates. Second-order coefficients of variation smaller than 0.20 (20%) are very small (Kvålset, 2017). The margin of error achieved at 90% confidence varies between `r round(min(St_CoefVar$MOE), 3)` and `r round(max(St_CoefVar$MOE), 3)` of the average, which may be be a bit too high according to some standards (FIND REFERENCES) but I think it is quite good for biological and field sciences. 
-
-
 ## Models for Watergrass
-
-### Data Exploration
-
-There are `r dim(wg_d2m)[1]` observations in the Watergrass d2m data set.
 
 ```{r wg_plotData, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -407,12 +346,6 @@ scatterplot(mass_mg ~ log_emerged | LIT_yr,
 
 
 ```
-
-Scatter plots show differences among groups in the responses to predictors.
-
-### Random-effect approach Watergrass
-
-In the case of Watergrass there are more steps in the model creation because we have more predictors. A first model with as many random effects as the data can support is slightly reduced to reach a final model with two predictors.
 
 ```{r wg_modelRandomGroups, echo=TRUE, warning=FALSE, message=FALSE}
 
@@ -475,8 +408,6 @@ print("Pseudo R-squared for model wg_d2m_m5")
 MuMIn::r.squaredGLMM(wg_d2m_m5)
 
 ```
-
-Two models (wg_d2m_m4 and wg_d2m_m5) are good candidates for predictions. First we study the general precision of the model that is slightly better, `wg_d2m_m4`. The histograms of bootstrapped predictions clearly show the effect of sample size on the precision of estimates.
 
 ```{r wg_bootMer, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -546,11 +477,13 @@ Wg_CoefVar %>%
 
 ```
 
-Precision is very high for SAC_2019 and CLS_2019, high for SLW_2019 and marginal for MDC_2021. Relative to the means, margins of error (half CI width as a proportion of the mean) are between `r round(min(Wg_CoefVar$MOE), 3)` and `r round(max(Wg_CoefVar$MOE), 3)`. Based on the fact that the results for CLS_2019 are similar to achievable and desirable standards, we recommend a sample size of 300-400 seed heads to develop new d2m models for Watergrass.
+```{r rsq}
 
-Overall the model `wg_d2m_m4` has a conditional pseudo R-sq (Nakagawa and Schielzeth 2013, Bartoń 2020) of `r MuMIn::r.squaredGLMM(wg_d2m_m4)[1, 2]` and a marginal pseudo R-sq of `r MuMIn::r.squaredGLMM(wg_d2m_m4)[1, 1]`. The corresponding values for `wg_d2m_m5` are above and show that although it has a slightly smaller conditional R-sq, its marginal R-sq is better. This means that it emphasizes more the fixed effects and might be a more conservative model with better performance for unobserved groups.
+MuMIn::r.squaredGLMM(wg_d2m_m4)
 
-It is likely that a lot of variation in seed head mass for a given set of dimensions is due to differences in the phenological stage of seed heads. Seed heads that are immature will tend to be lighter than expected because the have not developed or completely filled the grains, whereas mature seed heads will tend to be heavier. Because d2m models excluded seed heads that have shattered seeds, mass of seed produced by seed heads that are in late phenological stages is not underestimated. Even when seeds have dropped, linear dimensions of the seed head stem and rachis remain indicative of the mass of the complete seed head. Therefore, acceptable estimates of mass of seed heads that have lost lots of seeds can be made using their linear dimensions, because the models are based on almost intact seed heads.
+MuMIn::r.squaredGLMM(wg_d2m_m5)
+
+```
 
 ```{r tidyBootstrapWg, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE, eval=FALSE}
 
@@ -644,12 +577,6 @@ Wg_CoefVar %>%
 
 ## Models for Smartweed
 
-### Data Exploration
-
-There are `r dim(sw_d2m)[1]` observations in the Smartweed d2m data set.
-
-Some models (Sherfy et al ., 1999; Osborn et al., 2017; Collins et al., 2017) use an a priori combination of dimensions, such as an approximate volume, to calculate volume and then regress mass on volume. We develop a model based on volume because the data include length and width of seed heads. The volume is approximated with the formula for a cylinder. Because width of Smartweed seed heads was not measured in all refuges, we also develop a model that uses seed head length as a single predictor. Scatter plots mass and all predictors are used to explore the multivariate relationships. The top row of of graphs shows that there is one outlier with extremely high mass for a very short seed head (mass vs. length) and one outlier with extreme volume and low mass (mass vs. volume). It is also evident that variance increases with increasing dimensions, and length has high predictive value.
-
 ```{r sw_exploreData, echo=FALSE, warning=FALSE, message=FALSE}
 
 sw_d2m %>% dplyr::select(mass_mg, length_mm, width_mm, vol_mm3) %>% pairs()
@@ -669,15 +596,7 @@ sw_d2m %<>% dplyr::filter(
 
 ```
 
-An outlier with unusual width and one with extreme volume were removed.
-
-### Model
-
-Data for Smartweed comes only from Modoc in 2021. Therefore, there are no groups and the model includes only  fixed effects. The model development process consists in finding the appropriate functional form to use.
-
 #### Volume as single predictor
-
-First we try a simple linear model with volume.
 
 ```{r sw_linearVolume, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -688,8 +607,6 @@ summary(sw_m1)
 opar <- par(mfrow = c(2,2)); plot(sw_m1); par(opar)
 
 ```
-
-Variance increases with fitted value and there is indication of slight non-linearity. We try a Box-Cox transformation on the response and log transformation of the predictor.
 
 ```{r sw_transformedVolume, echo=TRUE, warning=FALSE, message=FALSE}
 
@@ -721,10 +638,6 @@ opar <- par(mfrow = c(2,2)); plot(sw_m3); par(opar)
 summary(sw_m3)
 
 ```
-
-The residuals of the second model, `sw_m2`, exhibit a clear concave-down shape that was addressed by log-transforming the predictor (vol) in `sw_m3`. The last model meets assumptions and is selected. This model has an adjusted coefficient of determination of `r round(summary(sw_m3)$adj.r.squared, 3)` and residual standard deviation equal to `r round(summary(sw_m3)$sigma, 4)`.
-
-Precision of estimates is explored with confidence intervals and histograms for predictions made at the average value of predictors. In this case we use tidymodels to do nonparametric bootstrapping because there are no random effects, so bootMer is not applicable.
 
 ```{r sw_tidyBootstrapSwVol, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -786,9 +699,7 @@ Sw_CoefVar %>%
 
 #### Multiple predictors
 
-Instead of using only a preset function of dimensions (volume) as predictor, this section explores the possibility of using all dimensions as predictors. 
-
-```{r sw_multiplePreds, echo=TRUE, warning=FALSE, message=FALSE}
+```{r sw_multiplePreds, echo=FALSE, warning=FALSE, message=FALSE}
 
 sw_lamb3 <- powerTransform(lm(mass_mg ~ log(vol_mm3) + width_mm + length_mm,
                               data = sw_d2m)) %>%
@@ -805,8 +716,6 @@ summary(sw_m4)
 anova(sw_m4)
 
 ```
-
-Model sw_m4 has R-sq equal to `r round(summary(sw_m4)$adj.r.squared, 3)` and residual standard deviation equal to `r round(summary(sw_m4)$sigma, 4)`. These values cannot be directly compared to the corresponding ones for other models because the transformations -and therefore the units- are different. Models have to be compared on the basis of back-transformed bootstrapping results.
 
 ```{r sw_tidyBootstrapSwMulti, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -870,11 +779,7 @@ Sw_CoefVar %>%
 
 ```
 
-Finally, we proceed to use length as a single predictor.
-
 #### Length as a single predictor
-
-Width was not measured in any refuge other than MDC in 2021. In order to calculate mass of Smartweed for the other refuges we need to make a model with length as a single predictor. Keep in mind that the only training data available for d2m is from MDC.
 
 ```{r sw_transformedLength, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -904,12 +809,10 @@ sw_m6 <- lm(bcPower(mass_mg, lambda = sw_lamb5) ~ log_length_mm,
 
 opar <- par(mfrow = c(2,2)); plot(sw_m6); par(opar)
 
-summary(sw_m6)
-anova(sw_m6)
+summary(sw_m5)
+anova(sw_m5)
 
 ```
-
-Model `sw_m6` is evaluated using tidy bootstrapping. This model can be used for groups where only length of Smartweed seed heads is measured. The advantage of measuring both dimensions can be assessed by comparing `sw_m6` with the previous two models. 
 
 ```{r sw_tidyBootstrapSwLen, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -968,36 +871,9 @@ Sw_CoefVar %>%
 
 ```
 
-This last model predicts seed head mass at least as well as the model that uses volume, and better than the model with multiple predictors. This strongly suggests that it is sufficient to measure only length of Smartweed seed heads. Precision is very high with 446 observations. We suggest that the same rule as for Watergrass : 300-400 seed heads should be analyzed for d2m  model development.
-
 # Model Evaluation
 
-This section applies to Swamp Timothy and Watergrass because we have measurements for these species in more than one refuge-year combination. The evaluation focuses on determining the potential increments in precision and accuracy obtained by developing a dimensions-to-mass (d2m) model for each species in each refuge and year when the protocol is applied. Simultaneously, precision of the models for the present groups is evaluated by cross-validation, which should give more conservative estimates than those obtained above using bootstrapping.
-
-## Approach and functions
-
-With these data we have the following alternatives:
-
-1. Collect d2m data for each new LIT_yr group. Augment the data base and create a model that always includes effects of all LIT_yr groups ever observed. Always make group-specific predictions (conditional predictions) whose uncertainty excludes the variance of random effects.
-
-The performance of this option is assessed with the present data by k-fold cross-validation with folds balanced by groups. The k-fold validation is based on assessing predictions for multiple data subsets that are not included in the model parameterization, but all refuge-year groups to be predicted are represented in the data.
-
-2. Take all d2m data available and create a model that includes effects of LIT_yr groups. No more data about d2m are collected and this model is not updated. The LIT_yr groups present in the data receive conditional predictions as explained in 1 above. Predictions for other years and locations are made at the population level (marginal prediction) but the variance of random effects contribute to the uncertainty of estimates. Predictions for unmeasured groups will be biased by an amount proportional to how much they differ from the average of all groups included in the model. Examples are seen clearly in the case of Watergrass presented below.
-
-The performance of this option is assessed with the present data by leaving each group out at a time, developing the model with the rest of the groups and using it to make predictions for the group left out.
-
-Three metrics are used to assess the performance of the options:
-
-1. Means absolute deviation (mae) is a measure of accuracy and error.
-2. Root mean squared error (rmse) is a measure of accuracy and total error.
-3. R squared (rsq) is the square of the correlation between observed and predicted values and it is a measure of consistency.
-
-Predictions that deviate from observed values in a linear relationship can have very large rsq (good) and also large rsme (bad). If the slope of the relationship is 1.0 the bias is constant over X (predictor space). If the slope is different from 0, the bias changes as X changes.
-
 ### Function to evaluate alternatives
-
-This function performs cross-validation and external validation.
-The code for this function (and for a complete .RMD file) is included in supplementary materials.
 
 ```{r evalFun, echo=FALSE, warning=FALSE, message=FALSE}
 # Model option mld.opt has to be either "fixed" or anything else. Anything else
@@ -1142,8 +1018,6 @@ model_eval_fnc <- function(the_data = NULL) { # Start f() definition ******
 
 ### Function to summarize results of each evaluation
 
-This function takes the list created by the previous function, summarizes and plots results.
-
 ```{r summarizePlotFun, echo=FALSE, warning=FALSE, message=FALSE}
 
 summarize_plot_fnc <- function(rslt_list = NULL) {# Start summarize_plot function definition
@@ -1251,26 +1125,10 @@ wg_rslts <- summarize_plot_fnc(rslt_list = wg_model_eval)
 print("SWAMP TIMOTHY PREDICTIONS FOR SAMPLED REFUGES")
 st_rslts$cv_fig
 
-st_rslts$cv_fig +
-coord_cartesian(xlim = c(0, 100),
-                ylim = c(0, 150))
-
 print("SWAMP TIMOTHY PREDICTIONS FOR NEW REFUGES")
 st_rslts$v_fig
 
-st_rslts$v_fig +
-coord_cartesian(xlim = c(0, 100),
-                ylim = c(0, 150))
-
-
 ```
-
-The top graph for Swamp Timothy shows the observed vs. predicted values based on a model that accounts for the differences among groups. These are the conditional predictions, which do not include uncertainty due to between-group variance, given that the random effects for all groups predicted are available. Each cross-validation was repeated 10 times. Therefore, for each observed value (mass_mg) there are 10 predictions (model_pred). Predictions are precise and accurate except for MDC_2021, which exhibits large variance, particularly in the large end of values. The second longest seed head in this group is an outlier with extremely low mass equal to `r st_d2m$mass_mg[st_d2m$mass_mg < 50 & st_d2m$length_mm > 34.5]`. CLS_2019 and MDC_2021 show  negative bias, which in the case of CLS increases with mass. Overall, performance is marginal and comparable to that reported above for Swamp Timothy based on bootstrapping. Given that sample sizes are fairly small, model performance should be improved by increasing sample size.
-
-The graphs with predictions for "new" refuges or groups show that performance are worse for MDC_2021 and CLS_2019 due to increased bias and reduced precision. SAC_2019 exhibits a little bias, but it would be acceptable.
-
-**Seed head sampling for Swamp Timothy**
-We recommend that future models be based on samples with 50-100 observations (seed heads) per group. A good strategy would be to collect samples that span a wide range of seed head lengths. Divide the wide range in 6-10 classes and make sure to have 5-10 seed heads -collected from a variety of locations in the refuge- in each class. 
 
 ### Swamp Timothy metrics
 
@@ -1287,8 +1145,6 @@ st_rslts$v_table %>%
 
 ```
 
-Cross-validation metrics further support the need for larger sample sizes. In these tables, the rmse is the square root of total squared deviation, which in turn is the sum of bias squared plus variance. On the other hand, rsq is an indicator of the proportion of variance that is explained, excluding bias. Groups with higher rsq and lower rmse have greater bias. In agreement with the graphical output, MDC_2021 and CLS_2019 show very low to low precision and high bias.
-
 ### Watergrass graphical results
 
 ```{r displayGraphsWatergrass, echo=FALSE, warning=FALSE, message=FALSE}
@@ -1296,20 +1152,10 @@ Cross-validation metrics further support the need for larger sample sizes. In th
 print("WATERGRASS PREDICTIONS FOR SAMPLED REFUGES")
 wg_rslts$cv_fig
 
-wg_rslts$cv_fig +
-coord_cartesian(xlim = c(0, 900),
-                ylim = c(0, 1000))
-
 print("WATERGRASS PREDICTIONS FOR NEW REFUGES")
 wg_rslts$v_fig
 
 ```
-
-<br>
-
-Wategrass models have excellent precision in corss-validation due to the much large sample sizes than for Swamp Timothy. MDC_2021 exhibits a bit of negative bias and suprisingl heavy seed heads, more than 5 times heavier than the heaviest seed heads collected in other groups. This data set has to be revisited and checked.
-
-External validation shows dramatic biases introduced when making predictions for groups not included in the training sample. Mosf of the bias is introduced by MDC_2021. Those data have to be checked and a larger set of groups has to be sampled to determine the need for group-specific d2m sampling in the future. Without this information, the present conclusion is to obtain group specific samples in the future.
 
 ### Watergrass metrics
 
@@ -1325,84 +1171,3 @@ wg_rslts$v_table %>%
 
 
 ```
-
-<br>
-
-
-<br>
-
-
-
-# Discussion of evaluation results
-
-When all groups are in the training data, predictions are accurate, but because there are groups that deviate from the the rest, not including all groups in the training data introduces bias in the predictions for the "new" groups. The potential magnitude of bias is almost completely dependent on data from MDC_2021 for both Swamp Timothy and Watergrass.
-
-The need for group-specific d2m data for Smartweed cannot be assessed because we only have data for one group, MDC_2021. Sample size for this groups is sufficient to provide sufficiently accurate and precise estimates.
-
-Models to estimate mass based on linear dimensions of see heads were developed by several research groups across the US, See references below.
-
-A quick read of several papers reporting equations to assess seed mass based on plant dimensions revealed that none of their equations included transformations (except for a couple in Gray et al., (2009). I find it hard to believe that their variances about predicted values were the same, regardless of the size of seed heads and plants. It is almost a physical necessity that larger plants exhibit more variance (in absolute terms) than smaller plants. Because of the restriction to be positive, it is almost impossible for small plants or seedheads to have the same variance as larger ones. Strictly speaking, mass cannot have a normal distribution, and it is very likely to deviate more from normality as the mean becomes small (thus, the lognormal distribution, or the log transformation of mass).
-
-Most articles seem to emphasize the coefficient fo determination as measure of model performance. We should keep in mind that prediction performance should be focused on the accuracy and precision of predictions, which can be evaluated by cross-validation and external validation.
-
-Estimates of standing seed head mass at a given date most likely underestimate the seed production during the whole season (Hillhouse et al., 2018). Several species have an extended seed head production season, and the standing crop at any given time is a fraction of the total seasonal production. Thus, the estimates produced by the present method should be used in relative terms, and sampling dates should be standardized based on the phenology of the plant community. The sampling date could be set on the basis of seasonal thermal units (degree-days).
-
-<br>
-
-**How well do models work for sampled refuges?**
-They work very well for all cases where sample size is sufficient.
-S. Timothy estimates are acceptably precise with sample sizes greater than 30.
-Watergrass and Smartweed estimates are excellent for sample sizes greater than 400.
-
-<br>
-
-**How well do models work for unsampled refuge?**
-They work or less OK for Swamp Timothy, perhaps with the exception of MDC_2021.
-They work very poorly for Watergrass, mostly because of the odd results for MDC_2021.
-
-<br>
-
-
-### How does this compare with the rest of the uncertainty?
-
-Calculate effect of adding this uncertainty to the whole calculation.
-TBD
-
-## Strategy to update models
-
-Based on an ad hoc assessment of feasibility and costs of getting additional d2m data we recommend that the models developed up to time of this report be used for three additional years. Conditional predictions of mass should be used for refuges for which there is d2m data. Marginal predictions should be used for new refuges.
-
-Conditional predictions incorporate the random effects of refuge-year groups, under the assumption that random effects are associated with refuge and remain constant over years. Marginal predictions are also known as population-level predictions and they do not incorporate any random effects, because in the absence of estimated random effects, the best guess is the average across all groups. For more detail about the difference between predicting for observed vs. new groups see pages 272-274 of Gelman, A., & Hill, J. (2007). Data analysis using regression and multilevel/hierarchical models. Cambridge: Cambridge University Press.
-
-After three years or whenever feasible, collect data for all species in all refuges. Analyze the cumulative data with mixed models that include random effects for slopes and intercepts for refuge,  year and their interaction. Evaluate the impact of making predictions that do not incorporate the random effects of year or interaction. If bias introduced by ignoring those effects or the rmse is not acceptable, refuges have to be sampled every year.
-
-
-# References
-
-Tarald O. Kvålseth (2017) Coefficient of variation: the second-order alternative,
-Journal of Applied Statistics, 44:3, 402-415, DOI: 10.1080/02664763.2016.1174195)
-
-Gray, M. J., Foster, M. A., & Peña Peniche, L. A. (2009). New Technology for Estimating Seed Production of Moist-Soil Plants. Journal of Wildlife Management, 73(7). https://doi.org/10.2193/2008-468
-
-Hillhouse, H. L., Zilli, L., & Anderson, B. E. (2018). Timing and Protocols for Estimating Seed Production in Moist-Soil and Phalaris arundinacea Dominated Areas in Rainwater Basin Wetlands. Wetlands, 38(3). https://doi.org/10.1007/s13157-017-0991-4
-
-LAUBHAN, M. K., & FREDRICKSON, L. H. (1992). ESTIMATING SEED PRODUCTION OF COMMON PLANTS IN SEASONALLY FLOODED WETLANDS. JOURNAL OF WILDLIFE MANAGEMENT, 56(2), 329-337. https://doi.org/10.2307/3808831
-
-HAUKOS, D. A., & SMITH, L. M. (1993). MOIST-SOIL MANAGEMENT OF PLAYA LAKES FOR MIGRATING AND WINTERING DUCKS. WILDLIFE SOCIETY BULLETIN, 21(3), 288-298.
-
-Sherfy, M. H., & Kirkpatrick, R. L. (1999). Additional regression equations for predicting seed yield of moist-soil plants. WETLANDS, 19(3), 709-714. https://doi.org/10.1007/BF03161707
-
-Gray, M. J., Kaminski, R. M., & Brasher, M. G. (1999). A new method to predict seed yield of moist-soil plants. JOURNAL OF WILDLIFE MANAGEMENT, 63(4), 1269-1272. https://doi.org/10.2307/3802844
-
-Gray, M. J., Kaminski, R. M., & Weerakkody, G. (1999). Predicting seed yield of moist-soil plants. JOURNAL OF WILDLIFE MANAGEMENT, 63(4), 1261-1268. https://doi.org/10.2307/3802843
-
-Osborn, J. M., Hagy, H. M., McClanahan, M. D., & Gray, M. J. (2017). Temporally Robust Models for Predicting Seed Yield of Moist-Soil Plants. WILDLIFE SOCIETY BULLETIN, 41(1), 157-161. https://doi.org/10.1002/wsb.735
-
-Collins, D. P., Conway, W. C., Mason, C. D., & Gunnels, J. W. (2017). Seed Yield Prediction Models of Four Common Moist-Soil Plant Seed Yield Prediction Models of Four Common Moist-Soil Plant Species in Texas Species in Texas. The Texas Journal of Agriculture and Natural Resources, 30, 78-86. https://scholarworks.sfasu.edu/agriculture_facultypubs/28
-
-Nakagawa, S. and Schielzeth, H. (2013), A general and simple method for obtaining R2 from generalized linear mixed-effects models. Methods Ecol Evol, 4: 133-142. https://doi.org/10.1111/j.2041-210x.2012.00261.x
-
-Kamil Bartoń (2020). MuMIn: Multi-Model Inference. R package version 1.43.17.
-  https://CRAN.R-project.org/package=MuMIn
-
-Title of SOP 5 should reference article titles that have been published about d2m models.
