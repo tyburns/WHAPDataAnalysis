@@ -30,22 +30,55 @@ library(kableExtra)
 # In the future, this chunk should join all years available or
 # use a file with all years that is automatically created at the server.
 
-gm2_2019 <-read.csv("MainScriptDataOutput/qdt_mass_g_m2_2019.txt") %>%
+gm2_2019 <- read.csv("MainScriptDataOutput/qdt_mass_g_m2_2019.txt") %>%
   dplyr::select(-X) %>%
   mutate(year = 2019)
 
-gm2_2020 <-read.csv("WHAP2020-21/Output2020/qdt_mass_g_m2_2020.txt") %>%
+gm2_2020 <- read.csv("WHAP2020-21/Output2020/qdt_mass_g_m2_2020.txt") %>%
   dplyr::select(-X) %>%
   mutate(year = 2020)
 
-gm2_2021 <-read.csv("WHAP2021-22/Output2021/qdt_mass_g_m2_2021.txt") %>%
+gm2_2021 <- read.csv("WHAP2021-22/Output2021/qdt_mass_g_m2_2021.txt") %>%
   dplyr::select(-X) %>%
   mutate(year = 2021)
 
 whap_su_years <- bind_rows(gm2_2019, gm2_2020, gm2_2021) %>%
   mutate(year = factor(year))
 
+# whap_su_years <- gm2_2021 %>%
+#   mutate(year = factor(year))
+
 viaClass <- read.csv("WHAP_Viability_20210610.csv") %>%
+  pivot_longer(cols = c(Poor, Fair, Good, Very_Good),
+               names_to = "class",
+               values_to = "lower_bound") %>%
+  pivot_wider(names_from = LIT,
+              values_from = lower_bound) %>%
+  mutate(class = fct_reorder(class, KRN, mean),
+         class_color = c("red", "yellow", "chartreuse", "chartreuse3"),
+         class = factor(class, ordered = TRUE))
+
+ST_viaClass <- read.csv("WHAP_Viability_ST.csv") %>%
+  pivot_longer(cols = c(Poor, Fair, Good, Very_Good),
+               names_to = "class",
+               values_to = "lower_bound") %>%
+  pivot_wider(names_from = LIT,
+              values_from = lower_bound) %>%
+  mutate(class = fct_reorder(class, KRN, mean),
+         class_color = c("red", "yellow", "chartreuse", "chartreuse3"),
+         class = factor(class, ordered = TRUE))
+
+WG_viaClass <- read.csv("WHAP_Viability_WG.csv") %>%
+  pivot_longer(cols = c(Poor, Fair, Good, Very_Good),
+               names_to = "class",
+               values_to = "lower_bound") %>%
+  pivot_wider(names_from = LIT,
+              values_from = lower_bound) %>%
+  mutate(class = fct_reorder(class, KRN, mean),
+         class_color = c("red", "yellow", "chartreuse", "chartreuse3"),
+         class = factor(class, ordered = TRUE))
+
+SW_viaClass <- read.csv("WHAP_Viability_SW.csv") %>%
   pivot_longer(cols = c(Poor, Fair, Good, Very_Good),
                names_to = "class",
                values_to = "lower_bound") %>%
@@ -122,6 +155,192 @@ plot_years <- function(spp = c("total"),
 
 plot_years()
 
+
+```
+
+```{r timothyPlotFunction}
+
+plot_years_st <- function(spp = c("total"),
+                       data = whap_su_years) {
+  # whap_su_years is a df containing the subunit estimates in all refuges all years
+  # it contains a column named year
+  # check that data has the correct format
+  
+  year_plots_st <- list()
+  
+  for (i in unique(data$LIT)) { # this has to be modified for more than one species
+    
+    data_i <- data %>% dplyr::filter(LIT == i)
+    
+    # in the future, use the spp argument to determine what will be plotted
+    
+    year_plots_st[[i]] <-
+                 ggplot(data = data_i %>% arrange(st_g_m2),
+                        aes(x = subunit_ID,
+                            y = st_g_m2,
+                            color = year)) +
+                 ggtitle("Comparison across years") +
+                 geom_rect(data = ST_viaClass,
+                           inherit.aes = FALSE,
+                           aes(NULL,
+                               NULL,
+                               xmin = -Inf,
+                               xmax = Inf,
+                               fill = class),
+                           ymin = unlist(ST_viaClass[, i]),
+                           ymax = unlist(c(ST_viaClass[-1, i], Inf))) +
+                 scale_fill_manual(values = alpha(c("red",
+                                                    "yellow",
+                                                    "chartreuse",
+                                                    "chartreuse3"),
+                                                  0.2)) +
+                 geom_point(size = 3) +
+                 xlab('Subunit Name') +
+                 ylab("Swamp timothy seed mass 80% CI (g/m^2)") +
+                 geom_errorbar(aes(ymin = CI80lwr_st,
+                                   ymax = CI80upr_st),
+                               width = 0.3,
+                               cex = 0.75) +
+                 theme(plot.title = element_text(size = 16, face = "bold"),
+                       axis.ticks.y = element_blank(),
+                       axis.text.x = element_text(face = "bold"),
+                       axis.title = element_text(size = 12,
+                                                 face = "bold"),
+                       strip.text.y = element_text(hjust = 0,
+                                                   vjust = 1,
+                                                   angle = 180,
+                                                   face = "bold")) +
+                 coord_flip()
+    print(year_plots_st[[i]])
+  }
+  return(year_plots_st)
+}
+
+plot_years_st()
+
+```
+
+```{r watergrassPlotFunction}
+
+plot_years_wg <- function(spp = c("total"),
+                       data = whap_su_years) {
+  # whap_su_years is a df containing the subunit estimates in all refuges all years
+  # it contains a column named year
+  # check that data has the correct format
+  
+  year_plots_wg <- list()
+  
+  for (i in unique(data$LIT)) { # this has to be modified for more than one species
+    
+    data_i <- data %>% dplyr::filter(LIT == i)
+    
+    # in the future, use the spp argument to determine what will be plotted
+    
+    year_plots_wg[[i]] <-
+                 ggplot(data = data_i %>% arrange(wg_g_m2),
+                        aes(x = subunit_ID,
+                            y = wg_g_m2,
+                            color = year)) +
+                 ggtitle("Comparison across years") +
+                 geom_rect(data = WG_viaClass,
+                           inherit.aes = FALSE,
+                           aes(NULL,
+                               NULL,
+                               xmin = -Inf,
+                               xmax = Inf,
+                               fill = class),
+                           ymin = unlist(WG_viaClass[, i]),
+                           ymax = unlist(c(WG_viaClass[-1, i], Inf))) +
+                 scale_fill_manual(values = alpha(c("red",
+                                                    "yellow",
+                                                    "chartreuse",
+                                                    "chartreuse3"),
+                                                  0.2)) +
+                 geom_point(size = 3) +
+                 xlab('Subunit Name') +
+                 ylab("Watergrass seed mass 80% CI (g/m^2)") +
+                 geom_errorbar(aes(ymin = CI80lwr_wg,
+                                   ymax = CI80upr_wg),
+                               width = 0.3,
+                               cex = 0.75) +
+                 theme(plot.title = element_text(size = 16, face = "bold"),
+                       axis.ticks.y = element_blank(),
+                       axis.text.x = element_text(face = "bold"),
+                       axis.title = element_text(size = 12,
+                                                 face = "bold"),
+                       strip.text.y = element_text(hjust = 0,
+                                                   vjust = 1,
+                                                   angle = 180,
+                                                   face = "bold")) +
+                 coord_flip()
+    print(year_plots_wg[[i]])
+  }
+  return(year_plots_wg)
+}
+
+plot_years_wg()
+
+```
+
+```{r smartweedPlotFunction}
+
+plot_years_sw <- function(spp = c("total"),
+                       data = whap_su_years) {
+  # whap_su_years is a df containing the subunit estimates in all refuges all years
+  # it contains a column named year
+  # check that data has the correct format
+  
+  year_plots_sw <- list()
+  
+  for (i in unique(data$LIT)) { # this has to be modified for more than one species
+    
+    data_i <- data %>% dplyr::filter(LIT == i)
+    
+    # in the future, use the spp argument to determine what will be plotted
+    
+    year_plots_sw[[i]] <-
+                 ggplot(data = data_i %>% arrange(sw_g_m2),
+                        aes(x = subunit_ID,
+                            y = sw_g_m2,
+                            color = year)) +
+                 ggtitle("Comparison across years") +
+                 geom_rect(data = SW_viaClass,
+                           inherit.aes = FALSE,
+                           aes(NULL,
+                               NULL,
+                               xmin = -Inf,
+                               xmax = Inf,
+                               fill = class),
+                           ymin = unlist(SW_viaClass[, i]),
+                           ymax = unlist(c(SW_viaClass[-1, i], Inf))) +
+                 scale_fill_manual(values = alpha(c("red",
+                                                    "yellow",
+                                                    "chartreuse",
+                                                    "chartreuse3"),
+                                                  0.2)) +
+                 geom_point(size = 3) +
+                 xlab('Subunit Name') +
+                 ylab("Smartweed seed mass 80% CI (g/m^2)") +
+                 geom_errorbar(aes(ymin = CI80lwr_sw,
+                                   ymax = CI80upr_sw),
+                               width = 0.3,
+                               cex = 0.75) +
+                 theme(plot.title = element_text(size = 16, face = "bold"),
+                       axis.ticks.y = element_blank(),
+                       axis.text.x = element_text(face = "bold"),
+                       axis.title = element_text(size = 12,
+                                                 face = "bold"),
+                       strip.text.y = element_text(hjust = 0,
+                                                   vjust = 1,
+                                                   angle = 180,
+                                                   face = "bold")) +
+                 coord_flip()
+    print(year_plots_sw[[i]])
+  }
+  return(year_plots_sw)
+}
+
+plot_years_sw()
 
 ```
 

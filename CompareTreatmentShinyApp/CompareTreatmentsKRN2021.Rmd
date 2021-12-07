@@ -1,0 +1,303 @@
+---
+title: "Compare Treatments KRN 2019"
+author: "Emilio A. Laca"
+date: "6/17/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# THIS SCRIPT ANALYZES THE DIFFERENCES BETWEEN UNITS THAT WERE DISKED OR NOT AND FLOODED OR NOT.
+# AN HTML REPORT IS SUPPOSED TO BE PRODUCED.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Effect of action in previous 3 years
+
+library(tidyverse)
+library(car)
+library(emmeans)
+library(rsample)
+library(MASS)
+library(ggforce)
+library(knitr)
+library(kableExtra)
+library(effects)
+library(brms)
+library(rstanarm)
+library(BayesPostEst)
+library(xtable)
+library(coda)
+library(ggmcmc)
+library(ggridges)
+library(tidybayes)
+library(magrittr)
+library(modelr)
+library(nlme)
+library(posterior)
+
+```
+
+## Data input and exploration
+```{r dataExplore}
+
+qdt_mass_g_m2_2021 <- read.csv("qdt_mass_g_m2_2021.txt") %>%
+  dplyr::select(-X) %>%
+  dplyr::filter(LIT == "KRN")
+
+# There is data on act only for KRN and most of the flooding data is for KRN.
+# Thus, only KRN data are used for these comparisons.
+
+act <- read.csv("WHAP2021_PP_20220922_MUs_KRN_Actions.csv",
+                na.strings=c(""," ","NA"), stringsAsFactors=FALSE) %>%
+  mutate(subunit_ID = paste(LIT, Unit_Name, Subunit_Name, sep = "_"),
+         act = factor(Action_yn),
+         Action = replace_na(Action, "none")) %>%
+  dplyr::filter(LIT == "KRN") %>%
+  dplyr::select(LIT,
+                Unit_Name,
+                Subunit_Name,
+                subunit_ID,
+                act,
+                Action)
+
+# effects of flooding in KRN
+
+# y.flooded.n are number of years flooded out of the last n
+# y20167, y20178, y20189, y201920 are flooding in the last 4 seasons up to 2020
+
+water2 <- read.csv("Kern_Flooding_Schedule.csv") %>%
+  mutate(LIT = "KRN",
+         Subunit_Name = SubUnit) %>%
+  dplyr::select(LIT,
+         Subunit_Name,
+         starts_with("y"))
+
+qdt_mass_act_fld <- left_join(qdt_mass_g_m2_2021, act) %>%
+  left_join(water2) %>%
+  dplyr::select(LIT,
+                Unit_Name,
+                Subunit_Name,
+                subunit_ID,
+                act,
+                Action,
+                y.flooded.15,
+                y.flooded.5,
+                y20167,
+                y20178,
+                y20189,
+                y201920,
+                y202021,
+                st_g_m2, # none of the subunits have watergrass
+                st_mass_m2_var) %>%
+  drop_na() %>%
+  dplyr::filter(st_mass_m2_var != 0) %>%
+  mutate(wt = 1 / sqrt(st_mass_m2_var),
+         wt = length(st_g_m2) * wt / sum(wt))
+
+str(qdt_mass_act_fld)
+
+```
+
+The raw data plots seems to indicate that the history of flooding is not associated with swamp timothy productivity. Conversely, those units that were disced in the previous three years had higher yields of swamp timothy than the units that were not tilled. 
+
+```{r rawPlots}
+
+table(qdt_mass_act_fld$Action) %>%
+  as.data.frame() %>%
+  rename(Tillage = Var1) %>%
+  kable(caption = "Number of units that receive each type of tillage treatment in Kern prior to the 2021 season.") %>%
+  kableExtra::kable_styling(full_width = FALSE)
+
+scatterplot(st_g_m2 ~ y.flooded.5 | act,
+            data = qdt_mass_act_fld,
+            smooth = FALSE,
+            ylab = "Swamp timothy productivity (g/m2)",
+            xlab = "Number of years flooded in the last 5 years")
+
+
+scatterplot(st_g_m2 ~ y.flooded.15 | act,
+            data = qdt_mass_act_fld,
+            smooth = FALSE,
+            ylab = "Swamp timothy productivity (g/m2)",
+            xlab = "Number of years flooded in the last 15 years")
+
+```
+
+## Analyze **apparent** effects of "treatments"
+
+
+These analyses should be interpreted with caution. Apparent effects of treatments cannot be attributed to treatments because there was no randomization in the selection of units to be flooded. Based on my understanding of management decisions, flooding is decided on the basis of the potential of units to express higher production. Therefore, I am suspicious that there may be a selection bias in the results.
+
+
+```{r posteriorTillageEffects}
+
+brm1 <- brm(st_g_m2 | weights(wt) ~ act * y.flooded.15,
+            data = qdt_mass_act_fld,
+            iter = 4000,
+            warmup = 1500,
+            thin = 2,
+)
+
+summary(brm1)
+
+bayes_R2(brm1)
+
+brm1.mcmc <- as.mcmc(brm1)
+
+# Check convergence, etc.
+
+gelman.diag(brm1.mcmc)
+
+```
+
+### Graphical tests
+
+```{r density}
+
+# hh_m1_gg <- ggs(hh_m1_mcmc)
+
+brm1.mcmc %>%
+  ggs() %>%
+  ggs_density(hpd = TRUE) +
+  facet_wrap(~ Parameter, scales = "free")
+
+
+```
+
+
+```{r trace}
+
+brm1.mcmc %>%
+  ggs() %>%
+  ggs_traceplot() +
+  facet_wrap(~ Parameter, scales = "free")
+
+```
+
+
+```{r running}
+
+brm1.mcmc %>%
+  ggs() %>%
+  ggs_running() +
+  facet_wrap(~ Parameter, scales = "free")
+
+```
+
+
+```{r acf}
+
+brm1.mcmc %>%
+  ggs() %>%
+  ggs_autocorrelation() +
+  facet_wrap(~ Parameter, scales = "free")
+
+```
+
+
+### Reduced model
+
+```{r posteriorTillageEffects2}
+
+brm2 <- brm(st_g_m2 | weights(wt) ~ act,
+            data = qdt_mass_act_fld,
+            iter = 6000,
+            warmup = 2500,
+            thin = 2)
+
+summary(brm2)
+
+bayes_R2(brm2)
+
+brm2.mcmc <- as.mcmc(brm2)
+
+# Check convergence, etc.
+
+# gelman.diag(brm2.mcmc)
+
+```
+
+### Graphical tests
+
+```{r density2}
+
+# hh_m1_gg <- ggs(hh_m1_mcmc)
+
+brm2.mcmc %>%
+  ggs() %>%
+  ggs_density(hpd = TRUE) +
+  facet_wrap(~ Parameter, scales = "free")
+
+
+```
+
+
+```{r trace2}
+
+brm2.mcmc %>%
+  ggs() %>%
+  ggs_traceplot() +
+  facet_wrap(~ Parameter, scales = "free")
+
+```
+
+
+```{r running2}
+
+brm2.mcmc %>%
+  ggs() %>%
+  ggs_running() +
+  facet_wrap(~ Parameter, scales = "free")
+
+```
+
+
+```{r acf2}
+
+brm2.mcmc %>%
+  ggs() %>%
+  ggs_autocorrelation() +
+  facet_wrap(~ Parameter, scales = "free")
+
+```
+
+
+All tests of convergence find no evidence of problems. Everything seems to be OK.
+
+## Results
+
+```{r plotPosterior}
+
+plot(brm2)
+
+brm2 %<>% recover_types(qdt_mass_act_fld)
+
+(epreds <- qdt_mass_act_fld %>%
+    data_grid(act) %>%
+    add_epred_draws(brm2)) %>%
+  ggplot(aes(x = .epred, y = act)) +
+  stat_halfeye() +
+  stat_pointinterval(.width = c(.66, .95)) +
+  xlab("Swamp timothy productivity (g/m2)") +
+  ylab("Tilled (Y/N)")
+
+
+(Till_fx <- brm2 %>%
+  spread_draws(b_actY) %>%
+  ggplot(aes(x = b_actY)) +
+  stat_halfeye() +
+  geom_vline(xintercept = 0, linetype = "dashed")) 
+
+```
+
+
+There is a clear difference between units that were disked and those that were not. The posterior median difference is `r median(brm2 %>% spread_draws(b_actY) %>% pluck("b_actY"))` g/m2 with a standard error of `r sd(brm2 %>% spread_draws(b_actY) %>% pluck("b_actY"))` g/m2.
+
+A model including number of years flooded out of the last 15 showed some evidence that the effect of flooding depended on tillage, whereby units without tillage had a small increase of yield with increasing number of years flooded but disked units had declining yields with increasing number of years flooded.
+
+
+
+
+
+
