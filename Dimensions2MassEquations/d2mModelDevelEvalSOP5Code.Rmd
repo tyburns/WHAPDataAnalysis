@@ -1,0 +1,1173 @@
+---
+title: "d2m Model development and evaluation. SOP 5"
+author: "Emilio A. Laca"
+date: "11/13/2021"
+editor_options: 
+  chunk_output_type: console
+always_allow_html: true
+---
+
+
+```{r setup, include=FALSE, echo=FALSE, message=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(kableExtra)
+library(tidyverse)
+library(car)
+library(magrittr)
+library(readxl)
+library(emmeans)
+library(lme4)
+# library(lmerTest)
+library(rsample)
+library(recipes)
+library(tidymodels)
+library(LMERConvenienceFunctions)
+library(multilevelmod)
+library(knitr)
+library(ggpubr)
+library(caret)
+library(furrr)
+library(parallel)
+library(doParallel)
+library(parallelly)
+library(tictoc)
+
+```
+
+# Introduction
+
+# Data
+
+```{r data, echo=FALSE, warning=FALSE, message=FALSE}
+
+st_2019 <- readRDS("st_all_noO.rds") %>%
+  rename_with(~gsub(".", "_", .x, fixed = TRUE)) %>%
+  mutate(year = 2019,
+         spp = "SwampTimothy",
+         f2t_length_mm = NA,
+         length_mm = avg_length_mm,
+         width_mm = NA,
+         mass_mg = mass_per_sh_mg,
+         LIT = substr(id, 1, 3)) %>%
+  dplyr::select(LIT,
+                year,
+                spp,
+                f2t_length_mm,
+                length_mm,
+                width_mm,
+                mass_mg)
+
+wg_2019 <- readRDS("wgdat.rds") %>%
+  rename_with(~gsub(".", "_", .x, fixed = TRUE)) %>%
+  mutate(year = 2019,
+         spp = "Watergrass",
+         f2t_length_mm = F2T_cm * 10,
+         length_mm = sh_len_cm * 10,
+         width_mm = NA,
+         mass_mg = mass_per_sh_mg,
+         LIT = refuge) %>%
+  dplyr::select(LIT,
+                year,
+                spp,
+                f2t_length_mm,
+                length_mm,
+                width_mm,
+                mass_mg)
+
+mdc_2021 <- readRDS("sh_dim_MDC2021.rds") %>%
+  mutate(year = 2021) %>%
+  dplyr::select(LIT,
+                year,
+                spp,
+                f2t_length_mm,
+                length_mm,
+                width_mm,
+                mass_mg)
+
+d2m_data <- bind_rows(st_2019, wg_2019, mdc_2021)
+
+unique(d2m_data$LIT)
+
+# Fix LIT codes
+LitKey <- c(CLS = "CLS",
+            KRN = "KRN",
+            PXL = "PIX",
+            SAC = "SAC",
+            STL = "SLW",
+            PIX = "PIX",
+            SL_ = "SLW",
+            Colusa = "CLS",
+            Sacramento = "SAC",
+            StoneLakes = "SLW",
+            MDC = "MDC")
+
+d2m_data$LIT <- dplyr::recode(d2m_data$LIT, !!!LitKey)
+
+# Create a grouping variable for LIT and year
+d2m_data %<>% mutate(LIT_yr = paste(LIT, year, sep = "_"),
+                     log_mass_mg = log(mass_mg),
+                     log_length_mm = log(length_mm),
+                     log_f2t_length_mm = log(f2t_length_mm + 120))
+
+wg_d2m <- d2m_data %>%
+  dplyr::filter(spp == "Watergrass") %>%
+  mutate(emerged = f2t_length_mm / length_mm,
+         log_emerged = log(emerged + 0.5)) %>%
+  arrange(LIT, year) %>%
+  dplyr::filter(!is.nan(log_emerged))
+
+st_d2m <- d2m_data %>%
+  dplyr::select(-c(f2t_length_mm, log_f2t_length_mm)) %>%
+  dplyr::filter(spp == "SwampTimothy") %>%
+  arrange(LIT, year)
+
+sw_d2m <- d2m_data %>%
+  dplyr::filter(spp == "Smartweed") %>%
+  dplyr::select(-c(f2t_length_mm, log_f2t_length_mm)) %>%
+  mutate(vol_mm3 = pi * (width_mm/2)^2 * length_mm)
+
+
+```
+
+# Model development
+
+## Models for Swamp Timothy
+
+```{r st_plotData, echo=FALSE, warning=FALSE, message=FALSE}
+
+scatterplot(mass_mg ~ length_mm | LIT_yr,
+            smooth = FALSE,
+#            log = "xy",
+            data = st_d2m)
+
+```
+
+
+```{r defineInvBocCox}
+
+# Define function to invert the Box-Cox transformation
+invBoxCox <- function(x, lambda) {
+  if (lambda == 0) exp(x) else (lambda * x + 1) ^ (1 / lambda)}
+```
+
+```{r st_modelRandomGroups, echo=FALSE, warning=FALSE, message=FALSE}
+
+# Get optimal lambda
+st_lamb1 <- powerTransform(lmer(mass_mg ~ log_length_mm +
+                                  (log_length_mm|LIT_yr),
+                                data = st_d2m)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+# Lambda is 0, so a log transformation is used.
+
+st_d2m_m3 <- lmer(bcPower(mass_mg, lambda = st_lamb1) ~
+                    log_length_mm +
+                    (log_length_mm|LIT_yr),
+                  data = st_d2m)
+
+summary(st_d2m_m3)
+
+ranef(st_d2m_m3) %>%
+  as.data.frame() %>%
+  dplyr::select(term,
+                grp,
+                condval) %>%
+  pivot_wider(names_from = term,
+              values_from = condval) %>%
+  rename(Group = grp,
+         Intercept = `(Intercept)`,
+         Slope = log_length_mm) %>%
+  kable(digits = c(0, 3, 3), caption = "Random effects of group on the slope and intercept of the relationship between log mass and log length of Swamp Timothy seed heads.") %>%
+  kable_styling(full_width = FALSE)
+
+
+
+```
+
+```{r st_plotRanef, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE, eval=FALSE}
+
+rnf_st_d2m_m3 <- ranef(st_d2m_m3) %>%
+  as.data.frame() %>%
+  pivot_wider(id_cols = "grp",
+              values_from = c(condval, condsd),
+              names_from = "term") %>%
+  rename(cond_Incpt_Ranef = `condval_(Intercept)`,
+         cond_slope_Ranef = `condval_log_length_mm`,
+         cond_Incpt_sd = `condsd_(Intercept)`,
+         cond_slope_sd = `condsd_log_length_mm`)
+
+ggplot(data = rnf_st_d2m_m3,
+       aes(x = cond_Incpt_Ranef,
+           y = cond_slope_Ranef)) +
+  geom_point(color = "blue", size = 3) + 
+  geom_errorbar(aes(ymin = cond_slope_Ranef - cond_slope_sd,
+                    ymax = cond_slope_Ranef + cond_slope_sd),
+                color = "blue") +
+  geom_errorbarh(aes(xmin = cond_Incpt_Ranef - cond_Incpt_sd,
+                     xmax = cond_Incpt_Ranef + cond_Incpt_sd),
+                 color = "orange") +
+  geom_label(aes(label = grp), hjust = 0.5, vjust = 0.3) +
+  xlab("Random effect on intercept") +
+  ylab("Random effect on slope")
+
+```
+
+```{r st_plotAllData, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE, eval=FALSE}
+
+ggplot(data = st_d2m,
+       aes(x = predict(st_d2m_m3),
+           y = log_mass_mg,
+           color = LIT_yr,
+           groups = LIT_yr)) +
+  geom_point() +
+  geom_smooth(method = "lm",
+              se = TRUE) +
+  geom_abline() +
+  facet_wrap(~LIT_yr,
+             ncol = 3) +
+  theme(legend.position = "none")
+
+```
+
+```{r st_bootMer, echo=FALSE, warning=FALSE, message=FALSE}
+
+St_CoefVar <- st_d2m %>%
+  group_by(LIT_yr) %>%
+  summarise(log_length_mm = log(mean(length_mm, na.rm = TRUE)),
+            .groups = "drop")
+
+myPred_st <- function(.) {
+  invBoxCox(predict(.,
+                    newdata = St_CoefVar,
+                    re.form = NULL),
+            lambda = st_lamb1)
+}
+
+# Based on
+# https://cran.r-project.org/web/packages/merTools/vignettes/Using_predictInterval.html
+sumBoot <- function(merBoot_t) {
+  return(
+    data.frame(
+      mass_median = apply(merBoot_t,
+                          2,
+                          function(x) as.numeric(quantile(x,
+                                                          probs = 0.50,
+                                                          na.rm = TRUE))),
+      mass_mean = apply(merBoot_t,
+                        2,
+                        function(x) as.numeric(mean(x,
+                                                    na.rm = TRUE))),
+      lwr = apply(merBoot_t,
+                  2, function(x) as.numeric(quantile(x,
+                                                     probs = .05,
+                                                     na.rm = TRUE))),
+      upr = apply(merBoot_t,
+                  2, function(x) as.numeric(quantile(x,
+                                                     probs = .95,
+                                                     na.rm = TRUE))),
+      se = apply(merBoot_t,
+                 2, function(x) as.numeric(sd(x,
+                                              na.rm = TRUE)))
+    )
+  )
+}
+
+# Use bootMer to get estimates of prediction intervals and se's
+boot1_st <- lme4::bootMer(st_d2m_m3,
+                       myPred_st,
+                       nsim = 1500,
+                       parallel = "multicore",
+                       ncpus = 8,
+                       use.u = TRUE,
+                       type = "parametric")
+
+
+St_CoefVar %<>%
+  bind_cols(sumBoot(boot1_st$t)) %>%
+  mutate(cv2 = sqrt(se^2 / (mass_mean^2 + se^2)))
+
+rownames(St_CoefVar) <- NULL
+
+my_hist <- function(x, y) hist(x,
+                            breaks = 25,
+                            xlim = c(0, 60),
+                            freq = FALSE,
+                            col = "skyblue",
+                            xlab = "Prediction (mg)",
+                            main = y)
+
+colnames(boot1_st$t) <- St_CoefVar$LIT_yr
+
+
+opar <- par(mfrow = c(3,2)); x <- map2(.x = as.data.frame(boot1_st$t),
+                                       .y = colnames(boot1_st$t),
+                                       ~my_hist(.x, .y)); par(opar)
+
+St_CoefVar %<>%
+  dplyr::select(LIT_yr,
+                mass_median,
+                lwr,
+                mass_mean,
+                upr,
+                se,
+                cv2) %>%
+    mutate(MOE = (upr - lwr) / (upr + lwr),
+           n = as.numeric(with(st_d2m,  table(LIT_yr))))
+
+St_CoefVar %>%
+  kable(caption = "Estimated seed head mass (mg), coefficient of variation (cv2), margin of error (MOE) and 90% CI for swamp timothy seedheads of average dimensions.",
+        digits = c(0, 1, 1, 1, 1, 1, 2, 2, 0)) %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+## Models for Watergrass
+
+```{r wg_plotData, echo=FALSE, warning=FALSE, message=FALSE}
+
+pairs(wg_d2m[ c("length_mm", "f2t_length_mm", "emerged")])
+
+scatterplot(mass_mg ~ length_mm | LIT_yr,
+            smooth = FALSE,
+            log = "xy",
+            data = wg_d2m)
+
+scatterplot(mass_mg ~ log_f2t_length_mm | LIT_yr,
+            smooth = FALSE,
+            log = "y",
+            data = wg_d2m)
+
+scatterplot(mass_mg ~ log_emerged | LIT_yr,
+            smooth = FALSE,
+            log = "y",
+            data = wg_d2m)
+
+
+```
+
+```{r wg_modelRandomGroups, echo=TRUE, warning=FALSE, message=FALSE}
+
+wg_frml1 <- mass_mg ~
+  log_length_mm +
+  log_emerged +
+  log_length_mm:log_emerged +
+  (1 | LIT_yr) +
+  (0 + log_length_mm | LIT_yr) +
+  (0 + log_emerged | LIT_yr) + 
+  (0 + log_length_mm:log_emerged | LIT_yr)
+
+wg_lamb = powerTransform(
+  lmer(wg_frml1,
+       data = wg_d2m)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+# wg_d2m %<>%
+#   mutate(bc_mass = bcPower(mass_mg, lambda = wg_lamb))
+# 
+wg_d2m_m2 <- lmer(update(wg_frml1, bcPower(mass_mg, lambda = wg_lamb) ~ .),
+                  data = wg_d2m)
+
+summary(wg_d2m_m2)
+
+wg_d2m_m3 <- update(wg_d2m_m2, . ~ . - (0 + log_length_mm:log_emerged | LIT_yr))
+
+# wg_d2m_m2 is better than wg_d2m_m3. Try to remove another random effect.
+anova(wg_d2m_m2, wg_d2m_m3)
+
+wg_d2m_m4 <- update(wg_d2m_m2, . ~ . -(0 + log_length_mm | LIT_yr))
+
+anova(wg_d2m_m2, wg_d2m_m4) # wg_d2m_m4 is better
+
+summary(wg_d2m_m4)
+
+# Re fit wg_d2m_m4 with a new lambda
+
+wg_lamb = powerTransform(
+  lmer(update(formula(wg_d2m_m4), mass_mg ~ .),
+       data = wg_d2m)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+wg_d2m_m4 <- lmer(formula(wg_d2m_m4), data = wg_d2m)
+
+summary(wg_d2m_m4)
+
+wg_d2m_m5 <- update(wg_d2m_m4, . ~ . -(0 + log_length_mm:log_emerged | LIT_yr))
+
+anova(wg_d2m_m5, wg_d2m_m2)
+
+summary(wg_d2m_m5)
+
+print("Pseudo R-squared for model wg_d2m_m4")
+MuMIn::r.squaredGLMM(wg_d2m_m4)
+
+print("Pseudo R-squared for model wg_d2m_m5")
+MuMIn::r.squaredGLMM(wg_d2m_m5)
+
+```
+
+```{r wg_bootMer, echo=FALSE, warning=FALSE, message=FALSE}
+
+Wg_CoefVar <- wg_d2m %>%
+  group_by(LIT_yr) %>%
+  summarise(log_length_mm = log(mean(length_mm, na.rm = TRUE)),
+            log_f2t_length_mm = log(mean(f2t_length_mm, na.rm = TRUE)),
+            log_emerged = log(mean(emerged, na.rm = TRUE)),
+            .groups = "drop")
+
+myPred <- function(.) {
+  invBoxCox(predict(.,
+              newdata = Wg_CoefVar,
+              re.form = NULL),
+            lambda = wg_lamb)
+}
+
+# Use bootMer to get estimates of prediction intervals and se's
+
+boot1_wg <- lme4::bootMer(wg_d2m_m4,
+                       myPred,
+                       nsim = 1500,
+                       parallel = "multicore",
+                       ncpus = 8,
+                       use.u = TRUE,
+                       type = "parametric")
+
+
+Wg_CoefVar %<>%
+  bind_cols(sumBoot(boot1_wg$t)) %>%
+  mutate(cv2 = sqrt(se^2 / (mass_mean^2 + se^2)))
+
+rownames(Wg_CoefVar) <- NULL
+
+my_hist <- function(x, y) hist(x,
+                            breaks = 25,
+                            xlim = c(0, max(x)),
+                            freq = FALSE,
+                            col = "skyblue",
+                            xlab = "Prediction (mg)",
+                            main = y)
+
+colnames(boot1_wg$t) <- Wg_CoefVar$LIT_yr
+
+
+opar <- par(mfrow = c(2,2)); x <- map2(.x = as.data.frame(boot1_wg$t),
+                                  .y = colnames(boot1_wg$t),
+                                  ~my_hist(.x, .y)); par(opar)
+
+rm(x)
+
+Wg_CoefVar %<>%
+  dplyr::select(LIT_yr,
+                mass_median,
+                lwr,
+                mass_mean,
+                upr,
+                se,
+                cv2) %>%
+  mutate(MOE = (upr - lwr) / (upr + lwr),
+           n = as.numeric(with(wg_d2m,  table(LIT_yr))))
+
+Wg_CoefVar %>%
+  kable(caption = "Estimated seed head mass (mg), coefficient of variation (cv2), margin of error (MOE) and 90% CI for watergrass seedheads of average dimensions. Based on bootMer",
+        digits = c(0, 0, 0, 0, 0, 1, 2, 2, 0)) %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+```{r rsq}
+
+MuMIn::r.squaredGLMM(wg_d2m_m4)
+
+MuMIn::r.squaredGLMM(wg_d2m_m5)
+
+```
+
+```{r tidyBootstrapWg, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE, eval=FALSE}
+
+# Not run.
+# This chunk simply corroborates the results of bootMer using tidy bootstrapping.
+# It assumes that the transformation is constant (constant lambda)
+# Results were corroborated, so this additional code is not run or presented.
+
+Wg_CoefVar <- wg_d2m %>%
+  group_by(LIT_yr) %>%
+  summarise(log_length_mm = log(mean(length_mm, na.rm = TRUE)),
+            log_f2t_length_mm = log(mean(f2t_length_mm, na.rm = TRUE)),
+            log_emerged = log(mean(emerged, na.rm = TRUE)),
+            .groups = "drop")
+
+# Use tidymodels to get bootstraps of predicted mass per seed head.
+wg_boots <- bootstraps(wg_d2m,
+                       times = 1500,
+                       strata = LIT_yr,
+                       apparent = TRUE)
+
+wg_pred_boots <- function(split) {
+  # wg_lamb = powerTransform(lmer(update(formula(wg_d2m_m4), # for variable lambda
+  #                                      mass_mg ~ .),
+  #                               data =  analysis(split))) %>%
+  #   coef(round = TRUE) %>%
+  #   unname()
+  
+  wg_m4_boot = lmer(update(formula(wg_d2m_m4),
+                           bcPower(mass_mg, lambda = wg_lamb) ~ .),
+                    data = analysis(split))
+  
+  mass_mg = predict(wg_m4_boot,
+                    newdata = Wg_CoefVar,
+                    re.form = NULL) %>%
+    invBoxCox(lambda = wg_lamb) %>%
+    as_tibble_row() %>%
+    setNames(nm = Wg_CoefVar$LIT_yr)
+  return(mass_mg)
+}
+
+tic()
+wg_boots %<>% 
+  mutate(pred = mclapply(X = wg_boots$splits,
+                         FUN = function(x) wg_pred_boots(x)),
+                         mc.cores = 8) %>%
+  unnest(pred)
+toc()
+
+Wg_CoefVar %<>%
+  bind_cols(wg_boots %>%
+              dplyr::select(Wg_CoefVar$LIT_yr) %>%
+              sumBoot()) %>%
+  mutate(cv2 = sqrt(se^2 / (mass_mean^2 + se^2)))
+
+rownames(Wg_CoefVar) <- NULL
+
+my_hist <- function(x, group) hist(x,
+                            breaks = 30,
+                            xlim = c(0, max(x)),
+                            freq = FALSE,
+                            col = "skyblue",
+                            xlab = "Prediction (mg)",
+                            main = group)
+
+opar <- par(mfrow = c(2,2)); xx <- map2(.x = wg_boots %>%
+                                          dplyr::select(Wg_CoefVar$LIT_yr),
+                                  .y = Wg_CoefVar$LIT_yr,
+                                  ~my_hist(.x, .y)); par(opar)
+
+rm(xx)
+
+Wg_CoefVar %<>%
+  dplyr::select(LIT_yr,
+                mass_median,
+                lwr,
+                mass_mean,
+                upr,
+                se,
+                cv2) %>%
+  mutate(MOE = (upr - lwr) / (upr + lwr),
+           n = as.numeric(with(wg_d2m,  table(LIT_yr))))
+
+Wg_CoefVar %>%
+  kable(caption = "Estimated seed head mass (mg), coefficient of variation (cv2), margin of error (MOE) and 90% CI for watergrass seedheads of average dimensions. Based on tidybootstraps.",
+        digits = c(0, 0, 0, 0, 0, 1, 2, 2)) %>%
+  kable_styling(full_width = FALSE)
+
+
+```
+
+## Models for Smartweed
+
+```{r sw_exploreData, echo=FALSE, warning=FALSE, message=FALSE}
+
+sw_d2m %>% dplyr::select(mass_mg, length_mm, width_mm, vol_mm3) %>% pairs()
+
+scatterplot(mass_mg ~ vol_mm3, sw_d2m, log = "xy") # Log transf. is promising
+
+sw_d2m[which.max(sw_d2m$vol_mm3), ] # extreme volume
+
+sw_d2m %>% dplyr::select(length_mm, width_mm) %>% plot()
+abline(0, 1) # One seed head has width 8 and length 2; nonsense. remove
+
+which(sw_d2m$length_mm < 4 & sw_d2m$width_mm == 8)
+
+sw_d2m %<>% dplyr::filter(
+  not(vol_mm3 == max(vol_mm3) | (sw_d2m$length_mm < 4 & sw_d2m$width_mm == 8))
+) # to exclude oddballs
+
+```
+
+#### Volume as single predictor
+
+```{r sw_linearVolume, echo=FALSE, warning=FALSE, message=FALSE}
+
+sw_m1 <- lm(mass_mg ~ vol_mm3, data = sw_d2m)
+
+summary(sw_m1)
+
+opar <- par(mfrow = c(2,2)); plot(sw_m1); par(opar)
+
+```
+
+```{r sw_transformedVolume, echo=TRUE, warning=FALSE, message=FALSE}
+
+# Get optimal lambda
+sw_lamb1 <- powerTransform(lm(mass_mg ~ vol_mm3,
+                              data = sw_d2m)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+# Fit model with transformed Y
+sw_m2 <- lm(bcPower(mass_mg, lambda = sw_lamb1) ~ vol_mm3,
+               data = sw_d2m)
+
+opar <- par(mfrow = c(2,2)); plot(sw_m2); par(opar)
+
+# Some nonlinearity remains, which increases the variance at the right side
+# Try an additional transformation in volume
+
+sw_lamb2 <- powerTransform(lm(mass_mg ~ log(vol_mm3),
+                              data = sw_d2m)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+sw_m3 <- lm(bcPower(mass_mg, lambda = sw_lamb2) ~ log(vol_mm3),
+               data = sw_d2m)
+
+opar <- par(mfrow = c(2,2)); plot(sw_m3); par(opar)
+
+summary(sw_m3)
+
+```
+
+```{r sw_tidyBootstrapSwVol, echo=FALSE, warning=FALSE, message=FALSE}
+
+Sw_CoefVar <- sw_d2m %>%
+  group_by(LIT_yr) %>%
+  summarise(log_length_mm = log(mean(length_mm, na.rm = TRUE)),
+            vol_mm3 = mean(vol_mm3, na.rm = TRUE),
+            .groups = "drop")
+
+# Use tidymodels to get bootstraps of predicted mass per seedhead.
+sw_boots <- bootstraps(sw_d2m,
+                       times = 1500,
+                       apparent = TRUE)
+
+sw_pred_boots <- function(split) {
+  sw_m3_boot = lm(bcPower(mass_mg, lambda = sw_lamb2) ~ log(vol_mm3),
+                  data = analysis(split)) 
+  mass_mg = predict(sw_m3_boot, newdata = Sw_CoefVar) %>%
+    invBoxCox(lambda = sw_lamb2)
+  return(mass_mg)
+}
+
+sw_boots %<>% 
+  mutate(pred = map_dbl(splits, sw_pred_boots))
+
+Sw_CoefVar %<>%
+  bind_cols(sw_boots$pred %>%
+              as.matrix() %>%
+              sumBoot()) %>%
+  mutate(cv2 = sqrt(se^2 / (mass_mean^2 + se^2)))
+
+rownames(Sw_CoefVar) <- NULL
+
+hist(sw_boots$pred,
+     breaks = 25,
+     xlim = c(5, max(sw_boots$pred)),
+     freq = FALSE,
+     col = "skyblue",
+     xlab = "Prediction (mg)",
+     main = "Predicted seed head mass. MDC_2021")
+
+Sw_CoefVar %<>%
+  dplyr::select(LIT_yr,
+                mass_median,
+                lwr,
+                mass_mean,
+                upr,
+                se,
+                cv2) %>%
+  mutate(MOE = (upr - lwr) / (upr + lwr),
+         n = length(sw_d2m$mass_mg))
+
+Sw_CoefVar %>%
+  kable(caption = "Estimated seed head mass (mg), coefficient of variation (cv2), margin of error (MOE) and 90% CI for Smartweed seedheads of average dimensions. Model uses log(vol_mm3) as single predictor.",
+        digits = c(0, 0, 0, 0, 0, 1, 2, 2, 0)) %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+#### Multiple predictors
+
+```{r sw_multiplePreds, echo=FALSE, warning=FALSE, message=FALSE}
+
+sw_lamb3 <- powerTransform(lm(mass_mg ~ log(vol_mm3) + width_mm + length_mm,
+                              data = sw_d2m)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+sw_m4 <- lm(bcPower(mass_mg, lambda = sw_lamb3) ~ log(vol_mm3) +
+              width_mm + length_mm,
+            data = sw_d2m)
+
+opar <- par(mfrow = c(2,2)); plot(sw_m4); par(opar)
+
+summary(sw_m4)
+anova(sw_m4)
+
+```
+
+```{r sw_tidyBootstrapSwMulti, echo=FALSE, warning=FALSE, message=FALSE}
+
+Sw_CoefVar <- sw_d2m %>%
+  group_by(LIT_yr) %>%
+  summarise(length_mm = mean(length_mm, na.rm = TRUE),
+            width_mm = mean(width_mm, na.rm = TRUE),
+            vol_mm3 = mean(vol_mm3, na.rm = TRUE),
+            .groups = "drop")
+
+# Use tidymodels to get bootstraps of predicted mass per seedhead.
+sw_boots <- bootstraps(sw_d2m,
+                       times = 1500,
+                       apparent = TRUE)
+
+sw_pred_boots <- function(split) {
+  sw_m4_boot = lm(bcPower(mass_mg, lambda = sw_lamb3) ~
+                    log(vol_mm3) +
+                    width_mm +
+                    length_mm,
+                  data = analysis(split)) 
+  mass_mg = predict(sw_m4_boot, newdata = Sw_CoefVar) %>%
+    invBoxCox(lambda = sw_lamb3)
+  return(mass_mg)
+}
+
+sw_boots %<>% 
+  mutate(pred = map_dbl(splits, sw_pred_boots))
+
+Sw_CoefVar %<>%
+  bind_cols(sw_boots$pred %>%
+              as.matrix() %>%
+              sumBoot()) %>%
+  mutate(cv2 = sqrt(se^2 / (mass_mean^2 + se^2)))
+
+rownames(Sw_CoefVar) <- NULL
+
+hist(sw_boots$pred,
+     breaks = 25,
+     xlim = c(5, max(sw_boots$pred)),
+     freq = FALSE,
+     col = "skyblue",
+     xlab = "Prediction (mg)",
+     main = "Predicted seed head mass. MDC_2021")
+
+Sw_CoefVar %<>%
+  dplyr::select(LIT_yr,
+                mass_median,
+                lwr,
+                mass_mean,
+                upr,
+                se,
+                cv2) %>%
+  mutate(MOE = (upr - lwr) / (upr + lwr),
+         n = length(sw_d2m$mass_mg))
+
+Sw_CoefVar %>%
+  kable(caption = "Estimated seed head mass (mg), coefficient of variation (cv2), margin of error (MOE) and 90% CI for Smartweed seedheads of average dimensions. Model uses log(vol_mm3), length_mm and width_mm as predictors.",
+        digits = c(0, 0, 0, 0, 0, 1, 2, 2, 0)) %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+#### Length as a single predictor
+
+```{r sw_transformedLength, echo=FALSE, warning=FALSE, message=FALSE}
+
+# Get optimal lambda
+sw_lamb4 <- powerTransform(lm(mass_mg ~ length_mm,
+                              data = sw_d2m)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+# Fit model with transformed Y
+sw_m5 <- lm(bcPower(mass_mg, lambda = sw_lamb4) ~ length_mm,
+               data = sw_d2m)
+
+opar <- par(mfrow = c(2,2)); plot(sw_m5); par(opar)
+
+# Some nonlinearity remains, which increases the variance at the right side
+# Try an log transformation of length
+
+# Get new optimal lambda
+sw_lamb5 <- powerTransform(lm(mass_mg ~ log_length_mm,
+                              data = sw_d2m)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+sw_m6 <- lm(bcPower(mass_mg, lambda = sw_lamb5) ~ log_length_mm,
+               data = sw_d2m)
+
+opar <- par(mfrow = c(2,2)); plot(sw_m6); par(opar)
+
+summary(sw_m5)
+anova(sw_m5)
+
+```
+
+```{r sw_tidyBootstrapSwLen, echo=FALSE, warning=FALSE, message=FALSE}
+
+Sw_CoefVar <- sw_d2m %>%
+  group_by(LIT_yr) %>%
+  summarise(log_length_mm = log(mean(length_mm, na.rm = TRUE)),
+            .groups = "drop")
+
+# Use tidymodels to get bootstraps of predicted mass per seed head.
+sw_boots <- bootstraps(sw_d2m,
+                       times = 1500,
+                       apparent = TRUE)
+
+sw_pred_boots <- function(split) {
+  sw_m6_boot = lm(bcPower(mass_mg, lambda = sw_lamb5) ~ log_length_mm,
+                  data = analysis(split)) 
+  mass_mg = predict(sw_m6_boot, newdata = Sw_CoefVar) %>%
+    invBoxCox(lambda = sw_lamb5)
+  return(mass_mg)
+}
+
+sw_boots %<>% 
+  mutate(pred = map_dbl(splits, sw_pred_boots))
+
+Sw_CoefVar %<>%
+  bind_cols(sw_boots$pred %>%
+              as.matrix() %>%
+              sumBoot()) %>%
+  mutate(cv2 = sqrt(se^2 / (mass_mean^2 + se^2)))
+
+rownames(Sw_CoefVar) <- NULL
+
+hist(sw_boots$pred,
+     breaks = 25,
+     xlim = c(5, max(sw_boots$pred)),
+     freq = FALSE,
+     col = "skyblue",
+     xlab = "Prediction (mg)",
+     main = "Predicted seed head mass. MDC_2021")
+
+Sw_CoefVar %<>%
+  dplyr::select(LIT_yr,
+                mass_median,
+                lwr,
+                mass_mean,
+                upr,
+                se,
+                cv2) %>%
+  mutate(MOE = (upr - lwr) / (upr + lwr),
+         n = length(sw_d2m$mass_mg))
+
+Sw_CoefVar %>%
+  kable(caption = "Estimated seed head mass (mg), coefficient of variation (cv2), margin of error (MOE) and 90% CI for Smartweed seedheads of average dimensions. Model uses log(length_mm) as single predictor.",
+        digits = c(0, 0, 0, 0, 0, 1, 2, 2, 0)) %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+# Model Evaluation
+
+### Function to evaluate alternatives
+
+```{r evalFun, echo=FALSE, warning=FALSE, message=FALSE}
+# Model option mld.opt has to be either "fixed" or anything else. Anything else
+# results in the "mixed" model.
+model_eval_fnc <- function(the_data = NULL) { # Start f() definition ******
+  
+  # Make vector of LIT_yr groups to loop over
+  grps <- unique(the_data$LIT_yr)
+  
+  # Create data frames to receive output from validation (test)
+  test_metrics <- tibble(grp_out = character(),
+                         .metric =  character(),
+                         .estimate = double())
+  
+  test_data4graphs <- tibble(LIT_yr = character(),
+                             mass_mg =  double(),
+                             .pred = double())
+  
+  # Determine what species is being analyzed
+  spp <- the_data %>%
+    pluck("spp") %>%
+    unique()
+  
+  #Prepare data for manual initial split by LIT_yr
+  the_data %<>%
+    arrange(LIT_yr) %>%
+    mutate(.row = row_number())
+  
+  # Define model
+  lm_model <-
+    linear_reg() %>%
+    set_engine("lmer")
+  
+  
+  # Define formulae
+  frmls <- list(SwampTimothy = formula(st_d2m_m3),
+                Watergrass = formula(wg_d2m_m4))
+  
+  # Define lambdas
+  lambdas <- list(SwampTimothy = st_lamb1,
+                Watergrass = wg_lamb)
+  
+  
+  m_formula <- frmls[[spp]]
+  
+  # Start of cross-validation to assess option 1
+  df_vfold <- vfold_cv(the_data,
+                       v = 6,
+                       repeats = 10,
+                       strata = LIT_yr,
+                       pool = 0.01)
+  
+  # Extract analysis and assessment data
+  cv_out <- mutate(df_vfold,
+                   df_cv_trn = map(splits,  analysis),
+                   df_cv_tst = map(splits,  assessment)) %>%
+    # Fit model to all folds
+    mutate(model_fit = map(df_cv_trn,
+                           ~fit(lm_model, 
+                                m_formula, 
+                                data = .x))) %>% 
+    # Predict on assessment fold and save observed and predicted
+    mutate(model_pred = map2(model_fit,
+                             df_cv_tst,
+                             ~invBoxCox(predict(.x,
+                                                new_data = .y,
+                                                type = "raw",
+                                                opts = list(re.form = NULL)),
+                                        lambda = lambdas[[spp]]))) %>% 
+    mutate(reslt = map2(df_cv_tst,
+                        model_pred,
+                        ~data.frame(LIT_yr = .x$LIT_yr,
+                                    mass_mg = .x$mass_mg,
+                                    .pred = .y)))
+  
+  # Save test data and predictions for graphs
+  cv_out4graphs <- cv_out %>%
+    dplyr::select(id, df_cv_tst, model_pred) %>%
+    unnest(cols = c(df_cv_tst, model_pred)) %>%
+    arrange(id, LIT_yr)
+  
+  # Calculate and save metrics
+  cv_metrics <- cv_out %>%
+    dplyr::select(id, reslt) %>% 
+    tidyr::unnest(reslt) %>% 
+    group_by(LIT_yr) %>%
+    # Get metrics to evaluate model
+    metrics(truth = mass_mg, estimate = .pred) %>%
+    dplyr::select(LIT_yr,
+                  .metric,
+                  .estimate) %>%
+    pivot_wider(names_from = .metric,
+                values_from = .estimate)
+  
+  # Start of validation to assess option 2
+  for (grp in grps) { # Start loop over LIT_yr groups for validation
+    
+    # Split data leaving one group out at a time as testing data.
+    indices <-
+      list(analysis   = the_data$.row[the_data$LIT_yr != grp], 
+           assessment = the_data$.row[the_data$LIT_yr == grp])
+    
+    df_split <- make_splits(indices, the_data %>% dplyr::select(-.row))
+    df_train <- training(df_split)
+    df_test  <- testing(df_split)
+    
+    # Fit model to all training data for prediction in testing data (grp)
+    all_fit <- fit(lm_model, m_formula, data = df_train)
+    
+    lambda_val <- lambdas[[spp]]
+    
+    df_test %<>% 
+      mutate(model_pred = predict(all_fit,
+                                  new_data = df_test,
+                                  type = "raw",
+                                  opts = list(allow.new.levels = TRUE))) %>%
+      mutate(model_pred = invBoxCox(model_pred, lambda = lambda_val))
+    
+    test_metrics <- metrics(df_test, truth = mass_mg, estimate = model_pred) %>%
+      mutate(grp_out = grp) %>%
+      dplyr::select(grp_out, .metric, .estimate) %>%
+      bind_rows(test_metrics, .)
+    
+    test_data4graphs <- df_test %>%
+      bind_rows(test_data4graphs, .)
+    
+  } # End loop over LIT_yr groups *****
+  
+  test_metrics %<>%
+    pivot_wider(names_from = .metric,
+                values_from = .estimate)
+  
+  return(list(species = spp,
+              cv_metrics = cv_metrics,
+              cv_out4graphs = cv_out4graphs,
+              test_metrics = test_metrics,
+              test_data4graphs = test_data4graphs))
+  
+} # End function definition ******
+
+```
+
+### Function to summarize results of each evaluation
+
+```{r summarizePlotFun, echo=FALSE, warning=FALSE, message=FALSE}
+
+summarize_plot_fnc <- function(rslt_list = NULL) {# Start summarize_plot function definition
+  
+  # Checks for correctness of list, etc. TBA
+
+  # Cross validation summary
+  cross_val_metrics <- rslt_list$cv_metrics %>%
+    dplyr::select(-LIT_yr) %>%
+    summarize_all(mean) %>%
+    mutate(LIT_yr = "Average") %>%
+    bind_rows(rslt_list$cv_metrics, .)
+  
+  Tbl_cv_cap <- paste("Table of cross validation results for ", rslt_list$species, ". These results represent how well the model performs when all groups have data for d2m.", sep = "")
+  
+  # Cross validation table
+  tbl_cv <-  knitr::kable(cross_val_metrics,
+                          digits = c(0, 1, 2, 1),
+                          caption = Tbl_cv_cap) %>%
+    kable_styling(full_width = FALSE)
+  
+  # Cross validation figure
+  fig_cv <-  ggplot(data = rslt_list$cv_out4graphs,
+                    aes(x = model_pred,
+                        y = mass_mg,
+                        color = LIT_yr,
+                        groups = id)) +
+    geom_smooth(method = "lm",
+                se = TRUE,
+                size = 0.01,
+                alpha = 0.20) +
+    geom_smooth(method = "lm",
+                se = FALSE) +
+    geom_point() +
+    geom_abline() +
+    facet_wrap(~LIT_yr,
+               ncol = 2) +
+    theme(legend.position = "none") + 
+    annotate("text",
+             x = 0.90 * max(rslt_list$cv_out4graphs$model_pred, na.rm = TRUE),
+             y = 0.15 * max(rslt_list$cv_out4graphs$mass_mg, na.rm = TRUE),
+             label = rslt_list$species)
+  
+  
+  # Validation summary
+  val_metrics <- rslt_list$test_metrics %>%
+    dplyr::select(-grp_out) %>%
+    summarize_all(mean) %>%
+    mutate(grp_out = "Average") %>%
+    bind_rows(rslt_list$test_metrics, .)
+  
+  Tbl_v_cap <- paste("Table of final validation results for ", rslt_list$species, " when data for each refuge is kept out from model creation and used for final testing. This test provides a realistic estimate of the error expected when using data from an observed set of refuge-year combinations to predict seed head mass in a new refuge-year.", sep = "")
+  
+  # Validation table
+  tbl_v <-  knitr::kable(val_metrics,
+                         digits = c(0, 1, 2, 1),
+                         caption = Tbl_v_cap) %>%
+    kable_styling(full_width = FALSE)
+  
+  # Validation metrics figure
+  fig_v <- ggplot(data = rslt_list$test_data4graphs,
+                  aes(x = model_pred,
+                      y = mass_mg,
+                      color = LIT_yr,
+                      groups = LIT_yr)) +
+    geom_point() +
+    geom_smooth(method = "lm",
+                se = TRUE) +
+    geom_abline() +
+    facet_wrap(~LIT_yr,
+               ncol = 2) +
+    theme(legend.position = "none") +
+    annotate("text",
+             x = 0.90 * max(rslt_list$test_data4graphs$model_pred, na.rm = TRUE),
+             y = 0.15 * max(rslt_list$test_data4graphs$mass_mg, na.rm = TRUE),
+             label = rslt_list$species)
+  
+  return(list(cv_table = tbl_cv,
+              cv_fig = fig_cv,
+              v_table = tbl_v,
+              v_fig = fig_v))
+  
+}
+
+```
+
+## Evaluation of prediction alternatives
+
+```{r evalOptions, echo=FALSE, warning=FALSE, message=FALSE}
+
+# Swam Timothy
+st_model_eval <- model_eval_fnc(the_data = st_d2m)
+st_rslts <- summarize_plot_fnc(rslt_list = st_model_eval)
+
+# Watergrass
+wg_model_eval <- model_eval_fnc(the_data = wg_d2m)
+wg_rslts <- summarize_plot_fnc(rslt_list = wg_model_eval)
+
+```
+
+### Swamp Timothy graphical results
+
+```{r displayGraphsSwampTimothy, echo=FALSE, warning=FALSE, message=FALSE}
+
+print("SWAMP TIMOTHY PREDICTIONS FOR SAMPLED REFUGES")
+st_rslts$cv_fig
+
+print("SWAMP TIMOTHY PREDICTIONS FOR NEW REFUGES")
+st_rslts$v_fig
+
+```
+
+### Swamp Timothy metrics
+
+```{r displayTablesSwampTimothy, echo=FALSE, warning=FALSE, message=FALSE}
+
+st_rslts$cv_table %>%
+  kable_styling(full_width = FALSE,
+                position = "float_left")
+
+st_rslts$v_table %>%
+  kable_styling(full_width = FALSE,
+                position = "left")
+
+
+```
+
+### Watergrass graphical results
+
+```{r displayGraphsWatergrass, echo=FALSE, warning=FALSE, message=FALSE}
+
+print("WATERGRASS PREDICTIONS FOR SAMPLED REFUGES")
+wg_rslts$cv_fig
+
+print("WATERGRASS PREDICTIONS FOR NEW REFUGES")
+wg_rslts$v_fig
+
+```
+
+### Watergrass metrics
+
+```{r displayTablesWatergrass, echo=FALSE, warning=FALSE, message=FALSE}
+
+wg_rslts$cv_table %>%
+  kable_styling(full_width = FALSE,
+                position = "float_left")
+
+wg_rslts$v_table %>%
+  kable_styling(full_width = FALSE,
+                position = "left")
+
+
+```

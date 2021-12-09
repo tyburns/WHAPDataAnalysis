@@ -18,7 +18,7 @@ library(magrittr)
 library(readxl)
 library(emmeans)
 library(lme4)
-library(lmerTest)
+# library(lmerTest)
 library(rsample)
 library(recipes)
 library(tidymodels)
@@ -27,6 +27,11 @@ library(multilevelmod)
 library(knitr)
 library(ggpubr)
 library(caret)
+library(furrr)
+library(parallel)
+library(doParallel)
+library(parallelly)
+library(tictoc)
 
 ```
 
@@ -130,7 +135,6 @@ d2m_data %<>% mutate(LIT_yr = paste(LIT, year, sep = "_"),
                      log_length_mm = log(length_mm),
                      log_f2t_length_mm = log(f2t_length_mm + 120))
 
-
 wg_d2m <- d2m_data %>%
   dplyr::filter(spp == "Watergrass") %>%
   mutate(emerged = f2t_length_mm / length_mm,
@@ -143,6 +147,12 @@ st_d2m <- d2m_data %>%
   dplyr::filter(spp == "SwampTimothy") %>%
   arrange(LIT, year)
 
+sw_d2m <- d2m_data %>%
+  dplyr::filter(spp == "Smartweed") %>%
+  dplyr::select(-c(f2t_length_mm, log_f2t_length_mm)) %>%
+  mutate(vol_mm3 = pi * (width_mm/2)^2 * length_mm)
+
+
 ```
 
 # Model development
@@ -153,22 +163,43 @@ This section is organized by species. Data for each species are explored numeric
 
 ### Data exploration
 
+There are `r dim(st_d2m)[1]` observations in the Swamp Timothy d2m data set.
+
 ```{r st_plotData, echo=FALSE, warning=FALSE, message=FALSE}
 
 scatterplot(mass_mg ~ length_mm | LIT_yr,
             smooth = FALSE,
-            log = "xy",
+#            log = "xy",
             data = st_d2m)
 
 ```
 
-The scatterplot has both axis in logarithmic scale, which accounts for the increasing variance as seed heads get longer. Data and regression lines for all groups cluster closely, with the exception of SAC_-_2019. There is some indication that SAC had heavier Swamp Timothy seed heads than the rest of the groups for any given seed head length.
+The scatter plot has both axis in logarithmic scale, which accounts for the increasing variance as seed heads get longer. Data and regression lines for all groups cluster closely, with the exception of SAC_-_2019. There is some indication that SAC had heavier Swamp Timothy seed heads than the rest of the groups for any given seed head length.
 
 ### Random-effect approach Swamp Timothy
 
 Each group of observations within a refuge and year can be considered a random draw of all possible groups. This creates a basis to estimate seed head mass for unobserved groups. In the case of the observed groups we make predictions that include the random effect of the group and exclude the uncertainty due to group. In the case of unobserved new groups, predictions are made at the population level and uncertainty includes a variance component due to deviations of groups about the population (Gelman and Hill, 2007).
 
 In this approach, the question of whether a new refuge or year need to be sampled can be addressed by exploring the magnitude of group-level variance in slope and intercept. A lot of variance in either or both of the estimated parameters indicates that groups can differ greatly from each other, and thus, a new group would have a large probability of being very different from the average of groups observed. Large variance suggests sampling all new groups to avoid the uncertainty among groups. Small variance indicates that marginal predictions might be sufficient. Variance magnitude is evaluated using the second-order coefficient of variation (Kvalseth 2017).
+
+Variance increases with fitted value in all data sets and there is indication of slight non-linearity. We try a Box-Cox transformation that is:
+
+$$ Y' = \frac{Y^\lambda - 1}{\lambda} \qquad \quad \text{for lambda not 0, and} \\
+\quad\\
+Y' = log(Y) \qquad \quad \text{for lambda = 0}$$
+
+Predictions resulting from the models where the response received a Box-Cox transformation have to be back transformed into mass in mg by the inverse transformation. When $\lambda = 0$ the transformation is the log of the response and it is inverted with the exponential. Otherwise the back transformation is:
+
+$$ Y = (\lambda \enspace Y' + 1)^ {\enspace (1/\lambda)}$$
+
+which in R code is `(Y = lambda * Y_prime + 1) ^ (1/lambda)`, where $Y$ is mass in mg and $Y'$ is the transformed value provided by using the model.
+
+```{r defineInvBocCox}
+
+# Define function to invert the Box-Cox transformation
+invBoxCox <- function(x, lambda) {
+  if (lambda == 0) exp(x) else (lambda * x + 1) ^ (1 / lambda)}
+```
 
 ```{r st_modelRandomGroups, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -181,7 +212,9 @@ st_lamb1 <- powerTransform(lmer(mass_mg ~ log_length_mm +
 
 # Lambda is 0, so a log transformation is used.
 
-st_d2m_m3 <- lmer(log_mass_mg ~ log_length_mm + (log_length_mm|LIT_yr),
+st_d2m_m3 <- lmer(bcPower(mass_mg, lambda = st_lamb1) ~
+                    log_length_mm +
+                    (log_length_mm|LIT_yr),
                   data = st_d2m)
 
 summary(st_d2m_m3)
@@ -205,7 +238,7 @@ ranef(st_d2m_m3) %>%
 
 The linear log-log model does not show need for additional terms. Fitted and observed values are linearly related and centered about the 1:1 line. The magnitude of random effects shown in the table give an idea of the potential bias introduced by making marginal predictions. The size of this component of the total error (bias plus variance) can also be assessed in relation to the residual variance in the model summary above. These effects are visualized more easily in the section about evaluation of prediction alternatives presented below.
 
-```{r st_plotRanef, echo=FALSE, warning=FALSE, message=FALSE}
+```{r st_plotRanef, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE, eval=FALSE}
 
 rnf_st_d2m_m3 <- ranef(st_d2m_m3) %>%
   as.data.frame() %>%
@@ -233,9 +266,7 @@ ggplot(data = rnf_st_d2m_m3,
 
 ```
 
-The graphical display of group effects on intercept and slope shows that one group, SAC_2019 seems to deviate greatly from the rest.
-
-```{r st_plotAllData, echo=FALSE, warning=FALSE, message=FALSE}
+```{r st_plotAllData, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE, eval=FALSE}
 
 ggplot(data = st_d2m,
        aes(x = predict(st_d2m_m3),
@@ -249,11 +280,12 @@ ggplot(data = st_d2m,
   facet_wrap(~LIT_yr,
              ncol = 3) +
   theme(legend.position = "none")
+
 ```
 
-The last two graphs show that when all groups are in the training data, predictions are accurate, but because there are groups that deviate from the the rest, not including all groups in the training data could introduce bias in the predictions for the absent groups. The potential magnitude of bias is assessed in the external validation section below.
+A numerical assessment of precision of estimates is performed by calculating bootstrap confidence intervals for prediction of mass of seed heads with average dimensions for each group. Coefficients of variation and margin of errors are calculated for each group and compared to desirable values.
 
-```{r st_estimates, echo=FALSE, warning=FALSE, message=FALSE}
+```{r st_bootMer, echo=FALSE, warning=FALSE, message=FALSE}
 
 St_CoefVar <- st_d2m %>%
   group_by(LIT_yr) %>%
@@ -261,32 +293,35 @@ St_CoefVar <- st_d2m %>%
             .groups = "drop")
 
 myPred_st <- function(.) {
-  exp(predict(., newdata = St_CoefVar, re.form = NULL))
+  invBoxCox(predict(.,
+                    newdata = St_CoefVar,
+                    re.form = NULL),
+            lambda = st_lamb1)
 }
 
 # Based on
 # https://cran.r-project.org/web/packages/merTools/vignettes/Using_predictInterval.html
-sumBoot <- function(merBoot) {
+sumBoot <- function(merBoot_t) {
   return(
     data.frame(
-      mass_median = apply(merBoot$t,
+      mass_median = apply(merBoot_t,
                           2,
                           function(x) as.numeric(quantile(x,
                                                           probs = 0.50,
                                                           na.rm = TRUE))),
-      mass_mean = apply(merBoot$t,
+      mass_mean = apply(merBoot_t,
                         2,
                         function(x) as.numeric(mean(x,
                                                     na.rm = TRUE))),
-      lwr = apply(merBoot$t,
+      lwr = apply(merBoot_t,
                   2, function(x) as.numeric(quantile(x,
                                                      probs = .05,
                                                      na.rm = TRUE))),
-      upr = apply(merBoot$t,
+      upr = apply(merBoot_t,
                   2, function(x) as.numeric(quantile(x,
                                                      probs = .95,
                                                      na.rm = TRUE))),
-      se = apply(merBoot$t,
+      se = apply(merBoot_t,
                  2, function(x) as.numeric(sd(x,
                                               na.rm = TRUE)))
     )
@@ -294,16 +329,17 @@ sumBoot <- function(merBoot) {
 }
 
 # Use bootMer to get estimates of prediction intervals and se's
-
 boot1_st <- lme4::bootMer(st_d2m_m3,
                        myPred_st,
-                       nsim = 1000,
-                       use.u = FALSE,
+                       nsim = 1500,
+                       parallel = "multicore",
+                       ncpus = 8,
+                       use.u = TRUE,
                        type = "parametric")
 
 
 St_CoefVar %<>%
-  bind_cols(sumBoot(boot1_st)) %>%
+  bind_cols(sumBoot(boot1_st$t)) %>%
   mutate(cv2 = sqrt(se^2 / (mass_mean^2 + se^2)))
 
 rownames(St_CoefVar) <- NULL
@@ -323,7 +359,7 @@ opar <- par(mfrow = c(3,2)); x <- map2(.x = as.data.frame(boot1_st$t),
                                        .y = colnames(boot1_st$t),
                                        ~my_hist(.x, .y)); par(opar)
 
-St_CoefVar %>%
+St_CoefVar %<>%
   dplyr::select(LIT_yr,
                 mass_median,
                 lwr,
@@ -331,20 +367,24 @@ St_CoefVar %>%
                 upr,
                 se,
                 cv2) %>%
-    mutate(MOE = (upr - lwr) / (upr + lwr)) %>%
+    mutate(MOE = (upr - lwr) / (upr + lwr),
+           n = as.numeric(with(st_d2m,  table(LIT_yr))))
+
+St_CoefVar %>%
   kable(caption = "Estimated seed head mass (mg), coefficient of variation (cv2), margin of error (MOE) and 90% CI for swamp timothy seedheads of average dimensions.",
-        digits = c(0, 1, 1, 1, 1, 1, 2, 2)) %>%
+        digits = c(0, 1, 1, 1, 1, 1, 2, 2, 0)) %>%
   kable_styling(full_width = FALSE)
 
 ```
 
-The coefficient of variation is very small to small, indicating high precision in the estimates. Second-order coefficients of variation smaller than 0.20 (20%) are very small and between 0.2 and 0.4 are small (Kvålset, 2017). The margin of error achieved at 90% confidence varies between 0.30 and 0.37, which may be considred too high according to default standards (FIND REFERENCES). 
-
+The coefficients of variation are very small, indicating high precision in the estimates. Second-order coefficients of variation smaller than 0.20 (20%) are very small (Kvålset, 2017). The margin of error achieved at 90% confidence varies between `r round(min(St_CoefVar$MOE), 3)` and `r round(max(St_CoefVar$MOE), 3)` of the average, which may be be a bit too high according to some standards (FIND REFERENCES) but I think it is quite good for biological and field sciences. 
 
 
 ## Models for Watergrass
 
 ### Data Exploration
+
+There are `r dim(wg_d2m)[1]` observations in the Watergrass d2m data set.
 
 ```{r wg_plotData, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -368,47 +408,77 @@ scatterplot(mass_mg ~ log_emerged | LIT_yr,
 
 ```
 
-Scatterplot show differences among groups in the responses to predictors.
-
-**Question: should predictions be done for the measured degree of seed head development or for a fixed level selected to correct for degree of development when seed heads were measured?**
+Scatter plots show differences among groups in the responses to predictors.
 
 ### Random-effect approach Watergrass
 
-```{r wg_modelRandomGroups, echo=FALSE, warning=FALSE, message=FALSE}
+In the case of Watergrass there are more steps in the model creation because we have more predictors. A first model with as many random effects as the data can support is slightly reduced to reach a final model with two predictors.
 
-wg_d2m_m2 <- lmer(log_mass_mg ~ log_length_mm +
-                    (0 + log_length_mm | LIT_yr) +
-                    log_f2t_length_mm +
-                    (0 + log_f2t_length_mm | LIT_yr) +
-                    log_emerged +
-                    (0 + log_emerged | LIT_yr) +
-                    (1 | LIT_yr),
+```{r wg_modelRandomGroups, echo=TRUE, warning=FALSE, message=FALSE}
+
+wg_frml1 <- mass_mg ~
+  log_length_mm +
+  log_emerged +
+  log_length_mm:log_emerged +
+  (1 | LIT_yr) +
+  (0 + log_length_mm | LIT_yr) +
+  (0 + log_emerged | LIT_yr) + 
+  (0 + log_length_mm:log_emerged | LIT_yr)
+
+wg_lamb = powerTransform(
+  lmer(wg_frml1,
+       data = wg_d2m)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+# wg_d2m %<>%
+#   mutate(bc_mass = bcPower(mass_mg, lambda = wg_lamb))
+# 
+wg_d2m_m2 <- lmer(update(wg_frml1, bcPower(mass_mg, lambda = wg_lamb) ~ .),
                   data = wg_d2m)
 
 summary(wg_d2m_m2)
 
-wg_d2m_m3 <- update(wg_d2m_m2, . ~ . - (0 + log_f2t_length_mm | LIT_yr))
+wg_d2m_m3 <- update(wg_d2m_m2, . ~ . - (0 + log_length_mm:log_emerged | LIT_yr))
 
-summary(wg_d2m_m3)
-
-wg_d2m_m4 <- update(wg_d2m_m3, . ~ . -(1 | LIT_yr)) 
-
-summary(wg_d2m_m4)
-
+# wg_d2m_m2 is better than wg_d2m_m3. Try to remove another random effect.
 anova(wg_d2m_m2, wg_d2m_m3)
+
+wg_d2m_m4 <- update(wg_d2m_m2, . ~ . -(0 + log_length_mm | LIT_yr))
 
 anova(wg_d2m_m2, wg_d2m_m4) # wg_d2m_m4 is better
 
-wg_d2m_m5 <- update(wg_d2m_m4,
-                    . ~ . -log_f2t_length_mm -
-                      (0 + log_f2t_length_mm | LIT_yr)) 
+summary(wg_d2m_m4)
 
-anova(wg_d2m_m5, wg_d2m_m4)
+# Re fit wg_d2m_m4 with a new lambda
+
+wg_lamb = powerTransform(
+  lmer(update(formula(wg_d2m_m4), mass_mg ~ .),
+       data = wg_d2m)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+wg_d2m_m4 <- lmer(formula(wg_d2m_m4), data = wg_d2m)
+
+summary(wg_d2m_m4)
+
+wg_d2m_m5 <- update(wg_d2m_m4, . ~ . -(0 + log_length_mm:log_emerged | LIT_yr))
+
+anova(wg_d2m_m5, wg_d2m_m2)
+
+summary(wg_d2m_m5)
+
+print("Pseudo R-squared for model wg_d2m_m4")
+MuMIn::r.squaredGLMM(wg_d2m_m4)
+
+print("Pseudo R-squared for model wg_d2m_m5")
+MuMIn::r.squaredGLMM(wg_d2m_m5)
 
 ```
 
+Two models (wg_d2m_m4 and wg_d2m_m5) are good candidates for predictions. First we study the general precision of the model that is slightly better, `wg_d2m_m4`. The histograms of bootstrapped predictions clearly show the effect of sample size on the precision of estimates.
 
-```{r wg_estimates, echo=FALSE, warning=FALSE, message=FALSE}
+```{r wg_bootMer, echo=FALSE, warning=FALSE, message=FALSE}
 
 Wg_CoefVar <- wg_d2m %>%
   group_by(LIT_yr) %>%
@@ -418,29 +488,32 @@ Wg_CoefVar <- wg_d2m %>%
             .groups = "drop")
 
 myPred <- function(.) {
-  exp(predict(.,
+  invBoxCox(predict(.,
               newdata = Wg_CoefVar,
-              re.form = NULL))
+              re.form = NULL),
+            lambda = wg_lamb)
 }
 
 # Use bootMer to get estimates of prediction intervals and se's
 
-boot1_wg <- lme4::bootMer(wg_d2m_m2,
+boot1_wg <- lme4::bootMer(wg_d2m_m4,
                        myPred,
-                       nsim = 1000,
-                       use.u = FALSE,
+                       nsim = 1500,
+                       parallel = "multicore",
+                       ncpus = 8,
+                       use.u = TRUE,
                        type = "parametric")
 
 
 Wg_CoefVar %<>%
-  bind_cols(sumBoot(boot1_wg)) %>%
+  bind_cols(sumBoot(boot1_wg$t)) %>%
   mutate(cv2 = sqrt(se^2 / (mass_mean^2 + se^2)))
 
 rownames(Wg_CoefVar) <- NULL
 
 my_hist <- function(x, y) hist(x,
                             breaks = 25,
-                            xlim = c(5, 600),
+                            xlim = c(0, max(x)),
                             freq = FALSE,
                             col = "skyblue",
                             xlab = "Prediction (mg)",
@@ -455,7 +528,7 @@ opar <- par(mfrow = c(2,2)); x <- map2(.x = as.data.frame(boot1_wg$t),
 
 rm(x)
 
-Wg_CoefVar %>%
+Wg_CoefVar %<>%
   dplyr::select(LIT_yr,
                 mass_median,
                 lwr,
@@ -463,59 +536,152 @@ Wg_CoefVar %>%
                 upr,
                 se,
                 cv2) %>%
-  mutate(MOE = (upr - lwr) / (upr + lwr)) %>%
-  kable(caption = "Estimated seed head mass (mg), coefficient of variation (cv2), margin of error (MOE) and 90% CI for watergrass seedheads of average dimensions.",
+  mutate(MOE = (upr - lwr) / (upr + lwr),
+           n = as.numeric(with(wg_d2m,  table(LIT_yr))))
+
+Wg_CoefVar %>%
+  kable(caption = "Estimated seed head mass (mg), coefficient of variation (cv2), margin of error (MOE) and 90% CI for watergrass seedheads of average dimensions. Based on bootMer",
+        digits = c(0, 0, 0, 0, 0, 1, 2, 2, 0)) %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+Precision is very high for SAC_2019 and CLS_2019, high for SLW_2019 and marginal for MDC_2021. Relative to the means, margins of error (half CI width as a proportion of the mean) are between `r round(min(Wg_CoefVar$MOE), 3)` and `r round(max(Wg_CoefVar$MOE), 3)`. Based on the fact that the results for CLS_2019 are similar to achievable and desirable standards, we recommend a sample size of 300-400 seed heads to develop new d2m models for Watergrass.
+
+Overall the model `wg_d2m_m4` has a conditional pseudo R-sq (Nakagawa and Schielzeth 2013, Bartoń 2020) of `r MuMIn::r.squaredGLMM(wg_d2m_m4)[1, 2]` and a marginal pseudo R-sq of `r MuMIn::r.squaredGLMM(wg_d2m_m4)[1, 1]`. The corresponding values for `wg_d2m_m5` are above and show that although it has a slightly smaller conditional R-sq, its marginal R-sq is better. This means that it emphasizes more the fixed effects and might be a more conservative model with better performance for unobserved groups.
+
+It is likely that a lot of variation in seed head mass for a given set of dimensions is due to differences in the phenological stage of seed heads. Seed heads that are immature will tend to be lighter than expected because the have not developed or completely filled the grains, whereas mature seed heads will tend to be heavier. Because d2m models excluded seed heads that have shattered seeds, mass of seed produced by seed heads that are in late phenological stages is not underestimated. Even when seeds have dropped, linear dimensions of the seed head stem and rachis remain indicative of the mass of the complete seed head. Therefore, acceptable estimates of mass of seed heads that have lost lots of seeds can be made using their linear dimensions, because the models are based on almost intact seed heads.
+
+```{r tidyBootstrapWg, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE, eval=FALSE}
+
+# Not run.
+# This chunk simply corroborates the results of bootMer using tidy bootstrapping.
+# It assumes that the transformation is constant (constant lambda)
+# Results were corroborated, so this additional code is not run or presented.
+
+Wg_CoefVar <- wg_d2m %>%
+  group_by(LIT_yr) %>%
+  summarise(log_length_mm = log(mean(length_mm, na.rm = TRUE)),
+            log_f2t_length_mm = log(mean(f2t_length_mm, na.rm = TRUE)),
+            log_emerged = log(mean(emerged, na.rm = TRUE)),
+            .groups = "drop")
+
+# Use tidymodels to get bootstraps of predicted mass per seed head.
+wg_boots <- bootstraps(wg_d2m,
+                       times = 1500,
+                       strata = LIT_yr,
+                       apparent = TRUE)
+
+wg_pred_boots <- function(split) {
+  # wg_lamb = powerTransform(lmer(update(formula(wg_d2m_m4), # for variable lambda
+  #                                      mass_mg ~ .),
+  #                               data =  analysis(split))) %>%
+  #   coef(round = TRUE) %>%
+  #   unname()
+  
+  wg_m4_boot = lmer(update(formula(wg_d2m_m4),
+                           bcPower(mass_mg, lambda = wg_lamb) ~ .),
+                    data = analysis(split))
+  
+  mass_mg = predict(wg_m4_boot,
+                    newdata = Wg_CoefVar,
+                    re.form = NULL) %>%
+    invBoxCox(lambda = wg_lamb) %>%
+    as_tibble_row() %>%
+    setNames(nm = Wg_CoefVar$LIT_yr)
+  return(mass_mg)
+}
+
+tic()
+wg_boots %<>% 
+  mutate(pred = mclapply(X = wg_boots$splits,
+                         FUN = function(x) wg_pred_boots(x)),
+                         mc.cores = 8) %>%
+  unnest(pred)
+toc()
+
+Wg_CoefVar %<>%
+  bind_cols(wg_boots %>%
+              dplyr::select(Wg_CoefVar$LIT_yr) %>%
+              sumBoot()) %>%
+  mutate(cv2 = sqrt(se^2 / (mass_mean^2 + se^2)))
+
+rownames(Wg_CoefVar) <- NULL
+
+my_hist <- function(x, group) hist(x,
+                            breaks = 30,
+                            xlim = c(0, max(x)),
+                            freq = FALSE,
+                            col = "skyblue",
+                            xlab = "Prediction (mg)",
+                            main = group)
+
+opar <- par(mfrow = c(2,2)); xx <- map2(.x = wg_boots %>%
+                                          dplyr::select(Wg_CoefVar$LIT_yr),
+                                  .y = Wg_CoefVar$LIT_yr,
+                                  ~my_hist(.x, .y)); par(opar)
+
+rm(xx)
+
+Wg_CoefVar %<>%
+  dplyr::select(LIT_yr,
+                mass_median,
+                lwr,
+                mass_mean,
+                upr,
+                se,
+                cv2) %>%
+  mutate(MOE = (upr - lwr) / (upr + lwr),
+           n = as.numeric(with(wg_d2m,  table(LIT_yr))))
+
+Wg_CoefVar %>%
+  kable(caption = "Estimated seed head mass (mg), coefficient of variation (cv2), margin of error (MOE) and 90% CI for watergrass seedheads of average dimensions. Based on tidybootstraps.",
         digits = c(0, 0, 0, 0, 0, 1, 2, 2)) %>%
   kable_styling(full_width = FALSE)
 
 
-
 ```
-
-Coefficients of variation for watergrass are  in the small to medium range. The margin of error (half CI width) is 0.49 to 60. These values are larger than the corresponding ones for Swamp Timothy and should probably be improved. Improvememt of predictions can be obttained by measuring more seed head dimensions, such as length of extended bottom panicle branches, or by obtaining larger samples. If more dimensions are used, keep in mind that those will have to be measured in seed heads for each quadrat every year.
 
 ## Models for Smartweed
 
 ### Data Exploration
 
-Some models use an a priori combination of dimensions to calculate volume and then regress mass on volume.
+There are `r dim(sw_d2m)[1]` observations in the Smartweed d2m data set.
+
+Some models (Sherfy et al ., 1999; Osborn et al., 2017; Collins et al., 2017) use an a priori combination of dimensions, such as an approximate volume, to calculate volume and then regress mass on volume. We develop a model based on volume because the data include length and width of seed heads. The volume is approximated with the formula for a cylinder. Because width of Smartweed seed heads was not measured in all refuges, we also develop a model that uses seed head length as a single predictor. Scatter plots mass and all predictors are used to explore the multivariate relationships. The top row of of graphs shows that there is one outlier with extremely high mass for a very short seed head (mass vs. length) and one outlier with extreme volume and low mass (mass vs. volume). It is also evident that variance increases with increasing dimensions, and length has high predictive value.
 
 ```{r sw_exploreData, echo=FALSE, warning=FALSE, message=FALSE}
 
-sw_dim <- d2m_data %>%
-  dplyr::filter(spp == "Smartweed") %>%
-  mutate(vol_mm3 = pi * (width_mm/2)^2 * length_mm)
+sw_d2m %>% dplyr::select(mass_mg, length_mm, width_mm, vol_mm3) %>% pairs()
 
-sw_dim %>% dplyr::select(mass_mg, length_mm, width_mm, vol_mm3) %>% pairs()
+scatterplot(mass_mg ~ vol_mm3, sw_d2m, log = "xy") # Log transf. is promising
 
-scatterplot(mass_mg ~ vol_mm3, sw_dim, log = "xy") # Log transf. is promising
+sw_d2m[which.max(sw_d2m$vol_mm3), ] # extreme volume
 
-sw_dim[which.max(sw_dim$vol_mm3), ] # extreme volume
+sw_d2m %>% dplyr::select(length_mm, width_mm) %>% plot()
+abline(0, 1) # One seed head has width 8 and length 2; nonsense. remove
 
-sw_dim %>% dplyr::select(length_mm, width_mm) %>% plot()
-abline(0, 1) # One seed head has width 8 larger than width; nonsense. remove
+which(sw_d2m$length_mm < 4 & sw_d2m$width_mm == 8)
 
-which(sw_dim$length_mm < 4 & sw_dim$width_mm == 8)
-
-sw_dim %<>% dplyr::filter(
-  not(vol_mm3 == max(vol_mm3) | (sw_dim$length_mm < 4 & sw_dim$width_mm == 8))
+sw_d2m %<>% dplyr::filter(
+  not(vol_mm3 == max(vol_mm3) | (sw_d2m$length_mm < 4 & sw_d2m$width_mm == 8))
 ) # to exclude oddballs
 
 ```
 
 An outlier with unusual width and one with extreme volume were removed.
 
-
 ### Model
 
 Data for Smartweed comes only from Modoc in 2021. Therefore, there are no groups and the model includes only  fixed effects. The model development process consists in finding the appropriate functional form to use.
 
 #### Volume as single predictor
+
 First we try a simple linear model with volume.
 
 ```{r sw_linearVolume, echo=FALSE, warning=FALSE, message=FALSE}
 
-sw_m1 <- lm(mass_mg ~ vol_mm3, data = sw_dim)
+sw_m1 <- lm(mass_mg ~ vol_mm3, data = sw_d2m)
 
 summary(sw_m1)
 
@@ -523,38 +689,32 @@ opar <- par(mfrow = c(2,2)); plot(sw_m1); par(opar)
 
 ```
 
-Variance increases with fitted value and there is indication of slight non-linearity. Try a Box-Cox transformation. This transformation is
+Variance increases with fitted value and there is indication of slight non-linearity. We try a Box-Cox transformation on the response and log transformation of the predictor.
 
-$$ Y' = \frac{Y^\lambda - 1}{\lambda} \qquad \quad \text{for lambda not 0, and} \\
-\quad\\
-Y' = log(Y) \qquad \quad \text{for lambda = 0}$$
-
-Predictions resulting from the model have to be backtransformed into mg by the inverse transformation (only the case for lambda not 0 shown):
-
-
-$$ Y = (\lambda \enspace Y' + 1)^ {\enspace (1/\lambda)}$$
-
-which in R code is `(Y = lambda * Y_prime + 1) ^ (1/lambda)`.
-
-```{r sw_transformedVolume, echo=FALSE, warning=FALSE, message=FALSE}
+```{r sw_transformedVolume, echo=TRUE, warning=FALSE, message=FALSE}
 
 # Get optimal lambda
 sw_lamb1 <- powerTransform(lm(mass_mg ~ vol_mm3,
-                              data = sw_dim)) %>%
+                              data = sw_d2m)) %>%
   coef(round = TRUE) %>%
   unname()
 
 # Fit model with transformed Y
 sw_m2 <- lm(bcPower(mass_mg, lambda = sw_lamb1) ~ vol_mm3,
-               data = sw_dim)
+               data = sw_d2m)
 
 opar <- par(mfrow = c(2,2)); plot(sw_m2); par(opar)
 
 # Some nonlinearity remains, which increases the variance at the right side
 # Try an additional transformation in volume
 
-sw_m3 <- lm(bcPower(mass_mg, lambda = sw_lamb1) ~ log(vol_mm3),
-               data = sw_dim)
+sw_lamb2 <- powerTransform(lm(mass_mg ~ log(vol_mm3),
+                              data = sw_d2m)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+sw_m3 <- lm(bcPower(mass_mg, lambda = sw_lamb2) ~ log(vol_mm3),
+               data = sw_d2m)
 
 opar <- par(mfrow = c(2,2)); plot(sw_m3); par(opar)
 
@@ -562,124 +722,269 @@ summary(sw_m3)
 
 ```
 
+The residuals of the second model, `sw_m2`, exhibit a clear concave-down shape that was addressed by log-transforming the predictor (vol) in `sw_m3`. The last model meets assumptions and is selected. This model has an adjusted coefficient of determination of `r round(summary(sw_m3)$adj.r.squared, 3)` and residual standard deviation equal to `r round(summary(sw_m3)$sigma, 4)`.
+
+Precision of estimates is explored with confidence intervals and histograms for predictions made at the average value of predictors. In this case we use tidymodels to do nonparametric bootstrapping because there are no random effects, so bootMer is not applicable.
+
+```{r sw_tidyBootstrapSwVol, echo=FALSE, warning=FALSE, message=FALSE}
+
+Sw_CoefVar <- sw_d2m %>%
+  group_by(LIT_yr) %>%
+  summarise(log_length_mm = log(mean(length_mm, na.rm = TRUE)),
+            vol_mm3 = mean(vol_mm3, na.rm = TRUE),
+            .groups = "drop")
+
+# Use tidymodels to get bootstraps of predicted mass per seedhead.
+sw_boots <- bootstraps(sw_d2m,
+                       times = 1500,
+                       apparent = TRUE)
+
+sw_pred_boots <- function(split) {
+  sw_m3_boot = lm(bcPower(mass_mg, lambda = sw_lamb2) ~ log(vol_mm3),
+                  data = analysis(split)) 
+  mass_mg = predict(sw_m3_boot, newdata = Sw_CoefVar) %>%
+    invBoxCox(lambda = sw_lamb2)
+  return(mass_mg)
+}
+
+sw_boots %<>% 
+  mutate(pred = map_dbl(splits, sw_pred_boots))
+
+Sw_CoefVar %<>%
+  bind_cols(sw_boots$pred %>%
+              as.matrix() %>%
+              sumBoot()) %>%
+  mutate(cv2 = sqrt(se^2 / (mass_mean^2 + se^2)))
+
+rownames(Sw_CoefVar) <- NULL
+
+hist(sw_boots$pred,
+     breaks = 25,
+     xlim = c(5, max(sw_boots$pred)),
+     freq = FALSE,
+     col = "skyblue",
+     xlab = "Prediction (mg)",
+     main = "Predicted seed head mass. MDC_2021")
+
+Sw_CoefVar %<>%
+  dplyr::select(LIT_yr,
+                mass_median,
+                lwr,
+                mass_mean,
+                upr,
+                se,
+                cv2) %>%
+  mutate(MOE = (upr - lwr) / (upr + lwr),
+         n = length(sw_d2m$mass_mg))
+
+Sw_CoefVar %>%
+  kable(caption = "Estimated seed head mass (mg), coefficient of variation (cv2), margin of error (MOE) and 90% CI for Smartweed seedheads of average dimensions. Model uses log(vol_mm3) as single predictor.",
+        digits = c(0, 0, 0, 0, 0, 1, 2, 2, 0)) %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+#### Multiple predictors
+
+Instead of using only a preset function of dimensions (volume) as predictor, this section explores the possibility of using all dimensions as predictors. 
+
+```{r sw_multiplePreds, echo=TRUE, warning=FALSE, message=FALSE}
+
+sw_lamb3 <- powerTransform(lm(mass_mg ~ log(vol_mm3) + width_mm + length_mm,
+                              data = sw_d2m)) %>%
+  coef(round = TRUE) %>%
+  unname()
+
+sw_m4 <- lm(bcPower(mass_mg, lambda = sw_lamb3) ~ log(vol_mm3) +
+              width_mm + length_mm,
+            data = sw_d2m)
+
+opar <- par(mfrow = c(2,2)); plot(sw_m4); par(opar)
+
+summary(sw_m4)
+anova(sw_m4)
+
+```
+
+Model sw_m4 has R-sq equal to `r round(summary(sw_m4)$adj.r.squared, 3)` and residual standard deviation equal to `r round(summary(sw_m4)$sigma, 4)`. These values cannot be directly compared to the corresponding ones for other models because the transformations -and therefore the units- are different. Models have to be compared on the basis of back-transformed bootstrapping results.
+
+```{r sw_tidyBootstrapSwMulti, echo=FALSE, warning=FALSE, message=FALSE}
+
+Sw_CoefVar <- sw_d2m %>%
+  group_by(LIT_yr) %>%
+  summarise(length_mm = mean(length_mm, na.rm = TRUE),
+            width_mm = mean(width_mm, na.rm = TRUE),
+            vol_mm3 = mean(vol_mm3, na.rm = TRUE),
+            .groups = "drop")
+
+# Use tidymodels to get bootstraps of predicted mass per seedhead.
+sw_boots <- bootstraps(sw_d2m,
+                       times = 1500,
+                       apparent = TRUE)
+
+sw_pred_boots <- function(split) {
+  sw_m4_boot = lm(bcPower(mass_mg, lambda = sw_lamb3) ~
+                    log(vol_mm3) +
+                    width_mm +
+                    length_mm,
+                  data = analysis(split)) 
+  mass_mg = predict(sw_m4_boot, newdata = Sw_CoefVar) %>%
+    invBoxCox(lambda = sw_lamb3)
+  return(mass_mg)
+}
+
+sw_boots %<>% 
+  mutate(pred = map_dbl(splits, sw_pred_boots))
+
+Sw_CoefVar %<>%
+  bind_cols(sw_boots$pred %>%
+              as.matrix() %>%
+              sumBoot()) %>%
+  mutate(cv2 = sqrt(se^2 / (mass_mean^2 + se^2)))
+
+rownames(Sw_CoefVar) <- NULL
+
+hist(sw_boots$pred,
+     breaks = 25,
+     xlim = c(5, max(sw_boots$pred)),
+     freq = FALSE,
+     col = "skyblue",
+     xlab = "Prediction (mg)",
+     main = "Predicted seed head mass. MDC_2021")
+
+Sw_CoefVar %<>%
+  dplyr::select(LIT_yr,
+                mass_median,
+                lwr,
+                mass_mean,
+                upr,
+                se,
+                cv2) %>%
+  mutate(MOE = (upr - lwr) / (upr + lwr),
+         n = length(sw_d2m$mass_mg))
+
+Sw_CoefVar %>%
+  kable(caption = "Estimated seed head mass (mg), coefficient of variation (cv2), margin of error (MOE) and 90% CI for Smartweed seedheads of average dimensions. Model uses log(vol_mm3), length_mm and width_mm as predictors.",
+        digits = c(0, 0, 0, 0, 0, 1, 2, 2, 0)) %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+Finally, we proceed to use length as a single predictor.
 
 #### Length as a single predictor
 
-Width was not measured in any refuge other than MDC in 2021. In order to calculate mass of smartweed for the other refuges we need to make a model with lenght as a single predictor. Keep in mind that the only training data available for d2m is from MDC.
+Width was not measured in any refuge other than MDC in 2021. In order to calculate mass of Smartweed for the other refuges we need to make a model with length as a single predictor. Keep in mind that the only training data available for d2m is from MDC.
 
 ```{r sw_transformedLength, echo=FALSE, warning=FALSE, message=FALSE}
 
 # Get optimal lambda
-sw_lamb2 <- powerTransform(lm(mass_mg ~ log(length_mm),
-                              data = sw_dim)) %>%
+sw_lamb4 <- powerTransform(lm(mass_mg ~ length_mm,
+                              data = sw_d2m)) %>%
   coef(round = TRUE) %>%
   unname()
 
 # Fit model with transformed Y
-sw_m4 <- lm(bcPower(mass_mg, lambda = sw_lamb2) ~ length_mm,
-               data = sw_dim)
+sw_m5 <- lm(bcPower(mass_mg, lambda = sw_lamb4) ~ length_mm,
+               data = sw_d2m)
 
-opar <- par(mfrow = c(2,2)); plot(sw_m4); par(opar)
+opar <- par(mfrow = c(2,2)); plot(sw_m5); par(opar)
 
 # Some nonlinearity remains, which increases the variance at the right side
-# Try an additional transformation in volume
+# Try an log transformation of length
 
-sw_m5 <- lm(bcPower(mass_mg, lambda = sw_lamb2) ~ log(length_mm),
-               data = sw_dim)
-
-opar <- par(mfrow = c(2,2)); plot(sw_m5); par(opar) # outlier 380
-
-summary(sw_m5)
-
-```
-
-
-#### Multiple predictors
-
-```{r sw_multiplePreds, echo=FALSE, warning=FALSE, message=FALSE}
-
-sw_lamb3 <- powerTransform(lm(mass_mg ~ log(vol_mm3) + width_mm + length_mm,
-                              data = sw_dim)) %>%
+# Get new optimal lambda
+sw_lamb5 <- powerTransform(lm(mass_mg ~ log_length_mm,
+                              data = sw_d2m)) %>%
   coef(round = TRUE) %>%
   unname()
 
-sw_m6 <- lm(bcPower(mass_mg, lambda = sw_lamb3) ~ log(vol_mm3) +
-              width_mm + length_mm,
-            data = sw_dim)
+sw_m6 <- lm(bcPower(mass_mg, lambda = sw_lamb5) ~ log_length_mm,
+               data = sw_d2m)
 
 opar <- par(mfrow = c(2,2)); plot(sw_m6); par(opar)
 
 summary(sw_m6)
-
-
-sw_m7 <- lm(bcPower(mass_mg, lambda = sw_lamb3) ~ log(vol_mm3) + width_mm,
-            data = sw_dim)
-
-opar <- par(mfrow = c(2,2)); plot(sw_m7); par(opar)
-
-summary(sw_m7)
+anova(sw_m6)
 
 ```
 
-Model sw_m6 performs slightly better.
+Model `sw_m6` is evaluated using tidy bootstrapping. This model can be used for groups where only length of Smartweed seed heads is measured. The advantage of measuring both dimensions can be assessed by comparing `sw_m6` with the previous two models. 
 
-Models sw_m4 and sw_m5 are both good. It is necessary to determine which one is better. sw_m4 appears to be slightly better in terms of residual variance, but it may not be as good in prediction errors. This is assessed with cross validation.
+```{r sw_tidyBootstrapSwLen, echo=FALSE, warning=FALSE, message=FALSE}
 
-```{r sw_cv, echo=FALSE, warning=FALSE, message=FALSE}
+Sw_CoefVar <- sw_d2m %>%
+  group_by(LIT_yr) %>%
+  summarise(log_length_mm = log(mean(length_mm, na.rm = TRUE)),
+            .groups = "drop")
 
-# Add transformed response to data
-sw_dim %<>% mutate(bc_mass_gm = bcPower(mass_mg, lambda = sw_lamb3))
+# Use tidymodels to get bootstraps of predicted mass per seed head.
+sw_boots <- bootstraps(sw_d2m,
+                       times = 1500,
+                       apparent = TRUE)
 
-# Training control
-train_control <- trainControl(method = "repeatedcv",
-                              number = 10,
-                              repeats = 3)
+sw_pred_boots <- function(split) {
+  sw_m6_boot = lm(bcPower(mass_mg, lambda = sw_lamb5) ~ log_length_mm,
+                  data = analysis(split)) 
+  mass_mg = predict(sw_m6_boot, newdata = Sw_CoefVar) %>%
+    invBoxCox(lambda = sw_lamb5)
+  return(mass_mg)
+}
 
-sw_m6_cv <- train(bc_mass_gm ~
-                    log(vol_mm3) +
-                    width_mm +
-                    length_mm,
-                  data = sw_dim,
-                  method = "lm",
-                  trControl = train_control)
+sw_boots %<>% 
+  mutate(pred = map_dbl(splits, sw_pred_boots))
 
+Sw_CoefVar %<>%
+  bind_cols(sw_boots$pred %>%
+              as.matrix() %>%
+              sumBoot()) %>%
+  mutate(cv2 = sqrt(se^2 / (mass_mean^2 + se^2)))
 
-sw_m7_cv <- train(bc_mass_gm ~
-                    log(vol_mm3) +
-                    length_mm,
-                  data = sw_dim,
-                  method = "lm",
-                  trControl = train_control)
+rownames(Sw_CoefVar) <- NULL
 
-# Collect results for comparison
-results <- resamples(list(sw_m6_cv = sw_m6_cv,
-                          sw_m7_cv = sw_m7_cv))
+hist(sw_boots$pred,
+     breaks = 25,
+     xlim = c(5, max(sw_boots$pred)),
+     freq = FALSE,
+     col = "skyblue",
+     xlab = "Prediction (mg)",
+     main = "Predicted seed head mass. MDC_2021")
 
-# Summarize and plot the distributions
-summary(results)
-bwplot(results)
+Sw_CoefVar %<>%
+  dplyr::select(LIT_yr,
+                mass_median,
+                lwr,
+                mass_mean,
+                upr,
+                se,
+                cv2) %>%
+  mutate(MOE = (upr - lwr) / (upr + lwr),
+         n = length(sw_d2m$mass_mg))
+
+Sw_CoefVar %>%
+  kable(caption = "Estimated seed head mass (mg), coefficient of variation (cv2), margin of error (MOE) and 90% CI for Smartweed seedheads of average dimensions. Model uses log(length_mm) as single predictor.",
+        digits = c(0, 0, 0, 0, 0, 1, 2, 2, 0)) %>%
+  kable_styling(full_width = FALSE)
 
 ```
 
-Even in cross-validation both models perform almost identically. Model 6 is slightly better in most criteria, but it also includes an additional predictor. Because the additional predictor is one of the dimensions necessary to calculate volume, dropping the predictor does not reduce field work or any other cost, so we keep it.
-
-Note that in 2021, width was not measured in all refuges, so we used a model that only requires seed head length. The script fo future years has to be modified according to what dimensions are measured in the field.
+This last model predicts seed head mass at least as well as the model that uses volume, and better than the model with multiple predictors. This strongly suggests that it is sufficient to measure only length of Smartweed seed heads. Precision is very high with 446 observations. We suggest that the same rule as for Watergrass : 300-400 seed heads should be analyzed for d2m  model development.
 
 # Model Evaluation
 
-This section applies to Swamp Timothy and Watergrass because we have measurements for these species in more than one refuge-year combination. The evaluation focuses on determining the potential increments in precision and accuracy obtained by developing a dimensions-to-mass (d2m) model for each species in each refuge and year when the protocol is applied.
+This section applies to Swamp Timothy and Watergrass because we have measurements for these species in more than one refuge-year combination. The evaluation focuses on determining the potential increments in precision and accuracy obtained by developing a dimensions-to-mass (d2m) model for each species in each refuge and year when the protocol is applied. Simultaneously, precision of the models for the present groups is evaluated by cross-validation, which should give more conservative estimates than those obtained above using bootstrapping.
 
 ## Approach and functions
 
 With these data we have the following alternatives:
 
-1. Collect d2m data for each new LIT_yr group. Augment the data base and create a model that always includes effects of all LIT_yr groups ever observed. Always make group-specific predictions whose uncertainty excludes the variance of random effects.
+1. Collect d2m data for each new LIT_yr group. Augment the data base and create a model that always includes effects of all LIT_yr groups ever observed. Always make group-specific predictions (conditional predictions) whose uncertainty excludes the variance of random effects.
 
 The performance of this option is assessed with the present data by k-fold cross-validation with folds balanced by groups. The k-fold validation is based on assessing predictions for multiple data subsets that are not included in the model parameterization, but all refuge-year groups to be predicted are represented in the data.
 
-2. Take all d2m data available and create a model that includes effects of LIT_yr groups. No more data about d2m are collected and this model is not updated. The LIT_yr groups present in the data receive conditional predictions as explained in 1 above. Predictions for other years and locations are made at the population level and random effect variances contribute to the uncertainty of estimates.
+2. Take all d2m data available and create a model that includes effects of LIT_yr groups. No more data about d2m are collected and this model is not updated. The LIT_yr groups present in the data receive conditional predictions as explained in 1 above. Predictions for other years and locations are made at the population level (marginal prediction) but the variance of random effects contribute to the uncertainty of estimates. Predictions for unmeasured groups will be biased by an amount proportional to how much they differ from the average of all groups included in the model. Examples are seen clearly in the case of Watergrass presented below.
 
-The performance of this option is assessed with the present data by leaving each group out at a time, developing the model with the rest of the groups and using it in the group left out.
+The performance of this option is assessed with the present data by leaving each group out at a time, developing the model with the rest of the groups and using it to make predictions for the group left out.
 
 Three metrics are used to assess the performance of the options:
 
@@ -687,10 +992,12 @@ Three metrics are used to assess the performance of the options:
 2. Root mean squared error (rmse) is a measure of accuracy and total error.
 3. R squared (rsq) is the square of the correlation between observed and predicted values and it is a measure of consistency.
 
-Predictions that deviate from observed values in a linear relationship can have very large rsq (good) and also large rsme (bad). If the slope of the relationship is 1.0 the bias is constant over X. If the slope is different from 0, the bias changes as X changes.
-
+Predictions that deviate from observed values in a linear relationship can have very large rsq (good) and also large rsme (bad). If the slope of the relationship is 1.0 the bias is constant over X (predictor space). If the slope is different from 0, the bias changes as X changes.
 
 ### Function to evaluate alternatives
+
+This function performs cross-validation and external validation.
+The code for this function (and for a complete .RMD file) is included in supplementary materials.
 
 ```{r evalFun, echo=FALSE, warning=FALSE, message=FALSE}
 # Model option mld.opt has to be either "fixed" or anything else. Anything else
@@ -726,15 +1033,12 @@ model_eval_fnc <- function(the_data = NULL) { # Start f() definition ******
   
   
   # Define formulae
-  frmls <- list(SwampTimothy = log_mass_mg ~
-                  log_length_mm +
-                  (1 | LIT_yr),
-                Watergrass = log_mass_mg ~
-                  log_length_mm +
-                  log_f2t_length_mm +
-                  (0 + log_f2t_length_mm | LIT_yr) +
-                  log_emerged +
-                  (0 + log_emerged | LIT_yr))
+  frmls <- list(SwampTimothy = formula(st_d2m_m3),
+                Watergrass = formula(wg_d2m_m4))
+  
+  # Define lambdas
+  lambdas <- list(SwampTimothy = st_lamb1,
+                Watergrass = wg_lamb)
   
   
   m_formula <- frmls[[spp]]
@@ -742,7 +1046,7 @@ model_eval_fnc <- function(the_data = NULL) { # Start f() definition ******
   # Start of cross-validation to assess option 1
   df_vfold <- vfold_cv(the_data,
                        v = 6,
-                       repeats = 1,
+                       repeats = 10,
                        strata = LIT_yr,
                        pool = 0.01)
   
@@ -758,28 +1062,31 @@ model_eval_fnc <- function(the_data = NULL) { # Start f() definition ******
     # Predict on assessment fold and save observed and predicted
     mutate(model_pred = map2(model_fit,
                              df_cv_tst,
-                             ~predict(.x,
-                                      new_data = .y,
-                                      type = "raw",
-                                      opts = list(re.form = NULL)))) %>% 
-    mutate(res = map2(df_cv_tst,
-                      model_pred,
-                      ~data.frame(log_mass_mg = .x$log_mass_mg,
-                                  .pred = .y)))
+                             ~invBoxCox(predict(.x,
+                                                new_data = .y,
+                                                type = "raw",
+                                                opts = list(re.form = NULL)),
+                                        lambda = lambdas[[spp]]))) %>% 
+    mutate(reslt = map2(df_cv_tst,
+                        model_pred,
+                        ~data.frame(LIT_yr = .x$LIT_yr,
+                                    mass_mg = .x$mass_mg,
+                                    .pred = .y)))
   
   # Save test data and predictions for graphs
   cv_out4graphs <- cv_out %>%
-    dplyr::select(df_cv_tst, model_pred) %>%
-    unnest(cols = c(df_cv_tst, model_pred))
+    dplyr::select(id, df_cv_tst, model_pred) %>%
+    unnest(cols = c(df_cv_tst, model_pred)) %>%
+    arrange(id, LIT_yr)
   
   # Calculate and save metrics
   cv_metrics <- cv_out %>%
-    dplyr::select(id, res) %>% 
-    tidyr::unnest(res) %>% 
-    group_by(id) %>%
+    dplyr::select(id, reslt) %>% 
+    tidyr::unnest(reslt) %>% 
+    group_by(LIT_yr) %>%
     # Get metrics to evaluate model
-    metrics(truth = log_mass_mg, estimate = .pred) %>%
-    dplyr::select(id,
+    metrics(truth = mass_mg, estimate = .pred) %>%
+    dplyr::select(LIT_yr,
                   .metric,
                   .estimate) %>%
     pivot_wider(names_from = .metric,
@@ -800,13 +1107,16 @@ model_eval_fnc <- function(the_data = NULL) { # Start f() definition ******
     # Fit model to all training data for prediction in testing data (grp)
     all_fit <- fit(lm_model, m_formula, data = df_train)
     
+    lambda_val <- lambdas[[spp]]
+    
     df_test %<>% 
       mutate(model_pred = predict(all_fit,
                                   new_data = df_test,
                                   type = "raw",
-                                  opts = list(allow.new.levels = TRUE)))
+                                  opts = list(allow.new.levels = TRUE))) %>%
+      mutate(model_pred = invBoxCox(model_pred, lambda = lambda_val))
     
-    test_metrics <- metrics(df_test, truth = log_mass_mg, estimate = model_pred) %>%
+    test_metrics <- metrics(df_test, truth = mass_mg, estimate = model_pred) %>%
       mutate(grp_out = grp) %>%
       dplyr::select(grp_out, .metric, .estimate) %>%
       bind_rows(test_metrics, .)
@@ -842,35 +1152,39 @@ summarize_plot_fnc <- function(rslt_list = NULL) {# Start summarize_plot functio
 
   # Cross validation summary
   cross_val_metrics <- rslt_list$cv_metrics %>%
-    dplyr::select(-id) %>%
+    dplyr::select(-LIT_yr) %>%
     summarize_all(mean) %>%
-    mutate(id = "Average") %>%
+    mutate(LIT_yr = "Average") %>%
     bind_rows(rslt_list$cv_metrics, .)
   
   Tbl_cv_cap <- paste("Table of cross validation results for ", rslt_list$species, ". These results represent how well the model performs when all groups have data for d2m.", sep = "")
   
   # Cross validation table
   tbl_cv <-  knitr::kable(cross_val_metrics,
-                          digits = c(0, 3, 3, 3),
+                          digits = c(0, 1, 2, 1),
                           caption = Tbl_cv_cap) %>%
     kable_styling(full_width = FALSE)
   
   # Cross validation figure
   fig_cv <-  ggplot(data = rslt_list$cv_out4graphs,
                     aes(x = model_pred,
-                        y = log_mass_mg,
+                        y = mass_mg,
                         color = LIT_yr,
-                        groups = LIT_yr)) +
-    geom_point() +
+                        groups = id)) +
     geom_smooth(method = "lm",
-                se = TRUE) +
+                se = TRUE,
+                size = 0.01,
+                alpha = 0.20) +
+    geom_smooth(method = "lm",
+                se = FALSE) +
+    geom_point() +
     geom_abline() +
     facet_wrap(~LIT_yr,
                ncol = 2) +
     theme(legend.position = "none") + 
     annotate("text",
              x = 0.90 * max(rslt_list$cv_out4graphs$model_pred, na.rm = TRUE),
-             y = 0.15 * max(rslt_list$cv_out4graphs$log_mass_mg, na.rm = TRUE),
+             y = 0.15 * max(rslt_list$cv_out4graphs$mass_mg, na.rm = TRUE),
              label = rslt_list$species)
   
   
@@ -885,14 +1199,14 @@ summarize_plot_fnc <- function(rslt_list = NULL) {# Start summarize_plot functio
   
   # Validation table
   tbl_v <-  knitr::kable(val_metrics,
-                         digits = c(0, 3, 3, 3),
+                         digits = c(0, 1, 2, 1),
                          caption = Tbl_v_cap) %>%
     kable_styling(full_width = FALSE)
   
   # Validation metrics figure
   fig_v <- ggplot(data = rslt_list$test_data4graphs,
                   aes(x = model_pred,
-                      y = log_mass_mg,
+                      y = mass_mg,
                       color = LIT_yr,
                       groups = LIT_yr)) +
     geom_point() +
@@ -904,7 +1218,7 @@ summarize_plot_fnc <- function(rslt_list = NULL) {# Start summarize_plot functio
     theme(legend.position = "none") +
     annotate("text",
              x = 0.90 * max(rslt_list$test_data4graphs$model_pred, na.rm = TRUE),
-             y = 0.15 * max(rslt_list$test_data4graphs$log_mass_mg, na.rm = TRUE),
+             y = 0.15 * max(rslt_list$test_data4graphs$mass_mg, na.rm = TRUE),
              label = rslt_list$species)
   
   return(list(cv_table = tbl_cv,
@@ -937,10 +1251,26 @@ wg_rslts <- summarize_plot_fnc(rslt_list = wg_model_eval)
 print("SWAMP TIMOTHY PREDICTIONS FOR SAMPLED REFUGES")
 st_rslts$cv_fig
 
+st_rslts$cv_fig +
+coord_cartesian(xlim = c(0, 100),
+                ylim = c(0, 150))
+
 print("SWAMP TIMOTHY PREDICTIONS FOR NEW REFUGES")
 st_rslts$v_fig
 
+st_rslts$v_fig +
+coord_cartesian(xlim = c(0, 100),
+                ylim = c(0, 150))
+
+
 ```
+
+The top graph for Swamp Timothy shows the observed vs. predicted values based on a model that accounts for the differences among groups. These are the conditional predictions, which do not include uncertainty due to between-group variance, given that the random effects for all groups predicted are available. Each cross-validation was repeated 10 times. Therefore, for each observed value (mass_mg) there are 10 predictions (model_pred). Predictions are precise and accurate except for MDC_2021, which exhibits large variance, particularly in the large end of values. The second longest seed head in this group is an outlier with extremely low mass equal to `r st_d2m$mass_mg[st_d2m$mass_mg < 50 & st_d2m$length_mm > 34.5]`. CLS_2019 and MDC_2021 show  negative bias, which in the case of CLS increases with mass. Overall, performance is marginal and comparable to that reported above for Swamp Timothy based on bootstrapping. Given that sample sizes are fairly small, model performance should be improved by increasing sample size.
+
+The graphs with predictions for "new" refuges or groups show that performance are worse for MDC_2021 and CLS_2019 due to increased bias and reduced precision. SAC_2019 exhibits a little bias, but it would be acceptable.
+
+**Seed head sampling for Swamp Timothy**
+We recommend that future models be based on samples with 50-100 observations (seed heads) per group. A good strategy would be to collect samples that span a wide range of seed head lengths. Divide the wide range in 6-10 classes and make sure to have 5-10 seed heads -collected from a variety of locations in the refuge- in each class. 
 
 ### Swamp Timothy metrics
 
@@ -957,6 +1287,8 @@ st_rslts$v_table %>%
 
 ```
 
+Cross-validation metrics further support the need for larger sample sizes. In these tables, the rmse is the square root of total squared deviation, which in turn is the sum of bias squared plus variance. On the other hand, rsq is an indicator of the proportion of variance that is explained, excluding bias. Groups with higher rsq and lower rmse have greater bias. In agreement with the graphical output, MDC_2021 and CLS_2019 show very low to low precision and high bias.
+
 ### Watergrass graphical results
 
 ```{r displayGraphsWatergrass, echo=FALSE, warning=FALSE, message=FALSE}
@@ -964,10 +1296,20 @@ st_rslts$v_table %>%
 print("WATERGRASS PREDICTIONS FOR SAMPLED REFUGES")
 wg_rslts$cv_fig
 
+wg_rslts$cv_fig +
+coord_cartesian(xlim = c(0, 900),
+                ylim = c(0, 1000))
+
 print("WATERGRASS PREDICTIONS FOR NEW REFUGES")
 wg_rslts$v_fig
 
 ```
+
+<br>
+
+Wategrass models have excellent precision in corss-validation due to the much large sample sizes than for Swamp Timothy. MDC_2021 exhibits a bit of negative bias and suprisingl heavy seed heads, more than 5 times heavier than the heaviest seed heads collected in other groups. This data set has to be revisited and checked.
+
+External validation shows dramatic biases introduced when making predictions for groups not included in the training sample. Mosf of the bias is introduced by MDC_2021. Those data have to be checked and a larger set of groups has to be sampled to determine the need for group-specific d2m sampling in the future. Without this information, the present conclusion is to obtain group specific samples in the future.
 
 ### Watergrass metrics
 
@@ -984,10 +1326,61 @@ wg_rslts$v_table %>%
 
 ```
 
+<br>
+
+
+<br>
+
+
 
 # Discussion of evaluation results
 
-Models to estimate mass based on linear dimensions of see heads were developed by several research groups across the US:
+When all groups are in the training data, predictions are accurate, but because there are groups that deviate from the the rest, not including all groups in the training data introduces bias in the predictions for the "new" groups. The potential magnitude of bias is almost completely dependent on data from MDC_2021 for both Swamp Timothy and Watergrass.
+
+The need for group-specific d2m data for Smartweed cannot be assessed because we only have data for one group, MDC_2021. Sample size for this groups is sufficient to provide sufficiently accurate and precise estimates.
+
+Models to estimate mass based on linear dimensions of see heads were developed by several research groups across the US, See references below.
+
+A quick read of several papers reporting equations to assess seed mass based on plant dimensions revealed that none of their equations included transformations (except for a couple in Gray et al., (2009). I find it hard to believe that their variances about predicted values were the same, regardless of the size of seed heads and plants. It is almost a physical necessity that larger plants exhibit more variance (in absolute terms) than smaller plants. Because of the restriction to be positive, it is almost impossible for small plants or seedheads to have the same variance as larger ones. Strictly speaking, mass cannot have a normal distribution, and it is very likely to deviate more from normality as the mean becomes small (thus, the lognormal distribution, or the log transformation of mass).
+
+Most articles seem to emphasize the coefficient fo determination as measure of model performance. We should keep in mind that prediction performance should be focused on the accuracy and precision of predictions, which can be evaluated by cross-validation and external validation.
+
+Estimates of standing seed head mass at a given date most likely underestimate the seed production during the whole season (Hillhouse et al., 2018). Several species have an extended seed head production season, and the standing crop at any given time is a fraction of the total seasonal production. Thus, the estimates produced by the present method should be used in relative terms, and sampling dates should be standardized based on the phenology of the plant community. The sampling date could be set on the basis of seasonal thermal units (degree-days).
+
+<br>
+
+**How well do models work for sampled refuges?**
+They work very well for all cases where sample size is sufficient.
+S. Timothy estimates are acceptably precise with sample sizes greater than 30.
+Watergrass and Smartweed estimates are excellent for sample sizes greater than 400.
+
+<br>
+
+**How well do models work for unsampled refuge?**
+They work or less OK for Swamp Timothy, perhaps with the exception of MDC_2021.
+They work very poorly for Watergrass, mostly because of the odd results for MDC_2021.
+
+<br>
+
+
+### How does this compare with the rest of the uncertainty?
+
+Calculate effect of adding this uncertainty to the whole calculation.
+TBD
+
+## Strategy to update models
+
+Based on an ad hoc assessment of feasibility and costs of getting additional d2m data we recommend that the models developed up to time of this report be used for three additional years. Conditional predictions of mass should be used for refuges for which there is d2m data. Marginal predictions should be used for new refuges.
+
+Conditional predictions incorporate the random effects of refuge-year groups, under the assumption that random effects are associated with refuge and remain constant over years. Marginal predictions are also known as population-level predictions and they do not incorporate any random effects, because in the absence of estimated random effects, the best guess is the average across all groups. For more detail about the difference between predicting for observed vs. new groups see pages 272-274 of Gelman, A., & Hill, J. (2007). Data analysis using regression and multilevel/hierarchical models. Cambridge: Cambridge University Press.
+
+After three years or whenever feasible, collect data for all species in all refuges. Analyze the cumulative data with mixed models that include random effects for slopes and intercepts for refuge,  year and their interaction. Evaluate the impact of making predictions that do not incorporate the random effects of year or interaction. If bias introduced by ignoring those effects or the rmse is not acceptable, refuges have to be sampled every year.
+
+
+# References
+
+Tarald O. Kvålseth (2017) Coefficient of variation: the second-order alternative,
+Journal of Applied Statistics, 44:3, 402-415, DOI: 10.1080/02664763.2016.1174195)
 
 Gray, M. J., Foster, M. A., & Peña Peniche, L. A. (2009). New Technology for Estimating Seed Production of Moist-Soil Plants. Journal of Wildlife Management, 73(7). https://doi.org/10.2193/2008-468
 
@@ -1007,33 +1400,9 @@ Osborn, J. M., Hagy, H. M., McClanahan, M. D., & Gray, M. J. (2017). Temporally 
 
 Collins, D. P., Conway, W. C., Mason, C. D., & Gunnels, J. W. (2017). Seed Yield Prediction Models of Four Common Moist-Soil Plant Seed Yield Prediction Models of Four Common Moist-Soil Plant Species in Texas Species in Texas. The Texas Journal of Agriculture and Natural Resources, 30, 78-86. https://scholarworks.sfasu.edu/agriculture_facultypubs/28
 
-A quick read of several papers reporting equations to assess seed mass based on plant dimensions revealed that none of their equations included transformations (except for a couple in Gray et al., (2009). I find it hard to believe that their variances about predicted values were the same, regardless of the size of seed heads and plants. It is almost a physical necessity that larger plants exhibit more variance (in absolute terms) than smaller plants. Because of the restriction to be positive, it is almost impossible for small plants or seedheads to have the same variance as larger ones. Strictly speaking, mass cannot have a normal distribution, and it is very likely to deviate more from normality as the mean becomes small (thus, the lognormal distribution, or the log transformation of mass).
+Nakagawa, S. and Schielzeth, H. (2013), A general and simple method for obtaining R2 from generalized linear mixed-effects models. Methods Ecol Evol, 4: 133-142. https://doi.org/10.1111/j.2041-210x.2012.00261.x
 
-Most articles seem to emphasize the coefficient fo determination as measure of model performance. We should keep in mind that prediction performance should be focused on the accuracy and precision of predictions, which can be evaluated by cross-validation and external validation.
-
-How well do models work for unsampled refuge?
-How well do models work for sampled refuges?
-
-### How does this compare with the rest of the uncertainty?
-
-Calculate effect of adding this uncertainty to the whole calculation.
-
-## Strategy to update models
-
-Based on an ad hoc assessment of feasibility and costs of getting additional d2m data we recommend that the models developed up to time of this report be used for three additional years. Conditional predictions of mass should be used for refuges for which there is d2m data. Marginal predictions should be used for new refuges.
-
-Conditional predictions incorporate the random effects of refuge-year groups, under the assumption that random effects are associated with refuge and remain constant over years. Marginal predictions are also known as population-level predictions and they do not incorporate any random effects, because in the absence of estimated random effects, the best guess is the average across all groups. For more detail about the difference between predicting for observed vs. new groups see pages 272-274 of Gelman, A., & Hill, J. (2007). Data analysis using regression and multilevel/hierarchical models. Cambridge: Cambridge University Press.
-
-After three years or whenever feasible, collect data for all species in all refuges. Analyze the cumulative data with mixed models that include random effects for slopes and intercepts for refuge,  year and their interaction. Evaluate the impact of making predictions that do not incorporate the random effects of year or interaction. If bias introduced by ignoring those effects or the rmse is not acceptable, refuges have to be sampled every year.
-
-
-# References
-
-Tarald O. Kvålseth (2017) Coefficient of variation: the second-order alternative,
-Journal of Applied Statistics, 44:3, 402-415, DOI: 10.1080/02664763.2016.1174195)
-
-
-
-
+Kamil Bartoń (2020). MuMIn: Multi-Model Inference. R package version 1.43.17.
+  https://CRAN.R-project.org/package=MuMIn
 
 Title of SOP 5 should reference article titles that have been published about d2m models.
