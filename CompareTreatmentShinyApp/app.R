@@ -22,6 +22,19 @@ gm2_2021 <-read.csv("qdt_mass_g_m2_2021.txt") %>%
   dplyr::select(-X) %>%
   mutate(year = 2021)
 
+# Add columns to the 2019 and 2020 data for the total of timothy and watergrass 
+# to compare to the same values in 2021. For 2019 and 2020, the total values 
+# are the same as swamp timothy + watergrass values, but in 2021 the total 
+# values include smartweed.
+gm2_2019 <- gm2_2019 %>% 
+  mutate(stwg_g_m2 = tot_g_m2,
+         stwg_mass_m2_var = tot_mass_m2_var)
+
+gm2_2020 <- gm2_2020 %>% 
+  mutate(stwg_g_m2 = tot_g_m2,
+         stwg_mass_m2_var = tot_mass_m2_var)
+  
+
 whap_su_years <- bind_rows(gm2_2019, gm2_2020, gm2_2021) %>%
   mutate(year = factor(year),
          subunit_year = paste(subunit_ID, year, sep = "_"))
@@ -51,30 +64,33 @@ server <- function(input, output) {
     
     set1_avg <- whap_su_years %>%
       dplyr::filter(subunit_year %in% input$set1) %>%
-      dplyr::select(wg_g_m2, st_g_m2, tot_g_m2) %>%
+      dplyr::select(wg_g_m2, st_g_m2, sw_g_m2, stwg_g_m2, tot_g_m2) %>%
       colMeans()
     
     set2_avg <- whap_su_years %>%
       dplyr::filter(subunit_year %in% input$set2) %>%
-      dplyr::select(wg_g_m2, st_g_m2, tot_g_m2) %>%
+      dplyr::select(wg_g_m2, st_g_m2, sw_g_m2, stwg_g_m2, tot_g_m2) %>%
       colMeans()
     
     var_set1 <- whap_su_years %>%
       dplyr::filter(subunit_year %in% input$set1) %>%
-      dplyr::select(wg_mass_m2_var, st_mass_m2_var, tot_mass_m2_var) %>%
+      dplyr::select(wg_mass_m2_var, st_mass_m2_var, sw_mass_m2_var, 
+                    stwg_mass_m2_var, tot_mass_m2_var) %>%
       colSums() %>%
       `/`(length(input$set1)^2)
     
     var_set2 <- whap_su_years %>%
       dplyr::filter(subunit_year %in% input$set2) %>%
-      dplyr::select(wg_mass_m2_var, st_mass_m2_var, tot_mass_m2_var) %>%
+      dplyr::select(wg_mass_m2_var, st_mass_m2_var, sw_mass_m2_var, 
+                    stwg_mass_m2_var,tot_mass_m2_var) %>%
       colSums() %>%
       `/`(length(input$set2)^2)
     
     se_diff <- sqrt(var_set1 + var_set2)
     
     data.frame(set1_avg, set2_avg, se_diff) %>%
-      mutate(variable = c("wg_g_m2", "st_g_m2", "tot_g_m2"),
+      mutate(variable = c("wg_g_m2", "st_g_m2", "sw_g_m2", "stwg_g_m2",
+                          "tot_g_m2"),
              diff = set1_avg - set2_avg,
              z = abs(diff / se_diff),
              p_value = pt(q = z, df = 30, lower.tail = FALSE)) %>%
