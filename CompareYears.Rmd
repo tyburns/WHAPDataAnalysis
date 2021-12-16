@@ -42,11 +42,14 @@ gm2_2021 <- read.csv("WHAP2021-22/Output2021/qdt_mass_g_m2_2021.txt") %>%
   dplyr::select(-X) %>%
   mutate(year = 2021)
 
+colnames(gm2_2021)[1] <- "Unit_Name"
+colnames(gm2_2021)[2] <- "Subunit_Name"
+
 whap_su_years <- bind_rows(gm2_2019, gm2_2020, gm2_2021) %>%
   mutate(year = factor(year))
 
-# whap_su_years <- gm2_2021 %>%
-#   mutate(year = factor(year))
+whap_su_years <- gm2_2021 %>%
+  mutate(year = factor(year))
 
 viaClass <- read.csv("WHAP_Viability_20210610.csv") %>%
   pivot_longer(cols = c(Poor, Fair, Good, Very_Good),
@@ -113,9 +116,12 @@ plot_years <- function(spp = c("total"),
     
     year_plots[[i]] <-
                  ggplot(data = data_i %>% arrange(tot_g_m2),
-                        aes(x = subunit_ID,
+                        aes(x = Unit_Name,
                             y = tot_g_m2,
                             color = year)) +
+                 scale_color_manual(values = c("2019" = "deepskyblue",
+                                               "2020" = "blue",
+                                               "2021" = "darkblue")) +
                  ggtitle("Comparison across years") +
                  geom_rect(data = viaClass,
                            inherit.aes = FALSE,
@@ -176,9 +182,13 @@ plot_years_st <- function(spp = c("total"),
     
     year_plots_st[[i]] <-
                  ggplot(data = data_i %>% arrange(st_g_m2),
-                        aes(x = subunit_ID,
+                        aes(x = Unit_Name,
                             y = st_g_m2,
                             color = year)) +
+                 scale_color_manual(values = c("2019" = "deepskyblue",
+                                               "2020" = "blue",
+                                               "2021" = "darkblue")) +
+                 labs(color = "year") +
                  ggtitle("Comparison across years") +
                  geom_rect(data = ST_viaClass,
                            inherit.aes = FALSE,
@@ -238,9 +248,13 @@ plot_years_wg <- function(spp = c("total"),
     
     year_plots_wg[[i]] <-
                  ggplot(data = data_i %>% arrange(wg_g_m2),
-                        aes(x = subunit_ID,
+                        aes(x = Unit_Name,
                             y = wg_g_m2,
                             color = year)) +
+                 scale_color_manual(values = c("2019" = "deepskyblue",
+                                               "2020" = "blue",
+                                               "2021" = "darkblue")) +
+                 labs(color = "year") +
                  ggtitle("Comparison across years") +
                  geom_rect(data = WG_viaClass,
                            inherit.aes = FALSE,
@@ -300,9 +314,12 @@ plot_years_sw <- function(spp = c("total"),
     
     year_plots_sw[[i]] <-
                  ggplot(data = data_i %>% arrange(sw_g_m2),
-                        aes(x = subunit_ID,
+                        aes(x = Unit_Name,
                             y = sw_g_m2,
                             color = year)) +
+                 scale_color_manual(values = c("2019" = "deepskyblue",
+                                               "2020" = "blue",
+                                               "2021" = "darkblue")) +
                  ggtitle("Comparison across years") +
                  geom_rect(data = SW_viaClass,
                            inherit.aes = FALSE,
