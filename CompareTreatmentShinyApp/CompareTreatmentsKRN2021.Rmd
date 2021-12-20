@@ -97,6 +97,8 @@ qdt_mass_act_fld <- left_join(qdt_mass_g_m2_2021, act) %>%
 
 str(qdt_mass_act_fld)
 
+colnames(qdt_mass_act_fld)[5] <- "tilled"
+
 ```
 
 The raw data plots seems to indicate that the history of flooding is not associated with swamp timothy productivity. Conversely, those units that were disced in the previous three years had higher yields of swamp timothy than the units that were not tilled. 
@@ -109,14 +111,14 @@ table(qdt_mass_act_fld$Action) %>%
   kable(caption = "Number of units that receive each type of tillage treatment in Kern prior to the 2021 season.") %>%
   kableExtra::kable_styling(full_width = FALSE)
 
-scatterplot(st_g_m2 ~ y.flooded.5 | act,
+scatterplot(st_g_m2 ~ y.flooded.5 | tilled,
             data = qdt_mass_act_fld,
             smooth = FALSE,
             ylab = "Swamp timothy productivity (g/m2)",
             xlab = "Number of years flooded in the last 5 years")
 
 
-scatterplot(st_g_m2 ~ y.flooded.15 | act,
+scatterplot(st_g_m2 ~ y.flooded.15 | tilled,
             data = qdt_mass_act_fld,
             smooth = FALSE,
             ylab = "Swamp timothy productivity (g/m2)",
@@ -132,7 +134,7 @@ These analyses should be interpreted with caution. Apparent effects of treatment
 
 ```{r posteriorTillageEffects}
 
-brm1 <- brm(st_g_m2 | weights(wt) ~ act * y.flooded.15,
+brm1 <- brm(st_g_m2 | weights(wt) ~ tilled * y.flooded.15,
             data = qdt_mass_act_fld,
             iter = 4000,
             warmup = 1500,
@@ -200,7 +202,7 @@ brm1.mcmc %>%
 
 ```{r posteriorTillageEffects2}
 
-brm2 <- brm(st_g_m2 | weights(wt) ~ act,
+brm2 <- brm(st_g_m2 | weights(wt) ~ tilled,
             data = qdt_mass_act_fld,
             iter = 6000,
             warmup = 2500,
@@ -274,9 +276,9 @@ plot(brm2)
 brm2 %<>% recover_types(qdt_mass_act_fld)
 
 (epreds <- qdt_mass_act_fld %>%
-    data_grid(act) %>%
+    data_grid(tilled) %>%
     add_epred_draws(brm2)) %>%
-  ggplot(aes(x = .epred, y = act)) +
+  ggplot(aes(x = .epred, y = tilled)) +
   stat_halfeye() +
   stat_pointinterval(.width = c(.66, .95)) +
   xlab("Swamp timothy productivity (g/m2)") +
@@ -284,8 +286,8 @@ brm2 %<>% recover_types(qdt_mass_act_fld)
 
 
 (Till_fx <- brm2 %>%
-  spread_draws(b_actY) %>%
-  ggplot(aes(x = b_actY)) +
+  spread_draws(b_tilledY) %>%
+  ggplot(aes(x = b_tilledY)) +
   stat_halfeye() +
   geom_vline(xintercept = 0, linetype = "dashed")) 
 

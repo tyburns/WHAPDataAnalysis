@@ -48,8 +48,8 @@ colnames(gm2_2021)[2] <- "Subunit_Name"
 whap_su_years <- bind_rows(gm2_2019, gm2_2020, gm2_2021) %>%
   mutate(year = factor(year))
 
-whap_su_years <- gm2_2021 %>%
-  mutate(year = factor(year))
+# whap_su_years <- gm2_2021 %>%
+#   mutate(year = factor(year))
 
 viaClass <- read.csv("WHAP_Viability_20210610.csv") %>%
   pivot_longer(cols = c(Poor, Fair, Good, Very_Good),
@@ -116,7 +116,7 @@ plot_years <- function(spp = c("total"),
     
     year_plots[[i]] <-
                  ggplot(data = data_i %>% arrange(tot_g_m2),
-                        aes(x = Unit_Name,
+                        aes(x = Subunit_Name,
                             y = tot_g_m2,
                             color = year)) +
                  scale_color_manual(values = c("2019" = "deepskyblue",
@@ -358,6 +358,10 @@ plot_years_sw <- function(spp = c("total"),
 }
 
 plot_years_sw()
+
+```
+
+```{r barchart}
 
 ```
 
