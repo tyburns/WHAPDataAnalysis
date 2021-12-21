@@ -335,10 +335,12 @@ str(qdt_st)
 wgc <- unname(coef(WG_len2mass))
 
 qdt_wg <- qdt0 %>%
-  dplyr::filter(vernacularName == "Watergrass" & stratum != "") %>%
+  dplyr::filter(vernacularName == "Watergrass" &
+                  stratum != "") %>%
   pivot_wider(names_from = measurementType,
               values_from = measurementValue) %>%
   arrange(GlobalID_seed) %>%
+  dplyr::filter(sh_length_mm < 250) %>% # remove seed heads beyond model scope
   mutate(sh_emerged_wg = f2t_length_mm / sh_length_mm, 
          sh_mass_mg = exp(wgc[1] +
                             wgc[2] * sh_length_mm / 10 + # divide by 10 because
