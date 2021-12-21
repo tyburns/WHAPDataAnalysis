@@ -1,5 +1,5 @@
 ---
-title: "Calculation of Timothy and Watergrass seed abundance. Summer 2021"
+title: "Calculation of Timothy, Watergrass and Smartweed seed head abundance. Summer 2021"
 author: "Emilio A. Laca"
 date: "`r Sys.Date()`"
 output: 
@@ -10,7 +10,6 @@ editor_options:
   chunk_output_type: console
 ---
 
-# These estimates ignore the presence of smartweed because the dimension to mass model for smarweed is not yet available.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
@@ -506,39 +505,33 @@ In 2021 this part of the code was modified to use a log transformation of the ma
 
 # Get lambda for st
 st_lambda <- powerTransform(lm(mass_g_m2 ~ LIT_Strat,
-                                na.action = na.exclude,
-                                data = qdt_st)) %>%
+                               na.action = na.exclude,
+                               data = qdt_st)) %>%
   coef(round = TRUE) %>%
   unname()
 
 # Use linear model
 st_lm3 <- lm(bcPower(mass_g_m2, lambda = st_lambda) ~ LIT_Strat,
-               na.action = na.exclude,
-               data = qdt_st)
+             na.action = na.exclude,
+             data = qdt_st)
 
 ```
 
 ```{r wg.modelStrata}
 
-with(qdt_wg, table(LIT, stratum)) # only one quadrat in KRN; remove
-
-# Note appropriate for 2021 data because KRN has wg
-# qdt_wg <- qdt_wg %>% # Assumes there is no Watergrass in KRN
-#   filter(LIT != "KRN") %>%
-#   mutate(LIT = factor(LIT),
-#          LIT_Strat = factor(LIT_Strat))
+with(qdt_wg, table(LIT, stratum))
 
 # Get lambda for wg
 wg_lambda <- powerTransform(lm(mass_g_m2 ~ LIT_Strat,
-                                na.action = na.exclude,
-                                data = qdt_wg)) %>%
+                               na.action = na.exclude,
+                               data = qdt_wg)) %>%
   coef(round = TRUE) %>%
   unname()
 
 # Use linear model
 wg_lm3 <- lm(bcPower(mass_g_m2, lambda = wg_lambda) ~ LIT_Strat,
-               na.action = na.exclude,
-               data = qdt_wg)
+             na.action = na.exclude,
+             data = qdt_wg)
 
 ```
 
@@ -546,15 +539,15 @@ wg_lm3 <- lm(bcPower(mass_g_m2, lambda = wg_lambda) ~ LIT_Strat,
 
 # Get lambda for sw
 sw_lambda <- powerTransform(lm(mass_g_m2 ~ LIT_Strat,
-                                na.action = na.exclude,
-                                data = qdt_sw)) %>%
+                               na.action = na.exclude,
+                               data = qdt_sw)) %>%
   coef(round = TRUE) %>%
   unname()
 
 # Use linear model
 sw_lm3 <- lm(bcPower(mass_g_m2, lambda = sw_lambda) ~ LIT_Strat,
-               na.action = na.exclude,
-               data = qdt_sw)
+             na.action = na.exclude,
+             data = qdt_sw)
 
 ```
 
@@ -568,40 +561,39 @@ seed_mass_fun <- function(.qdt_st, .qdt_wg, .qdt_sw, .p_Area = p_Area) {
     
     # Get lambda for st
     .st_lambda <- powerTransform(lm(mass_g_m2 ~ LIT_Strat,
-                                     na.action = na.exclude,
-                                     data = .qdt_st)) %>%
+                                    na.action = na.exclude,
+                                    data = .qdt_st)) %>%
       coef(round = TRUE) %>%
       unname()
     
     # Use linear model
     .st_lm3 <- lm(bcPower(mass_g_m2, lambda = .st_lambda) ~ LIT_Strat,
-                    na.action = na.exclude,
-                    data = .qdt_st)
+                  na.action = na.exclude,
+                  data = .qdt_st)
     
     # Get lambda for wg
     .wg_lambda <- powerTransform(lm(mass_g_m2 ~ LIT_Strat,
-                                     na.action = na.exclude,
-                                     data = .qdt_wg)) %>%
+                                    na.action = na.exclude,
+                                    data = .qdt_wg)) %>%
       coef(round = TRUE) %>%
       unname()
     
     # Use linear model
     .wg_lm3 <- lm(bcPower(mass_g_m2, lambda = .wg_lambda) ~ LIT_Strat,
-                    na.action = na.exclude,
-                    data = .qdt_wg)
+                  na.action = na.exclude,
+                  data = .qdt_wg)
     
     # Get lambda for sw
     .sw_lambda <- powerTransform(lm(mass_g_m2 ~ LIT_Strat,
-                                na.action = na.exclude,
-                                data = .qdt_sw)) %>%
+                                    na.action = na.exclude,
+                                    data = .qdt_sw)) %>%
       coef(round = TRUE) %>%
       unname()
-  
-
+    
     # Use linear model
     .sw_lm3 <- lm(bcPower(mass_g_m2, lambda = .sw_lambda) ~ LIT_Strat,
-                   na.action = na.exclude,
-                   data = .qdt_sw)
+                  na.action = na.exclude,
+                  data = .qdt_sw)
     
     result <- .p_Area %>% # create file to predict mass/area by stratum & LIT
       pull(subunit_ID) %>%
@@ -620,7 +612,7 @@ seed_mass_fun <- function(.qdt_st, .qdt_wg, .qdt_sw, .p_Area = p_Area) {
                                        NA))) %>%
       mutate(wg_g_m2 = invBoxCox(unname(predict(.wg_lm3, newdata = .)),
                                  lambda = .wg_lambda)) %>%
-             #LIT_Strat = oLIT_Strat, # not selected below, so it's useless
+      #LIT_Strat = oLIT_Strat, # not selected below, so it's useless
       mutate(LIT_Strat = factor(ifelse(oLIT_Strat %in% .sw_lm3$xlevels[[1]],
                                        as.character(oLIT_Strat),
                                        NA))) %>%
@@ -653,10 +645,10 @@ seed_mass_fun <- function(.qdt_st, .qdt_wg, .qdt_sw, .p_Area = p_Area) {
       na.omit()
     
     return(result)},
-     
+    
     error = function(e) return(NULL)
-   )
- }
+  )
+}
 
 ```
 
@@ -1425,11 +1417,12 @@ write.csv(p_Area, "../Output2021/p_Area2021.csv")
 
 # Swamp Timothy ====================
 
-st_qdt_means <- emmeans(st_lm3, "LIT_Strat", type = "response") %>%
-  as.tibble() %>%
+st_qdt_means <- emmeans(st_lm3, "LIT_Strat") %>%
+  as_tibble() %>%
+  mutate(emmean = invBoxCox(emmean, lambda = st_lambda)) %>%
   arrange(as.character(LIT_Strat)) %>%
   dplyr::select(-df) %>%
-  rename(st_g_m2 = response)
+  rename(st_g_m2 = emmean)
 
 kable(st_qdt_means,
       digits = c(0, 1, 2, 1, 1),
@@ -1441,11 +1434,12 @@ write.csv(st_qdt_means,
 
 # Watergrass ====================
 
-wg_qdt_means <- emmeans(wg_lm3, "LIT_Strat", type = "response") %>%
-  as.tibble() %>%
+wg_qdt_means <- emmeans(wg_lm3, "LIT_Strat") %>%
+  as_tibble() %>%
+  mutate(emmean = invBoxCox(emmean, lambda = wg_lambda)) %>%
   arrange(as.character(LIT_Strat)) %>%
   dplyr::select(-df) %>%
-  rename(wg_g_m2 = response)
+  rename(wg_g_m2 = emmean)
 
 kable(wg_qdt_means,
       digits = c(0, 1, 2, 1, 1),
@@ -1457,11 +1451,12 @@ write.csv(wg_qdt_means,
 
 # Smartweed ====================
 
-sw_qdt_means <- emmeans(sw_lm3, "LIT_Strat", type = "response") %>%
-  as.tibble() %>%
+sw_qdt_means <- emmeans(sw_lm3, "LIT_Strat") %>%
+  as_tibble() %>%
+  mutate(emmean = invBoxCox(emmean, lambda = sw_lambda)) %>%
   arrange(as.character(LIT_Strat)) %>%
   dplyr::select(-df) %>%
-  rename(sw_g_m2 = response)
+  rename(sw_g_m2 = emmean)
 
 kable(sw_qdt_means,
       digits = c(0, 1, 2, 1, 1),
