@@ -42,14 +42,29 @@ gm2_2021 <- read.csv("WHAP2021-22/Output2021/qdt_mass_g_m2_2021.txt") %>%
   dplyr::select(-X) %>%
   mutate(year = 2021)
 
+# 2021 column names are different than 2020 and 2019. Need to decide on a
+# and edit files from past years.
 colnames(gm2_2021)[1] <- "Unit_Name"
 colnames(gm2_2021)[2] <- "Subunit_Name"
 
+# Combine data for all years.
 whap_su_years <- bind_rows(gm2_2019, gm2_2020, gm2_2021) %>%
   mutate(year = factor(year))
 
+# Add new LIT name for KRN 14 subunits to create a different figure
+# for these subunits
+levels(whap_su_years$LIT) <- c(levels(whap_su_years$LIT), "KRN14") 
+whap_su_years$LIT[whap_su_years$Unit_Name == "14"]  <- "KRN14" 
+
+# Use only 2021 for the figures
 # whap_su_years <- gm2_2021 %>%
 #   mutate(year = factor(year))
+
+
+```
+
+
+```{r viabilityClasses}
 
 viaClass <- read.csv("WHAP_Viability_20210610.csv") %>%
   pivot_longer(cols = c(Poor, Fair, Good, Very_Good),
@@ -164,6 +179,7 @@ plot_years()
 
 ```
 
+
 ```{r timothyPlotFunction}
 
 plot_years_st <- function(spp = c("total"),
@@ -174,15 +190,13 @@ plot_years_st <- function(spp = c("total"),
   
   year_plots_st <- list()
   
-  for (i in unique(data$LIT)) { # this has to be modified for more than one species
+  for (i in unique(data$LIT)) { 
     
     data_i <- data %>% dplyr::filter(LIT == i)
     
-    # in the future, use the spp argument to determine what will be plotted
-    
     year_plots_st[[i]] <-
                  ggplot(data = data_i %>% arrange(st_g_m2),
-                        aes(x = Unit_Name,
+                        aes(x = Subunit_Name,
                             y = st_g_m2,
                             color = year)) +
                  scale_color_manual(values = c("2019" = "deepskyblue",
@@ -230,6 +244,7 @@ plot_years_st()
 
 ```
 
+
 ```{r watergrassPlotFunction}
 
 plot_years_wg <- function(spp = c("total"),
@@ -240,11 +255,9 @@ plot_years_wg <- function(spp = c("total"),
   
   year_plots_wg <- list()
   
-  for (i in unique(data$LIT)) { # this has to be modified for more than one species
+  for (i in unique(data$LIT)) { 
     
     data_i <- data %>% dplyr::filter(LIT == i)
-    
-    # in the future, use the spp argument to determine what will be plotted
     
     year_plots_wg[[i]] <-
                  ggplot(data = data_i %>% arrange(wg_g_m2),
@@ -296,6 +309,7 @@ plot_years_wg()
 
 ```
 
+
 ```{r smartweedPlotFunction}
 
 plot_years_sw <- function(spp = c("total"),
@@ -306,11 +320,9 @@ plot_years_sw <- function(spp = c("total"),
   
   year_plots_sw <- list()
   
-  for (i in unique(data$LIT)) { # this has to be modified for more than one species
+  for (i in unique(data$LIT)) {
     
     data_i <- data %>% dplyr::filter(LIT == i)
-    
-    # in the future, use the spp argument to determine what will be plotted
     
     year_plots_sw[[i]] <-
                  ggplot(data = data_i %>% arrange(sw_g_m2),
@@ -361,7 +373,63 @@ plot_years_sw()
 
 ```
 
+
 ```{r barchart}
+
+# load in files
+kgLIT_2021 <- read.csv("WHAP2021-22/ScriptInput2021/mass_kg_LIT_2021.txt")
+
+kgLIT_2020 <- read.csv("WHAP2020-21/ScriptInput2020/mass_kg_LIT_2020.txt")
+
+kgLIT_2019 <- read.csv("MainScriptDataOutput/mass_kg_LIT_2019.txt")
+
+
+# prep data
+kgLIT <- bind_rows(kgLIT_2019, kgLIT_2020, kgLIT_2021) %>%
+  mutate(year = factor(year)) %>%
+  select(LIT, st_kg.ha, wg_kg.ha, sw_kg.ha, year) %>%
+  pivot_longer(cols = ends_with("kg.ha"),
+               names_to = "species",
+               values_to = "kg.ha",
+               values_drop_na = TRUE)
+
+kgLIT$species[kgLIT$species == "st_kg.ha"] <- "swamp timothy"
+
+kgLIT$species[kgLIT$species == "wg_kg.ha"] <- "watergrass"
+
+kgLIT$species[kgLIT$species == "sw_kg.ha"] <- "smartweed"
+
+kgLIT <- kgLIT[-c(14), ]
+
+# plot the bar charts
+plot_kg_ha <- function(data = kgLIT) {
+  
+  year_bar_plots <- list()
+  
+  for (i in unique(data$LIT)) {
+    
+    data_i <- data %>% dplyr::filter(LIT == i)
+    
+    year_bar_plots[[i]] <-
+                 ggplot(data = data_i,
+                        aes(x = species,
+                            y = kg.ha,
+                            fill = year)) +
+                 geom_bar(stat="identity", position=position_dodge()) +
+                 scale_fill_manual(values = c("2019" = "deepskyblue",
+                                              "2020" = "blue",
+                                              "2021" = "darkblue")) +
+                 xlab('\nspecies') +
+                 ylab("seed production per refuge area (kg/ha)\n") +
+                 theme_minimal()
+                
+    print(year_bar_plots[[i]])
+  }
+  return(year_bar_plots)
+}
+
+plot_kg_ha()
+
 
 ```
 
