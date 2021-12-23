@@ -1,5 +1,5 @@
 ---
-title: "Calculation of Timothy and Watergrass seed abundance"
+title: "Calculation of Timothy and Watergrass seed abundance. Summer 2019"
 author: "Emilio A. Laca"
 date: "`r Sys.Date()`"
 output: 
