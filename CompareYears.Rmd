@@ -387,7 +387,7 @@ kgLIT_2019 <- read.csv("MainScriptDataOutput/mass_kg_LIT_2019.txt")
 # prep data
 kgLIT <- bind_rows(kgLIT_2019, kgLIT_2020, kgLIT_2021) %>%
   mutate(year = factor(year)) %>%
-  select(LIT, st_kg.ha, wg_kg.ha, sw_kg.ha, year) %>%
+  dplyr::select(LIT, st_kg.ha, wg_kg.ha, sw_kg.ha, year) %>%
   pivot_longer(cols = ends_with("kg.ha"),
                names_to = "species",
                values_to = "kg.ha",
@@ -400,6 +400,7 @@ kgLIT$species[kgLIT$species == "wg_kg.ha"] <- "watergrass"
 kgLIT$species[kgLIT$species == "sw_kg.ha"] <- "smartweed"
 
 kgLIT <- kgLIT[-c(14), ]
+
 
 # plot the bar charts
 plot_kg_ha <- function(data = kgLIT) {
@@ -415,6 +416,7 @@ plot_kg_ha <- function(data = kgLIT) {
                         aes(x = species,
                             y = kg.ha,
                             fill = year)) +
+                 ylim(0, 600) +
                  geom_bar(stat="identity", position=position_dodge()) +
                  scale_fill_manual(values = c("2019" = "deepskyblue",
                                               "2020" = "blue",
