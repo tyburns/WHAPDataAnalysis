@@ -1,7 +1,8 @@
 library(tidyverse)
 # run WHAP_Main_Script_2021-22.Rmd first (no need to run bootstraps)
 # plot yield components to diagnose
-# 
+# This script was made in response to comments that yields of wg in MDC 
+# were lower than expected based on field experience.
 ggplot(data = qdt_wg,
        aes(x = mass_g_m2,
            group = LIT,
@@ -106,3 +107,14 @@ ggplot(data = qdt_wg_check,
   geom_density(aes(fill = LIT), alpha = 0.4)
 
 
+
+wg_qdt_means
+
+
+yield_comp_2021 <- full_join(su_mass2021, p_Area) %>%
+  mutate(wg_g_m2_check = wg_g_m2_a.Low * p_Watergrass_a.Low +
+           wg_g_m2_b.Med * p_Watergrass_b.Med +
+           wg_g_m2_c.High * p_Watergrass_c.High)
+
+plot(wg_g_m2 ~ wg_g_m2_check, yield_comp_2021)
+abline(0, 1)
