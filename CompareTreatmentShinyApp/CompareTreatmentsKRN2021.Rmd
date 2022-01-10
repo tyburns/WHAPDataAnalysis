@@ -294,7 +294,7 @@ brm2 %<>% recover_types(qdt_mass_act_fld)
 ```
 
 
-There is a clear difference between units that were disked and those that were not. The posterior median difference is `r median(brm2 %>% spread_draws(b_actY) %>% pluck("b_actY"))` g/m2 with a standard error of `r sd(brm2 %>% spread_draws(b_actY) %>% pluck("b_actY"))` g/m2.
+There is a clear difference between units that were disked and those that were not. The posterior median difference is `median(brm2 %>% spread_draws(b_tilledY) %>% pluck("b_tilledY"))` g/m2 with a standard error of `sd(brm2 %>% spread_draws(b_tilledY) %>% pluck("b_tilledY"))` g/m2.
 
 A model including number of years flooded out of the last 15 showed some evidence that the effect of flooding depended on tillage, whereby units without tillage had a small increase of yield with increasing number of years flooded but disked units had declining yields with increasing number of years flooded.
 

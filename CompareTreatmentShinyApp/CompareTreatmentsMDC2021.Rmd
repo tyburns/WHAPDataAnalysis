@@ -58,48 +58,31 @@ act <- read.csv("WHAP2021_PP_20220922_MUs_MDC_Actions.csv",
                 tilled,
                 Action)
 
-# effects of flooding if there is flooding data
+# effects of MSM
 
-# y.flooded.n are number of years flooded out of the last n
-# y20167, y20178, y20189, y201920 are flooding in the last 4 seasons up to 2020
+water <- read.csv("Modoc_Flooding_Schedule.csv") %>%
+  mutate(LIT = "MDC",
+         Subunit_Name = SubUnit) %>%
+  dplyr::select(LIT,
+         Subunit_Name,
+         Schedule,
+         starts_with("y"))
 
-# water2 <- read.csv("Kern_Flooding_Schedule.csv") %>%
-#   mutate(LIT = "KRN",
-#          Subunit_Name = SubUnit) %>%
-#   dplyr::select(LIT,
-#          Subunit_Name,
-#          starts_with("y"))
-
-# qdt_mass_act_fld <- left_join(qdt_mass_g_m2_2021, act) %>%
-#   left_join(water2) %>%
-#   dplyr::select(LIT,
-#                 Unit_Name,
-#                 Subunit_Name,
-#                 subunit_ID,
-#                 act,
-#                 Action,
-#                 y.flooded.15,
-#                 y.flooded.5,
-#                 y20167,
-#                 y20178,
-#                 y20189,
-#                 y201920,
-#                 y202021,
-#                 st_g_m2, # none of the subunits have watergrass
-#                 st_mass_m2_var) %>%
-#   drop_na() %>%
-#   dplyr::filter(st_mass_m2_var != 0) %>%
-#   mutate(wt = 1 / sqrt(st_mass_m2_var),
-#          wt = length(st_g_m2) * wt / sum(wt))
-
-qdt_mass_act <- left_join(qdt_mass_g_m2_2021, act) %>%
+qdt_mass_act_fld <- left_join(qdt_mass_g_m2_2021, act) %>%
+  left_join(water) %>%
   dplyr::select(LIT,
                 Unit_Name,
                 Subunit_Name,
                 subunit_ID,
                 tilled,
                 Action,
+                y.MSM,
+                y20178,
+                y20189,
+                y201920,
+                y202021,
                 st_g_m2,
+                Schedule,
                 st_mass_m2_var,
                 wg_g_m2,
                 wg_mass_m2_var,
@@ -108,15 +91,35 @@ qdt_mass_act <- left_join(qdt_mass_g_m2_2021, act) %>%
                 tot_g_m2,
                 tot_mass_m2_var) %>%
   drop_na() %>%
-  dplyr::filter(st_mass_m2_var != 0) %>%
-  mutate(wt_st = 1 / sqrt(st_mass_m2_var),
-         wt_st = length(st_g_m2) * wt_st / sum(wt_st))
-  # mutate(wt_wg = 1 / sqrt(wg_mass_m2_var),
-  #        wt_wg = length(wg_g_m2) * wt_wg / sum(wt_wg)) %>%
-  # mutate(wt_sw = 1 / sqrt(sw_mass_m2_var),
-  #        wt_sw = length(sw_g_m2) * wt_sw / sum(wt_sw)) %>%
-  # mutate(wt_tot = 1 / sqrt(tot_mass_m2_var),
-  #        wt_tot = length(tot_g_m2) * wt_tot / sum(wt_tot))
+  dplyr::filter(tot_mass_m2_var != 0, Schedule != "Irreg") %>%
+  mutate(wt_tot = 1 / sqrt(tot_mass_m2_var),
+         wt_tot = length(tot_g_m2) * wt_tot / sum(wt_tot))
+
+# qdt_mass_act <- left_join(qdt_mass_g_m2_2021, act) %>%
+#   dplyr::select(LIT,
+#                 Unit_Name,
+#                 Subunit_Name,
+#                 subunit_ID,
+#                 tilled,
+#                 Action,
+#                 st_g_m2,
+#                 st_mass_m2_var,
+#                 wg_g_m2,
+#                 wg_mass_m2_var,
+#                 sw_g_m2,
+#                 sw_mass_m2_var,
+#                 tot_g_m2,
+#                 tot_mass_m2_var) %>%
+#   drop_na() %>%
+#   dplyr::filter(tot_mass_m2_var != 0) %>%
+#   mutate(wt_st = 1 / sqrt(st_mass_m2_var),
+#          wt_st = length(st_g_m2) * wt_st / sum(wt_st)) %>%
+#   mutate(wt_wg = 1 / sqrt(wg_mass_m2_var),
+#          wt_wg = length(wg_g_m2) * wt_wg / sum(wt_wg)) %>%
+#   mutate(wt_sw = 1 / sqrt(sw_mass_m2_var),
+#          wt_sw = length(sw_g_m2) * wt_sw / sum(wt_sw)) %>%
+#   mutate(wt_tot = 1 / sqrt(tot_mass_m2_var),
+#          wt_tot = length(tot_g_m2) * wt_tot / sum(wt_tot))
 
 str(qdt_mass_act)
 
@@ -132,18 +135,11 @@ table(qdt_mass_act_fld$Action) %>%
   kable(caption = "Number of units that receive each type of tillage treatment in Kern prior to the 2021 season.") %>%
   kableExtra::kable_styling(full_width = FALSE)
 
-scatterplot(st_g_m2 ~ y.flooded.5 | tilled,
+scatterplot(tot_g_m2 ~ y.MSM | tilled,
             data = qdt_mass_act_fld,
             smooth = FALSE,
-            ylab = "Swamp timothy productivity (g/m2)",
-            xlab = "Number of years flooded in the last 5 years")
-
-
-scatterplot(st_g_m2 ~ y.flooded.15 | tilled,
-            data = qdt_mass_act_fld,
-            smooth = FALSE,
-            ylab = "Swamp timothy productivity (g/m2)",
-            xlab = "Number of years flooded in the last 15 years")
+            ylab = "Productivity (g/m2)",
+            xlab = "Number of years of MSM in the last 4 years")
 
 ```
 
@@ -155,7 +151,7 @@ These analyses should be interpreted with caution. Apparent effects of treatment
 
 ```{r posteriorTillageEffects}
 
-brm1 <- brm(st_g_m2 | weights(wt) ~ tilled * y.flooded.15,
+brm1 <- brm(tot_g_m2 | weights(wt_tot) ~ tilled * y.MSM,
             data = qdt_mass_act_fld,
             iter = 4000,
             warmup = 1500,
@@ -223,7 +219,7 @@ brm1.mcmc %>%
 
 ```{r posteriorTillageEffects2}
 
-brm2 <- brm(st_g_m2 | weights(wt_st) ~ tilled,
+brm2 <- brm(tot_g_m2 | weights(wt_tot) ~ tilled,
             data = qdt_mass_act,
             iter = 6000,
             warmup = 2500,
@@ -286,8 +282,6 @@ brm2.mcmc %>%
 ```
 
 
-All tests of convergence find no evidence of problems. Everything seems to be OK.
-
 ## Results
 
 ```{r plotPosterior}
@@ -315,12 +309,7 @@ brm2 %<>% recover_types(qdt_mass_act)
 ```
 
 
-There is a clear difference between units that were disked and those that were not. The posterior median difference is `r median(brm2 %>% spread_draws(b_actY) %>% pluck("b_actY"))` g/m2 with a standard error of `r sd(brm2 %>% spread_draws(b_actY) %>% pluck("b_actY"))` g/m2.
-
-A model including number of years flooded out of the last 15 showed some evidence that the effect of flooding depended on tillage, whereby units without tillage had a small increase of yield with increasing number of years flooded but disked units had declining yields with increasing number of years flooded.
-
-
-
+The posterior median difference is `median(brm2 %>% spread_draws(b_tilledY) %>% pluck("b_tilledY"))` g/m2 with a standard error of `sd(brm2 %>% spread_draws(b_tilledY) %>% pluck("b_tilledY"))` g/m2.
 
 
 
