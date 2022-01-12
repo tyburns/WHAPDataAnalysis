@@ -53,8 +53,8 @@ whap_su_years <- bind_rows(gm2_2019, gm2_2020, gm2_2021) %>%
 
 # Add new LIT name for KRN 14 subunits to create a different figure
 # for these subunits
-levels(whap_su_years$LIT) <- c(levels(whap_su_years$LIT), "KRN14") 
-whap_su_years$LIT[whap_su_years$Unit_Name == "14"]  <- "KRN14" 
+# levels(whap_su_years$LIT) <- c(levels(whap_su_years$LIT), "KRN14") 
+# whap_su_years$LIT[whap_su_years$Unit_Name == "14"]  <- "KRN14" 
 
 # Use only 2021 for the figures
 # whap_su_years <- gm2_2021 %>%
@@ -131,7 +131,7 @@ plot_years <- function(spp = c("total"),
     
     year_plots[[i]] <-
                  ggplot(data = data_i %>% arrange(tot_g_m2),
-                        aes(x = Subunit_Name,
+                        aes(x = Unit_Name,
                             y = tot_g_m2,
                             color = year)) +
                  scale_color_manual(values = c("2019" = "deepskyblue",
@@ -196,7 +196,7 @@ plot_years_st <- function(spp = c("total"),
     
     year_plots_st[[i]] <-
                  ggplot(data = data_i %>% arrange(st_g_m2),
-                        aes(x = Subunit_Name,
+                        aes(x = Unit_Name,
                             y = st_g_m2,
                             color = year)) +
                  scale_color_manual(values = c("2019" = "deepskyblue",
