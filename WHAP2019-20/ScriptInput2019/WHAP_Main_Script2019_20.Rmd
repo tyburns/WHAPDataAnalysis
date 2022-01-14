@@ -139,11 +139,11 @@ cps <- read.csv("WHAP2019_PP_20201002_CPs.csv") %>%
            Timothy_High,
          p_noFood = max(1 - temp_p, 0),
          p_wg_a.Low = Watergrass_Low / (p_noFood + temp_p),
-         p_wg_b.Med = Watergrass_Med/ (p_noFood + temp_p),
-         p_wg_c.High = Watergrass_High/ (p_noFood + temp_p),
-         p_st_a.Low = Timothy_Low/ (p_noFood + temp_p),
-         p_st_b.Med  = Timothy_Med/ (p_noFood + temp_p),
-         p_st_c.High = Timothy_High/ (p_noFood + temp_p),
+         p_wg_b.Med = Watergrass_Med / (p_noFood + temp_p),
+         p_wg_c.High = Watergrass_High / (p_noFood + temp_p),
+         p_st_a.Low = Timothy_Low / (p_noFood + temp_p),
+         p_st_b.Med  = Timothy_Med / (p_noFood + temp_p),
+         p_st_c.High = Timothy_High / (p_noFood + temp_p),
          p_noFood = p_noFood / (p_noFood + temp_p),
          subunit_ID = factor(paste(LIT, Unit_Name, Subunit_Name, sep = "_")),
          AreaVisible = 0.1746678) %>%
@@ -167,6 +167,9 @@ vpcp <- bind_rows(vps, cps) %>%
   full_join(mus) %>%
   na.omit()
 # last row 810 removed is for a unit that was not measured but appears in mus
+
+write_rds(vpcp, "vpcp2019.rds")
+
 
 # Quadrat information ====================================
 qdt_st <- read.csv("qdt2019c.csv") %>%

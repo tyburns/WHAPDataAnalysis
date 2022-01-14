@@ -283,6 +283,8 @@ vpcp <- bind_rows(vps, cps) %>%
   full_join(mus) %>%
   na.omit()
 
+write_rds(vpcp, "vpcp2021.rds")
+
 ```
 
 ```{r qdt_st}

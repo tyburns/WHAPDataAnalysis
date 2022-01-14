@@ -12,23 +12,23 @@ Write last section of SOP5: create and use model for dimension to seed head mass
 
 Add statement about d2m model performance in Sources of error framework. Refer to SOP 5. DONE.
 
-Double check calculations for MDC 2021. Watergrass was too low??
+Double check calculations for MDC 2021. Watergrass was too low?? DONE.
 
-Revisit the calculation of variance due to estimation of area covered by each spp-stratum.
+Revisit the calculation of variance due to estimation of area covered by each spp-stratum.DONE
 
 Add to main script: compare precision of estimates to objective precision. Report at subunit and refuge level. Detection of change over time. Make a table with achieved precision, desired precision and whether desired was achieved. Make list of possible metrics for defining objectives. Look at Table 1.4 in main framework file. https://doimspp.sharepoint.com/:w:/r/sites/WHAPImplementation/Shared%20Documents/Kern%20NWRC/KRN%20site-specific%20WHAP%20protocol/Kern%20WHAP%20objectives%20table%2020210622.docx?d=w08515c833a0e4a439d5315c125f43afb&csf=1&web=1&e=2eL4cY. Ask Rebeca to
 
-Sampling objetives: +/- 20% with 80% confidence for places with amounts relevant for management and an absolute amount (10 g/m2?) for those that have little amount of the species. Sliding rule based on %of mean? Use
+Sampling objetives: +/- 20% with 80% confidence for places with amounts relevant for management and an absolute amount (10 g/m2?) for those that have little amount of the species. Sliding rule based on %of mean? 
 
 Management tracking: make example of management data file. Work with Kara on this.
 
-Add code to output all subunits sampled in each refuge each year as a excel table. SurveHistory_YYYY.xlsx Include management actions. Get dictionary for management actions. Eric did some work on this.
+Add code to output all subunits sampled in each refuge each year as a excel table. SurveHistory_YYYY.xlsx Include management actions. Get dictionary for management actions. Eric did some work on this. Rebeca is working on management records. Check with them before moving on this.
 
 Post data processing/validation script. Formalize.
 
-Estimate the effect of number of quadrats on precision. Use proportions for each group as observed in reality. Use a procedure just based on the numbers of quadrats used in the past and the observed precisions.
+Estimate the effect of number of quadrats on precision. Use proportions for each group as observed in reality. Use a procedure just based on the numbers of quadrats used in the past and the observed precisions. DONE
 
-Check if species-stratum mass/area are consistent across years.
+Check if species-stratum mass/area are consistent across years. DONE.
 
 Check Miro tasks.
 
