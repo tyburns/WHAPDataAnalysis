@@ -766,7 +766,7 @@ system.time(
 
 ```
 
-The tibble qdt_bt contains original data, 4000 bootstrap samples of wg quadrats, 4000 bootstrap samples of st quadrats, and the corresponding estimates of mass_m2 in each subunit for each species and total.
+The tibble qdt_bt contains original data, 4000 bootstrap samples of wg quadrats, 4000 bootstrap samples of st quadrats, and the corresponding estimates of mass_m2 in each subunit for each species and total. SW was added in 2021.
 
 The bootstrap samples are then summarized to produce percentile confidence intervals and averages of st, wg and total mass per m2. The code calculates univariate statistics, but the set of bootstrap samples can be used to get any statistics desired, including sampling distributions of comparisons among sets of subunits.
 
