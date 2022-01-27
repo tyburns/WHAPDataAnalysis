@@ -1,0 +1,94 @@
+---
+title: "WHAP Data Analysis Steps"
+author: "Emilio A. Laca"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Note: If simulation results produced by each module are independent, as I think they are, I could use a Bayesian approach within each module and produce posterior distributions as output of each module. This would allow us to use informative prior distributions to potentially improve each module. Furthermore, the final output could be directly interpreted as distributions of the unknown values instead of sampling distributions.
+
+## == Summary
+
+## == Introduction
+
+## == User Interface
+
+
+## == Files
+
+### Input Files
+
+### Output Files
+## == Modules for Current Year
+### Check Data
+
+Current files with draft methods:
+
+- "WHAPDataAnalysis/DataIntakeWHAP.Rmd"
+- "WHAPDataAnalysis/WHAP2021-22/ScriptInput2021/DataChecks2021.R"
+
+Additional steps to fix data are in the Data chinks of
+"WHAPDataAnalysis/WHAP2021-22/ScriptInput2021/WHAP_Main_Script_2021-22.Rmd"
+
+### Prepare Intermediate Files
+
+Note: saving files in RDS format has the advantage that files are small and they are read back in very fast. Files in csv format have the advantage that they can be used directly in other applications, such as Excel.
+
+Intermediate objects/files are currently created in the WHAP_Main_Scripts:
+
+#### D2m models
+
+Current object names are:
+
+- ST_len2mass
+- WG_len2mass
+- SW_dim2mass
+
+The names should be standardized/normalized, for example as "sp_LIT_yyyy_d2m," where sp is the 2-letter acronym for the species in lower case, LIT is the refuge code in upper case and yyyy is the year of the data on which the d2m model is being applied. These objects can be saved for archival and tracing purposes as .rds files. Note that the data used to create each d2m model may come from multiple years and refuges, and that information would be in the input file saved inside the model object. 
+
+#### Quadrat mass per unit area
+
+Current object names are:
+
+- qdt_st
+- qdt_wg
+- qdt_sw
+
+Currently, these objects have slightly different columns. Content and columns should be normalized, and all objects should be concatenated into a single file that should be saved as text or R data file. Object and file names should be "qdt_yyyy.xxx" where the ".xxx" is present only in the system file (e.g., qdt_2021.csv or qdt_2021.rds).
+
+The object and file should have the G;obal_ID field.
+
+#### Proportion of area in VP's and CP's
+
+Current object name is:
+
+- vpcp
+
+This object has id information and closed proportions of area covered by each species and each stratum, as well as Other and area visible. Object and file names should be "vpcp_yyyy.xxx" with meaning as above. We should make sure to include an id file that is consistent across years to be able to use the ID as a grouping factor in multi-year analyses.
+
+### Simulate Mass Per Area By Species-Stratum
+
+### Simulate Proportions of Area By Unit and Species Stratum
+
+### Simulate Mass Per Area By Unit
+
+### Estimates and Confidence Intervals
+
+### Compare Units
+
+### Compare Treatments
+
+### Graphical Output of Estimates and Comparisons
+
+## == Modules for Temporal Trends
+
+### Find and Join Files
+
+### Model Trends
+
+### Graphical Output of Trends
+

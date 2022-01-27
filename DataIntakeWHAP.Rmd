@@ -299,7 +299,7 @@ qdt.files <- list.files() %>%
 
 df_ls <- list()
 
-for(ffile in qdt.files) {
+for (ffile in qdt.files) {
   df_ls[[ffile]] = read_csv(ffile) %>%
            dplyr::select(-X1) %>%
            mutate(year = as.numeric(str_sub(string = ffile,

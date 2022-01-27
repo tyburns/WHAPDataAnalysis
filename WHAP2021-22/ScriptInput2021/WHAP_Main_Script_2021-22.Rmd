@@ -436,6 +436,44 @@ str(qdt_sw)
 
 ```
 
+```{r save_qdt}
+
+qdt_2021 <- bind_rows(
+  (qdt_st %>%
+    dplyr::select(
+      LIT,
+      subunit_ID,
+      stratum,
+      LIT_Strat,
+      mass_g_m2
+    ) %>%
+    mutate(species = "st")),
+  (qdt_wg %>%
+    dplyr::select(
+      LIT,
+      subunit_ID,
+      stratum,
+      LIT_Strat,
+      mass_g_m2
+    ) %>%
+    mutate(species = "wg")),
+  qdt_sw %>%
+    dplyr::select(
+      LIT,
+      subunit_ID,
+      stratum,
+      LIT_Strat,
+      mass_g_m2
+    ) %>%
+    mutate(species = "sw")
+) %>%
+  mutate(species = factor(species))
+
+write_rds(qdt_2021, "qdt_2021.rds")
+
+```
+
+
 
 ## Area per subunit
 

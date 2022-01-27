@@ -16,20 +16,28 @@ library(Matrix)
 library(psych)
 library(corrplot)
 library(tidymodels)
+library(calculus)
+library(MASS)
+library(tictoc)
+library(styler)
 
 # Get all data for all years =====
 
 vpcp2019 <- read_rds("WHAP2019-20/Output2019/vpcp2019.rds") %>%
-  mutate(year = 2019,
-         p_Smartweed_a.Low = 0,
-         p_Smartweed_b.Med = 0,
-         p_Smartweed_c.High = 0) %>%
-  rename(unitName = Unit_Name,
-         subunitName = Subunit_Name,
-         p_Other_cover_NA = p_noFood,
-         areaVisible_ac = AreaVisible) %>%
-  rename_with(~gsub("_wg", "_Watergrass", .x, fixed = TRUE)) %>%
-  rename_with(~gsub("_st", "_Swamp_Timothy", .x, fixed = TRUE))
+  mutate(
+    year = 2019,
+    p_Smartweed_a.Low = 0,
+    p_Smartweed_b.Med = 0,
+    p_Smartweed_c.High = 0
+  ) %>%
+  rename(
+    unitName = Unit_Name,
+    subunitName = Subunit_Name,
+    p_Other_cover_NA = p_noFood,
+    areaVisible_ac = AreaVisible
+  ) %>%
+  rename_with(~ gsub("_wg", "_Watergrass", .x, fixed = TRUE)) %>%
+  rename_with(~ gsub("_st", "_Swamp_Timothy", .x, fixed = TRUE))
   
 vpcp2020 <- read_rds("WHAP2020-21/Output2020/vpcp2020.rds") %>%
   mutate(year = 2020,
@@ -62,11 +70,14 @@ str(vpcp_19_21)
 
 p_Area_19_21 <- vpcp_19_21 %>%
   group_by(year, LIT, subunit_ID) %>%
-  summarise(across(starts_with("p_"),
-                   ~weighted.mean(.x, areaVisible_ac)),
-            .groups = "drop") %>%
+  summarise(across(
+    starts_with("p_"),
+    ~ weighted.mean(.x, areaVisible_ac)
+  ),
+  .groups = "drop"
+  ) %>%
   arrange(year, LIT, subunit_ID) %>%
-  rename_with(~gsub("^p_", "avg_p_", .x))
+  rename_with(~ gsub("^p_", "avg_p_", .x))
 
 tot_area_vis <- vpcp_19_21 %>%
   group_by(year, LIT, subunit_ID) %>%
@@ -90,8 +101,8 @@ colnames(Xbar)
 colnames(propi)
 
 
-dXbar <- as.data.frame((Xbar*sumW - wi * propi)/(sumW - wi))
-names(dXbar) <- paste("d",names(dXbar), sep = "")
+dXbar <- as.data.frame((Xbar * sumW - wi * propi) / (sumW - wi))
+names(dXbar) <- paste("d", names(dXbar), sep = "")
 
 vpcp_19_21 %<>%
   bind_cols(dXbar)
@@ -127,55 +138,89 @@ plot(density(vpcp_19_21$dp_Swamp_Timothy_a.Low))
 hist(vpcp_19_21$dp_Swamp_Timothy_a.Low, breaks = 50)
 hist(vpcp_19_21$dp_Swamp_Timothy_b.Med, breaks = 50)
 
-ggplot(data = vpcp_19_21,
-       aes(x = dp_Swamp_Timothy_a.Low,
-           groups = level,
-           color = level)) +
+ggplot(
+  data = vpcp_19_21,
+  aes(
+    x = dp_Swamp_Timothy_a.Low,
+    groups = level,
+    color = level
+  )
+) +
   geom_density(aes(fill = level),
-               alpha = 0.5)
+    alpha = 0.5
+  )
 
-ggplot(data = vpcp_19_21,
-       aes(x = dp_Swamp_Timothy_b.Med,
-           groups = level,
-           color = level)) +
+ggplot(
+  data = vpcp_19_21,
+  aes(
+    x = dp_Swamp_Timothy_b.Med,
+    groups = level,
+    color = level
+  )
+) +
   geom_density(aes(fill = level),
-               alpha = 0.5)
+    alpha = 0.5
+  )
 
-ggplot(data = vpcp_19_21,
-       aes(x = dp_Swamp_Timothy_c.High,
-           groups = level,
-           color = level)) +
+ggplot(
+  data = vpcp_19_21,
+  aes(
+    x = dp_Swamp_Timothy_c.High,
+    groups = level,
+    color = level
+  )
+) +
   geom_density(aes(fill = level),
-               alpha = 0.5)
+    alpha = 0.5
+  )
 
-ggplot(data = vpcp_19_21,
-       aes(x = dp_Other_cover_NA,
-           groups = level,
-           color = level)) +
+ggplot(
+  data = vpcp_19_21,
+  aes(
+    x = dp_Other_cover_NA,
+    groups = level,
+    color = level
+  )
+) +
   geom_density(aes(fill = level),
-               alpha = 0.5)
+    alpha = 0.5
+  )
 
-
-ggplot(data = vpcp_19_21,
-       aes(x = dp_Watergrass_a.Low,
-           groups = level,
-           color = level)) +
+ggplot(
+  data = vpcp_19_21,
+  aes(
+    x = dp_Watergrass_a.Low,
+    groups = level,
+    color = level
+  )
+) +
   geom_density(aes(fill = level),
-               alpha = 0.5)
+    alpha = 0.5
+  )
 
-ggplot(data = vpcp_19_21,
-       aes(x = dp_Watergrass_b.Med,
-           groups = level,
-           color = level)) +
+ggplot(
+  data = vpcp_19_21,
+  aes(
+    x = dp_Watergrass_b.Med,
+    groups = level,
+    color = level
+  )
+) +
   geom_density(aes(fill = level),
-               alpha = 0.5)
+    alpha = 0.5
+  )
 
-ggplot(data = vpcp_19_21,
-       aes(x = dp_Watergrass_c.High,
-           groups = level,
-           color = level)) +
+ggplot(
+  data = vpcp_19_21,
+  aes(
+    x = dp_Watergrass_c.High,
+    groups = level,
+    color = level
+  )
+) +
   geom_density(aes(fill = level),
-               alpha = 0.5)
+    alpha = 0.5
+  )
 
 # There is a consistent tendency for CP estimates to have more frequent
 # negative residuals than VP estimates, but all have the mode of 0.
@@ -193,9 +238,10 @@ plot(v_dp_Watergrass_b.Med ~ avg_p_Watergrass_b.Med, vpcp_19_21)
 c_Area <- vpcp_19_21 %>%
   dplyr::select(starts_with("p_")) %>%
   as.matrix() %>%
-`+`(replicate(10, abs(rnorm(dim(vpcp_19_21)[1],
-                    mean = 0,
-                    sd = 0.0001)))) %>%
+  `+`(replicate(10, abs(rnorm(dim(vpcp_19_21)[1],
+    mean = 0,
+    sd = 0.0001
+  )))) %>%
   acomp()
 
 class(c_Area)
@@ -203,9 +249,11 @@ class(c_Area)
 ## Estimate compositions for each subunit year =====
 
 vpcp_19_21 %<>%
-  mutate(su_yr = paste(subunit_ID, year, sep = "_"),
-         wt = areaVisible_ac/t_area_vis,
-         fpcf = 1 - t_area_vis / su.area_ac)
+  mutate(
+    su_yr = paste(subunit_ID, year, sep = "_"),
+    wt = areaVisible_ac / t_area_vis,
+    fpcf = 1 - t_area_vis / su.area_ac
+  )
 
 hist(vpcp_19_21$fpcf) # some have sampled areas larger than subunit area??!!
 
@@ -213,14 +261,15 @@ hist(vpcp_19_21$fpcf) # some have sampled areas larger than subunit area??!!
 
 vpcp_19_21 %>%
   dplyr::filter(fpcf <= 0) %>%
-  dplyr::select(year,
-                subunit_ID,
-                areaVisible_ac,
-                t_area_vis,
-                su.area_ac,
-                fpcf) %>%
+  dplyr::select(
+    year,
+    subunit_ID,
+    areaVisible_ac,
+    t_area_vis,
+    su.area_ac,
+    fpcf
+  ) %>%
   print(n = Inf)
-
 # In 2019-2021 there were 9 units where observed areas larger than unit.
 # An fpcf of 0.00987654321 is imputed to those.
 
@@ -228,16 +277,18 @@ vpcp_19_21 %<>%
   mutate(fpcf = ifelse(fpcf <= 0.00987654321, 0.00987654321, fpcf))
 
 p_Area_m0 <- lm(ilr(c_Area) ~ -1 + su_yr,
-                data = vpcp_19_21)
+  data = vpcp_19_21
+)
 
 p_Area_m1 <- lm(ilr(c_Area) ~ -1 + su_yr,
-                weights = wt,
-                data = vpcp_19_21)
+  weights = wt,
+  data = vpcp_19_21
+)
 
 p_Area_m2 <- lm(ilr(c_Area) ~ -1 + su_yr, # This is probably the correct one
-                weights = areaVisible_ac,
-                data = vpcp_19_21)
-
+  weights = areaVisible_ac,
+  data = vpcp_19_21
+)
 
 ## Check distribution of residuals =====
 
@@ -245,45 +296,49 @@ rsdl.m0 <- p_Area_m0 %>%
   residuals(type = "pearson") %>%
   as_tibble()
 
-opar <- par(mfrow = c(3,3))
+opar <- par(mfrow = c(3, 3))
 for (i in names(rsdl.m0)) {
-  plot(pluck(rsdl.m0, i) ~ vpcp_19_21$areaVisible_ac)}
+  plot(pluck(rsdl.m0, i) ~ vpcp_19_21$areaVisible_ac)
+}
 par(opar)
 
 rsdl.m2 <- p_Area_m2 %>%
   weighted.residuals() %>%
   as_tibble()
 
-opar <- par(mfrow = c(3,3))
+opar <- par(mfrow = c(3, 3))
 for (i in names(rsdl.m2)) {
-  plot(pluck(rsdl.m2, i) ~ vpcp_19_21$areaVisible_ac)}
+  plot(pluck(rsdl.m2, i) ~ vpcp_19_21$areaVisible_ac)
+}
 par(opar)
 
 area_g <- cut(vpcp_19_21$areaVisible_ac, 5)
 
-opar <- par(mfrow = c(3,3))
+opar <- par(mfrow = c(3, 3))
 for (i in names(rsdl.m0)) {
-  boxplot(pluck(rsdl.m0, i) ~ area_g)}
+  boxplot(pluck(rsdl.m0, i) ~ area_g)
+}
 par(opar)
 
-opar <- par(mfrow = c(3,3))
+opar <- par(mfrow = c(3, 3))
 for (i in names(rsdl.m2)) {
-  boxplot(pluck(rsdl.m2, i) ~ area_g)}
+  boxplot(pluck(rsdl.m2, i) ~ area_g)
+}
 par(opar)
-
-
 
 pairs.panels(rsdl.m0,
-             lm = TRUE,
-             rug = FALSE,
-             method = "pearson")
+  lm = TRUE,
+  rug = FALSE,
+  method = "pearson"
+)
 
 pairs(residuals(p_Area_m2), col = as.factor(vpcp_19_21$level))
 
 pairs.panels(residuals(p_Area_m2),
-             lm = TRUE,
-             rug = FALSE,
-             method = "pearson")
+  lm = TRUE,
+  rug = FALSE,
+  method = "pearson"
+)
 
 ## Explore variance of estimates =====
 
@@ -346,169 +401,4 @@ ggplot(data = all_smmry,
            color = model)) +
   geom_point() +
   facet_wrap(~response)
-
-# Simulations Outline =====
-
-# CALCULATIONS ASSUME THAT THERE ARE NO OVERLAP OF SPECIES INTHE ESTIMATES.
-# WHEN SPECIES OVERLAP IN THE FIELD, OBSERVERS HAVE TO "MENTALLY" SEPARATE
-# SPECIES INTO DIFFERENT AREAS AND CORRECT DENSITY ACCORDINGLY.
-# THE OVERLAPPING SPECIES ISSUE IS OUTSTANDING.
-
-# Areal compositions will be simulated for each year separately.
-# Each subunit_ID will receive multiple simulations of composition.
-# Each composition is a vector of 10 numbers: 3 strata * 3 species + other.
-# Each set of estimates or simulation has one row per subunit_ID and one column per component.
-# 
-## Pseudocode =====
-# 1. get vpcp file for current year.
-# 2. Change zeroes to abs(rnorm(mean = 0, sd = 0.0001)).
-# 3. Create acomp() object c_Area with all components.
-# 4. Regress ilr(c_Area) against subunit_ID without intercept as ilr_model.
-# 5. Get vcov1 from ilr_model and transform into cor.
-#   Remember that dim(vcov) = n.subunits * (n.components - 1)
-# 6. Calculate fpcf for each subunit and multiply by vcov1 diagonal.
-# 7. Calculate corrected vcov where variances are multiplied by fpcf.
-# 8. Create mvnorm simulations of estimates using corrected vcov.
-# 9. Backstransform with ilrInv.
-# 10. Combine with quadrat bootstrap samples to get simulations of mass/area
-
-
-## Data for 2021 =====
-
-vpcp2021 <- read_rds("WHAP2021-22/Output2021/vpcp2021.rds") %>% 
-  as_tibble() %>%
-  dplyr::select(LIT,
-                subunit_ID,
-                level,
-                areaVisible_ac,
-                su.area_ac,
-                starts_with("p_")) %>%
-  group_by(LIT, subunit_ID) %>%
-  mutate(t_area_vis = sum(areaVisible_ac),
-         fpcf = 1 - t_area_vis / su.area_ac,
-         fpcf = ifelse(fpcf <= 0.00987654321, 0.00987654321, fpcf)) %>%
-  ungroup()
-
-acomp_2021 <- vpcp2021 %>%
-  dplyr::select(starts_with("p_")) %>%
-  as.matrix() %>%
-  `+`(replicate(10, abs(rnorm(dim(vpcp2021)[1],
-                              mean = 0,
-                              sd = 0.0001)))) %>%
-  acomp()
-
-vpcp2021$a_comp <- acomp_2021
-
-## Regress acomp() on subunit_ID
-
-ilr_m2021 <- lm(ilr(a_comp) ~ -1 + subunit_ID,
-                     data = vpcp2021)
-
-ilr_m2021_smry <- tidy(ilr_m2021) %>%
-  mutate(subunit_ID = gsub("subunit_ID", "", term),
-         subunit_ID_Y = paste(subunit_ID,
-                              response,
-                              sep = "_")) %>%
-  dplyr::select(-c(statistic, p.value, term))
-
-
-## Get covariance matrix of estimates and apply fpcf
-
-# Covariance matrix refers to coefficients for all subunits for each of the 10-1
-# components as a single vector.
-# All covariances between different units are zero. Only covariances between components within units are nonzero.
-
-vcov_ilr <- vcovAcomp(ilr_m2021)
-vcov_names <- gsub("subunit_ID", "", attr(vcov_ilr, "dimnames")[[3]])
-
-
-
-# Simulations can be done one subunit at a time to simplify the vcov matrices.
-
-vcov_ilr <- vcov_ilr[row.order, col.order]
-
-
-
-fpcf_2021 <- vpcp2021 %>%
-  dplyr::select(subunit_ID, fpcf) %>%
-  unique()
-
-
-
-
-
-
-
-
-
-## Identify arguments of rnorm.acomp
-
-# Simulate data
-# 
-myvar <- matrix(c( # because of dimensions, this vcov must be in original units
-  0.2, 0.1, 0.0,
-  0.1, 0.2, 0.0,
-  0.0, 0.0, 0.2),
-  byrow = TRUE,
-  nrow = 3)
-
-mymean <- c(1, 1, 2)
-
-rdat <- rnorm.acomp(100000,
-                    mymean,
-                    myvar)
-
-class(rdat)
-
-var(rdat)
-
-mean(rdat)
-
-ilrvar2clr(var(rdat))
-
-variation2clrvar(myvar)
-
-var(cbind(as.numeric(rdat[, 1]), as.numeric(rdat[, 2]), as.numeric(rdat[, 3])))
-
-
-
-
-matrix(rnorm(5 * 2), ncol = 2) %*% 
-                    chol(clrvar2ilr(var))
-
-
-m2_vcov <- Matrix(as.matrix(vcov(ilr_model_2021)),
-                  sparse = TRUE)
-
-class(cov2cor(m1_vcov))
-
-str(cov2cor(vcov(p_Area_m1)))
-sum(cov2cor(vcov(p_Area_m1)) != 0)
-
-image(cov2cor(vcov(p_Area_m1)))
-
-length(coef(p_Area_m1))
-
-
-# Number of observations per subunit year
-
-with(vpcp_19_21, table(su_yr)) %>%
-  hist(breaks = 20)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
