@@ -43,7 +43,8 @@ gm2_2021 <- read.csv("WHAP2021-22/Output2021/qdt_mass_g_m2_2021.txt") %>%
   mutate(year = 2021)
 
 # 2021 column names are different than 2020 and 2019. Need to decide on a
-# and edit files from past years.
+# and edit files from past years. Different refuges also have different
+# formats for subunit names in the unit and subunit name fields
 colnames(gm2_2021)[1] <- "Unit_Name"
 colnames(gm2_2021)[2] <- "Subunit_Name"
 
@@ -52,13 +53,13 @@ whap_su_years <- bind_rows(gm2_2019, gm2_2020, gm2_2021) %>%
   mutate(year = factor(year))
 
 # Add new LIT name for KRN 14 subunits to create a different figure
-# for these subunits
-# levels(whap_su_years$LIT) <- c(levels(whap_su_years$LIT), "KRN14") 
-# whap_su_years$LIT[whap_su_years$Unit_Name == "14"]  <- "KRN14" 
+# for these subunits. Only used for swamp timothy
+# levels(whap_su_years$LIT) <- c(levels(whap_su_years$LIT), "KRN14")
+# whap_su_years$LIT[whap_su_years$Unit_Name == "14"]  <- "KRN14"
 
-# Use only 2021 for the figures
-# whap_su_years <- gm2_2021 %>%
-#   mutate(year = factor(year))
+# Use only 2021 for the figures (for MDC watergrass to exclude 2020 data)
+whap_su_years <- gm2_2021 %>%
+  mutate(year = factor(year))
 
 
 ```
@@ -66,16 +67,15 @@ whap_su_years <- bind_rows(gm2_2019, gm2_2020, gm2_2021) %>%
 
 ```{r viabilityClasses}
 
-viaClass <- read.csv("WHAP_Viability_20210610.csv") %>%
-  pivot_longer(cols = c(Poor, Fair, Good, Very_Good),
-               names_to = "class",
-               values_to = "lower_bound") %>%
-  pivot_wider(names_from = LIT,
-              values_from = lower_bound) %>%
-  mutate(class = fct_reorder(class, KRN, mean),
-         class_color = c("red", "yellow", "chartreuse", "chartreuse3"),
-         class = factor(class, ordered = TRUE))
+# Stone lakes as of Jan 2022 uses Low, Medium, High, and Very_High as their
+# viability analysis categories, represented by the colors "lightgoldenrod", 
+# "yellow", "chartreuse", and "chartreuse3". All other refuges use Poor, Fair, 
+# Good, and Very_Good for their viability analysis categories, represented by
+# the colors "red", "yellow", "chartreuse", and "chartreuse3". The code below
+# and the viability analysis csv files need to be adjusted accordingly.
 
+
+# ST viability classes
 ST_viaClass <- read.csv("WHAP_Viability_ST.csv") %>%
   pivot_longer(cols = c(Poor, Fair, Good, Very_Good),
                names_to = "class",
@@ -86,6 +86,7 @@ ST_viaClass <- read.csv("WHAP_Viability_ST.csv") %>%
          class_color = c("red", "yellow", "chartreuse", "chartreuse3"),
          class = factor(class, ordered = TRUE))
 
+# WG viability classes
 WG_viaClass <- read.csv("WHAP_Viability_WG.csv") %>%
   pivot_longer(cols = c(Poor, Fair, Good, Very_Good),
                names_to = "class",
@@ -96,6 +97,7 @@ WG_viaClass <- read.csv("WHAP_Viability_WG.csv") %>%
          class_color = c("red", "yellow", "chartreuse", "chartreuse3"),
          class = factor(class, ordered = TRUE))
 
+#SW viability classes
 SW_viaClass <- read.csv("WHAP_Viability_SW.csv") %>%
   pivot_longer(cols = c(Poor, Fair, Good, Very_Good),
                names_to = "class",
@@ -110,83 +112,10 @@ SW_viaClass <- read.csv("WHAP_Viability_SW.csv") %>%
 ```
 
 
-```{r plotFunction}
-
-# Potential improvement: The user can select what years and subunits to compare
-# by providing vectors with their names.
-
-plot_years <- function(spp = c("total"),
-                       data = whap_su_years) {
-  # whap_su_years is a df containing the subunit estimates in all refuges all years
-  # it contains a column named year
-  # check that data has the correct format
-  
-  year_plots <- list()
-  
-  for (i in unique(data$LIT)) { # this has to be modified for more than one species
-    
-    data_i <- data %>% dplyr::filter(LIT == i)
-    
-    # in the future, use the spp argument to determine what will be plotted
-    
-    year_plots[[i]] <-
-                 ggplot(data = data_i %>% arrange(tot_g_m2),
-                        aes(x = Unit_Name,
-                            y = tot_g_m2,
-                            color = year)) +
-                 scale_color_manual(values = c("2019" = "deepskyblue",
-                                               "2020" = "blue",
-                                               "2021" = "darkblue")) +
-                 ggtitle("Comparison across years") +
-                 geom_rect(data = viaClass,
-                           inherit.aes = FALSE,
-                           aes(NULL,
-                               NULL,
-                               xmin = -Inf,
-                               xmax = Inf,
-                               fill = class),
-                           ymin = unlist(viaClass[, i]),
-                           ymax = unlist(c(viaClass[-1, i], Inf))) +
-                 scale_fill_manual(values = alpha(c("red",
-                                                    "yellow",
-                                                    "chartreuse",
-                                                    "chartreuse3"),
-                                                  0.2)) +
-                 geom_point(size = 3) +
-                 xlab('Subunit Name') +
-                 ylab("Total seed mass 80% CI (g/m^2)") +
-                 geom_errorbar(aes(ymin = CI80lwr,
-                                   ymax = CI80upr),
-                               width = 0.3,
-                               cex = 0.75) +
-                 theme(plot.title = element_text(size = 16, face = "bold"),
-                       axis.ticks.y = element_blank(),
-                       axis.text.x = element_text(face = "bold"),
-                       axis.title = element_text(size = 12,
-                                                 face = "bold"),
-                       strip.text.y = element_text(hjust = 0,
-                                                   vjust = 1,
-                                                   angle = 180,
-                                                   face = "bold")) +
-                 coord_flip()
-    print(year_plots[[i]])
-  }
-  return(year_plots)
-}
-
-plot_years()
-
-
-```
-
-
 ```{r timothyPlotFunction}
 
 plot_years_st <- function(spp = c("total"),
                        data = whap_su_years) {
-  # whap_su_years is a df containing the subunit estimates in all refuges all years
-  # it contains a column named year
-  # check that data has the correct format
   
   year_plots_st <- list()
   
@@ -196,19 +125,19 @@ plot_years_st <- function(spp = c("total"),
     
     year_plots_st[[i]] <-
                  ggplot(data = data_i %>% arrange(st_g_m2),
-                        aes(x = Unit_Name,
+                        aes(x = Subunit_Name, 
                             y = st_g_m2,
                             color = year)) +
                  scale_color_manual(values = c("2019" = "deepskyblue",
-                                               "2020" = "blue",
-                                               "2021" = "darkblue")) +
+                                               "2020" = "dodgerblue3",
+                                               "2021" = "midnightblue")) +
                  labs(color = "year") +
-                 ggtitle("Comparison across years") +
+                 # ggtitle("Comparison across years") +
                  geom_rect(data = ST_viaClass,
                            inherit.aes = FALSE,
                            aes(NULL,
                                NULL,
-                               xmin = -Inf,
+                               xmin = 0,
                                xmax = Inf,
                                fill = class),
                            ymin = unlist(ST_viaClass[, i]),
@@ -219,10 +148,12 @@ plot_years_st <- function(spp = c("total"),
                                                     "chartreuse3"),
                                                   0.2)) +
                  geom_point(size = 3) +
-                 xlab('Subunit Name') +
-                 ylab("Swamp timothy seed mass 80% CI (g/m^2)") +
-                 geom_errorbar(aes(ymin = CI80lwr_st,
+                 xlab('Subunit\n') +
+                 ylab("\nSwamp timothy seed head mass index (g/m^2)") +
+                 geom_errorbar(aes(ymin = ifelse(CI80lwr_st < 0, 0, CI80lwr_st),
                                    ymax = CI80upr_st),
+                               # CI's cut off below 0, impossible to have
+                               # negative seed production values
                                width = 0.3,
                                cex = 0.75) +
                  theme(plot.title = element_text(size = 16, face = "bold"),
@@ -249,9 +180,6 @@ plot_years_st()
 
 plot_years_wg <- function(spp = c("total"),
                        data = whap_su_years) {
-  # whap_su_years is a df containing the subunit estimates in all refuges all years
-  # it contains a column named year
-  # check that data has the correct format
   
   year_plots_wg <- list()
   
@@ -261,14 +189,14 @@ plot_years_wg <- function(spp = c("total"),
     
     year_plots_wg[[i]] <-
                  ggplot(data = data_i %>% arrange(wg_g_m2),
-                        aes(x = Unit_Name,
+                        aes(x = Subunit_Name,
                             y = wg_g_m2,
                             color = year)) +
                  scale_color_manual(values = c("2019" = "deepskyblue",
-                                               "2020" = "blue",
-                                               "2021" = "darkblue")) +
+                                               "2020" = "dodgerblue3",
+                                               "2021" = "midnightblue")) +
                  labs(color = "year") +
-                 ggtitle("Comparison across years") +
+                 # ggtitle("Comparison across years") +
                  geom_rect(data = WG_viaClass,
                            inherit.aes = FALSE,
                            aes(NULL,
@@ -284,10 +212,12 @@ plot_years_wg <- function(spp = c("total"),
                                                     "chartreuse3"),
                                                   0.2)) +
                  geom_point(size = 3) +
-                 xlab('Subunit Name') +
-                 ylab("Watergrass seed mass 80% CI (g/m^2)") +
-                 geom_errorbar(aes(ymin = CI80lwr_wg,
-                                   ymax = CI80upr_wg),
+                 xlab('Subunit\n') +
+                 ylab("\nWatergrass seed head mass index (g/m^2)") +
+                 geom_errorbar(aes(ymin = ifelse(CI80lwr_wg < 0, 0, CI80lwr_wg),
+                                   ymax = ifelse(CI80upr_wg > 100, 100, CI80upr_wg)),
+                               # CI's cut off below 0, impossible to have
+                               # negative seed production values
                                width = 0.3,
                                cex = 0.75) +
                  theme(plot.title = element_text(size = 16, face = "bold"),
@@ -314,9 +244,6 @@ plot_years_wg()
 
 plot_years_sw <- function(spp = c("total"),
                        data = whap_su_years) {
-  # whap_su_years is a df containing the subunit estimates in all refuges all years
-  # it contains a column named year
-  # check that data has the correct format
   
   year_plots_sw <- list()
   
@@ -326,13 +253,13 @@ plot_years_sw <- function(spp = c("total"),
     
     year_plots_sw[[i]] <-
                  ggplot(data = data_i %>% arrange(sw_g_m2),
-                        aes(x = Unit_Name,
+                        aes(x = Subunit_Name,
                             y = sw_g_m2,
                             color = year)) +
                  scale_color_manual(values = c("2019" = "deepskyblue",
-                                               "2020" = "blue",
-                                               "2021" = "darkblue")) +
-                 ggtitle("Comparison across years") +
+                                               "2020" = "dodgerblue3",
+                                               "2021" = "midnightblue")) +
+                 # ggtitle("Comparison across years") +
                  geom_rect(data = SW_viaClass,
                            inherit.aes = FALSE,
                            aes(NULL,
@@ -348,10 +275,12 @@ plot_years_sw <- function(spp = c("total"),
                                                     "chartreuse3"),
                                                   0.2)) +
                  geom_point(size = 3) +
-                 xlab('Subunit Name') +
-                 ylab("Smartweed seed mass 80% CI (g/m^2)") +
-                 geom_errorbar(aes(ymin = CI80lwr_sw,
+                 xlab('Subunit\n') +
+                 ylab("\nSmartweed seed head mass index (g/m^2)") +
+                 geom_errorbar(aes(ymin = pmax(CI80lwr_sw, 0), 
                                    ymax = CI80upr_sw),
+                               # CI's cut off below 0, impossible to have
+                               # negative seed production values
                                width = 0.3,
                                cex = 0.75) +
                  theme(plot.title = element_text(size = 16, face = "bold"),
@@ -385,25 +314,28 @@ kgLIT_2019 <- read.csv("MainScriptDataOutput/mass_kg_LIT_2019.txt")
 
 
 # prep data
-kgLIT <- bind_rows(kgLIT_2019, kgLIT_2020, kgLIT_2021) %>%
-  mutate(year = factor(year)) %>%
-  dplyr::select(LIT, st_kg.ha, wg_kg.ha, sw_kg.ha, year) %>%
-  pivot_longer(cols = ends_with("kg.ha"),
+gm2_LIT <- bind_rows(kgLIT_2019, kgLIT_2020, kgLIT_2021) %>%
+  mutate(year = factor(year),
+         st_g.m2 = st_kg.ha / 10,
+         wg_g.m2 = wg_kg.ha / 10,
+         sw_g.m2 = sw_kg.ha / 10) %>%
+  dplyr::select(LIT, st_g.m2, wg_g.m2, sw_g.m2, year) %>%
+  pivot_longer(cols = ends_with("g.m2"),
                names_to = "species",
-               values_to = "kg.ha",
+               values_to = "g.m2",
                values_drop_na = TRUE)
 
-kgLIT$species[kgLIT$species == "st_kg.ha"] <- "swamp timothy"
+gm2_LIT$species[gm2_LIT$species == "st_g.m2"] <- "swamp timothy"
 
-kgLIT$species[kgLIT$species == "wg_kg.ha"] <- "watergrass"
+gm2_LIT$species[gm2_LIT$species == "wg_g.m2"] <- "watergrass"
 
-kgLIT$species[kgLIT$species == "sw_kg.ha"] <- "smartweed"
+gm2_LIT$species[gm2_LIT$species == "sw_g.m2"] <- "smartweed"
 
-kgLIT <- kgLIT[-c(14), ]
+# gm2_LIT <- gm2_LIT[-c(14), ]
 
 
 # plot the bar charts
-plot_kg_ha <- function(data = kgLIT) {
+plot_gm2_LIT <- function(data = gm2_LIT) {
   
   year_bar_plots <- list()
   
@@ -414,15 +346,15 @@ plot_kg_ha <- function(data = kgLIT) {
     year_bar_plots[[i]] <-
                  ggplot(data = data_i,
                         aes(x = species,
-                            y = kg.ha,
+                            y = g.m2,
                             fill = year)) +
-                 ylim(0, 600) +
+                 # ylim(0, 250) + #set the same y-axis range for KRN and PIX
                  geom_bar(stat="identity", position=position_dodge()) +
                  scale_fill_manual(values = c("2019" = "deepskyblue",
                                               "2020" = "blue",
                                               "2021" = "darkblue")) +
                  xlab('\nspecies') +
-                 ylab("seed production per refuge area (kg/ha)\n") +
+                 ylab("seed head mass index (g/m2)\n") +
                  theme_minimal()
                 
     print(year_bar_plots[[i]])
@@ -430,7 +362,7 @@ plot_kg_ha <- function(data = kgLIT) {
   return(year_bar_plots)
 }
 
-plot_kg_ha()
+plot_gm2_LIT()
 
 
 ```
