@@ -1,0 +1,69 @@
+"","LIT","subunit_ID","st_qdt","wg_qdt","sw_qdt"
+"1","KRN","KRN_4A_4A-3",6,NA,NA
+"2","KRN","KRN_4A_4A-5",6,NA,NA
+"3","KRN","KRN_4A_4A-6",6,1,NA
+"4","KRN","KRN_4A_4A-1",6,NA,NA
+"5","KRN","KRN_4A_4A-2",6,NA,NA
+"6","KRN","KRN_4A_4A-4",5,1,NA
+"7","KRN","KRN_4A_4A-7",5,1,NA
+"8","KRN","KRN_4B_4B-2",2,4,NA
+"9","KRN","KRN_4B_4B-3",6,1,1
+"10","KRN","KRN_4B_4B-4",5,3,1
+"11","KRN","KRN_5A_5A-1",6,NA,NA
+"12","KRN","KRN_5A_5A-3",6,NA,NA
+"13","KRN","KRN_5A_5A-4",6,NA,NA
+"14","KRN","KRN_5A_5A-5",6,NA,NA
+"15","KRN","KRN_5A_5A-6",6,NA,NA
+"16","KRN","KRN_5A_5A-7",6,NA,NA
+"17","KRN","KRN_5B_5B-1",6,NA,NA
+"18","KRN","KRN_5B_5B-2",6,NA,NA
+"19","KRN","KRN_5B_5B-3",6,NA,NA
+"20","KRN","KRN_5B_5B-7",6,NA,NA
+"21","KRN","KRN_5B_5B-8",6,NA,NA
+"22","KRN","KRN_6A_6A-1",6,NA,NA
+"23","KRN","KRN_6A_6A-2",7,NA,NA
+"24","KRN","KRN_6A_6A-3",6,NA,NA
+"25","KRN","KRN_6A_6A-4",6,NA,NA
+"26","KRN","KRN_6A_6A-5",6,NA,NA
+"27","MDC","MDC_Flournoy Pond_Flournoy Pond",1,NA,4
+"28","MDC","MDC_Gadwall_Gadwall",6,3,6
+"29","MDC","MDC_Grandma Tract 10_Grandma Tract 10",2,2,3
+"30","MDC","MDC_Grandma Tract 11_Grandma Tract 11",NA,NA,3
+"31","MDC","MDC_Grandma Tract 2_Grandma Tract 2",1,1,3
+"32","MDC","MDC_Grandma Tract 3_Grandma Tract 3",NA,2,NA
+"33","MDC","MDC_Grandma Tract 4_Grandma Tract 4",NA,1,2
+"34","MDC","MDC_Grandma Tract 8_Grandma Tract 8",NA,2,2
+"35","MDC","MDC_Grandma Tract 9_Grandma Tract 9",1,1,2
+"36","MDC","MDC_House Field_House Field",1,2,1
+"37","MDC","MDC_J Pond_J Pond",5,4,4
+"38","MDC","MDC_Lower Goose Pond_Lower Goose Pond",2,2,3
+"39","MDC","MDC_Matney 3_Matney 3",6,5,5
+"40","MDC","MDC_Matney 4 North_Matney 4 North",7,6,7
+"41","MDC","MDC_Matney 4 South_Matney 4 South",3,3,2
+"42","MDC","MDC_Matney 6_Matney 6",5,3,6
+"43","MDC","MDC_Matney 7_Matney 7",4,4,4
+"44","MDC","MDC_Matney 8_Matney 8",3,3,3
+"45","MDC","MDC_South Dam Pond_South Dam Pond",3,1,3
+"46","MDC","MDC_Upper Goose Pond_Upper Goose Pond",14,NA,11
+"47","PIX","PIX_1_1",6,NA,NA
+"48","PIX","PIX_2_2",4,2,NA
+"49","PIX","PIX_2A_2A",4,3,NA
+"50","PIX","PIX_3_3",5,2,NA
+"51","PIX","PIX_3A_3A",5,3,NA
+"52","PIX","PIX_4_4",5,5,NA
+"53","PIX","PIX_4A_4A",6,2,NA
+"54","PIX","PIX_6_6",6,NA,NA
+"55","PIX","PIX_8A_8A",7,NA,NA
+"56","PIX","PIX_8B_8B",6,NA,NA
+"57","PIX","PIX_9A_9A",6,NA,NA
+"58","PIX","PIX_9B_9B",6,NA,NA
+"59","SLW","SLW_Beach Lake 1_Beach Lake 1",6,NA,NA
+"60","SLW","SLW_Beach Lake 2_Beach Lake 2",6,NA,4
+"61","SLW","SLW_Beach Lake 3_Beach Lake 3",10,NA,NA
+"62","SLW","SLW_HQ-5_HQ-5",3,3,1
+"63","SLW","SLW_HQ-6_HQ-6",1,2,3
+"64","SLW","SLW_HQ-7_27a",NA,4,2
+"65","SLW","SLW_Lewis 1_22",8,3,2
+"66","SLW","SLW_Lewis 2_Lewis 2",3,2,1
+"67","SLW","SLW_Lewis 6_22",11,9,7
+"68","SLW","SLW_LIC_57",6,NA,NA
