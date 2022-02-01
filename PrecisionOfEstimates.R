@@ -7,10 +7,9 @@ library(magrittr)
 library(car)
 
 # Define invBoxCox transform =====
-invBoxCox <- function(x, lambda) {
-  if (lambda == 0) exp(x) else (lambda * x + 1) ^ (1 / lambda)}
 
-invBoxCox <- Vectorize(invBoxCox)
+invBoxCox <- Vectorize(function(x, lambda) {
+  if (lambda == 0) exp(x) else (lambda * x + 1) ^ (1 / lambda)})
 
 
 # ALL SPECIES =====
@@ -34,10 +33,11 @@ su_mass <- bind_rows(su_mass2019, su_mass2020, su_mass2021)
 
 ## Calculate precision =====
 
-su_mass %<>%
+su_mass <- su_mass %>%
   mutate(st_moe_prop = 0.5 * (CI80upr_st - CI80lwr_st) / st_g_m2,
          wg_moe_prop = 0.5 * (CI80upr_wg - CI80lwr_wg) / wg_g_m2,
          sw_moe_prop = 0.5 * (CI80upr_sw - CI80lwr_sw) / sw_g_m2)
+
 
 ## Calculate sample sizes =====
 
@@ -49,40 +49,99 @@ su_mass %<>%
 
 ## Visualize =====
 ### Swamp Timothy ====
+
 st_p_graph <- su_mass %>%
   dplyr::filter(st_g_m2 > 0) %>%
-  dplyr::select("st_moe_prop") %>%
+  dplyr::select(year,
+                LIT,
+                subunit_ID,
+                st_moe_prop,
+                area_ha) %>%
   na.omit() %>%
-  arrange(st_moe_prop) %>%
-  mutate(prop_ci = 1:n()/n())
+  arrange(year, LIT, st_moe_prop) %>%
+  group_by(year, LIT) %>%
+  mutate(cp_tot_area = cumsum(area_ha)/sum(area_ha),
+         prop_ci = 1:n()/n()) %>%
+  ungroup()
 
-plot(prop_ci ~ st_moe_prop,
-     type = "l",
-     log = "x",
-     main = "Swamp Timothy",
-     xlab = "X: CI half-width as proportion of mean",
-     ylab = "Proportion of CI half-widths smaller than X",
-     data = st_p_graph)
-abline(v = c(0.2, 0.5),
-       col = c("green", "red"))
+plot(cp_tot_area ~ st_moe_prop, st_p_graph)
+plot(prop_ci ~ st_moe_prop, st_p_graph)
+
+ggplot(data = st_p_graph,
+       aes(y = prop_ci,
+           x = st_moe_prop,
+           group = factor(year),
+           color = factor(year))) +
+  geom_line() +
+  geom_vline(xintercept = c(0.5, 1),
+             color = "grey",
+             linetype = "dashed") +
+  xlim(0, 1.5) +
+  ylab("Proportion of units with CI's narrower than 2x") +
+  xlab("CI half-width/mean") +
+  facet_wrap(~LIT) 
+
+ggplot(data = st_p_graph,
+       aes(y = cp_tot_area,
+           x = st_moe_prop,
+           group = factor(year),
+           color = factor(year))) +
+  geom_line() +
+  geom_vline(xintercept = c(0.5, 1),
+             color = "grey",
+             linetype = "dashed") +
+  xlim(0, 1.5) +
+  ylab("Proportion of refuge area with ST CI's narrower than 2x") +
+  xlab("CI half-width/mean") +
+  facet_wrap(~LIT) 
+
 
 ### Watergrass ====
+
 wg_p_graph <- su_mass %>%
   dplyr::filter(wg_g_m2 > 0) %>%
-  dplyr::select("wg_moe_prop") %>%
+  dplyr::select(year,
+                LIT,
+                subunit_ID,
+                wg_moe_prop,
+                area_ha) %>%
   na.omit() %>%
-  arrange(wg_moe_prop) %>%
-  mutate(prop_ci = 1:n()/n())
+  arrange(year, LIT, wg_moe_prop) %>%
+  group_by(year, LIT) %>%
+  mutate(cp_tot_area = cumsum(area_ha)/sum(area_ha),
+         prop_ci = 1:n()/n()) %>%
+  ungroup()
 
-plot(prop_ci ~ wg_moe_prop,
-     type = "l",
-     log = "x",
-     main = "Watergrass",
-     xlab = "X: CI half-width as proportion of mean",
-     ylab = "Proportion of CI half-widths smaller than X",
-     data = wg_p_graph)
-abline(v = c(0.2, 0.5),
-       col = c("green", "red"))
+plot(cp_tot_area ~ wg_moe_prop, wg_p_graph)
+plot(prop_ci ~ wg_moe_prop, wg_p_graph)
+
+ggplot(data = wg_p_graph,
+       aes(y = prop_ci,
+           x = wg_moe_prop,
+           group = factor(year),
+           color = factor(year))) +
+  geom_line() +
+  geom_vline(xintercept = c(0.5, 1),
+             color = "grey",
+             linetype = "dashed") +
+  xlim(0, 1.5) +
+  ylab("Proportion of units with CI's narrower than 2x") +
+  xlab("CI half-width/mean") +
+  facet_wrap(~LIT) 
+
+ggplot(data = wg_p_graph,
+       aes(y = cp_tot_area,
+           x = wg_moe_prop,
+           group = factor(year),
+           color = factor(year))) +
+  geom_line() +
+  geom_vline(xintercept = c(0.5, 1),
+             color = "grey",
+             linetype = "dashed") +
+  xlim(0, 1.5) +
+  ylab("Proportion of refuge area with ST CI's narrower than 2x") +
+  xlab("CI half-width/mean") +
+  facet_wrap(~LIT) 
 
 ### Smartweed ====
 sw_p_graph <- su_mass %>%
@@ -101,6 +160,18 @@ plot(prop_ci ~ sw_moe_prop,
      data = sw_p_graph)
 abline(v = c(0.2, 0.5),
        col = c("green", "red"))
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # SWAMP TIMOTHY ====

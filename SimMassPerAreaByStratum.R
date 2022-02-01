@@ -10,6 +10,7 @@ library(calculus)
 library(MASS)
 library(tictoc)
 library(styler)
+library(car)
 
 # Simulations Outline =====
 
@@ -33,7 +34,6 @@ library(styler)
 qdt_2021 <- read_rds("WHAP2021-22/Output2021/qdt_2021.rds")
 
 # Model mass per area by LIT:species:stratum
-
 mass_m2021 <- lm(mass_g_m2 ~ -1 + LIT:species:stratum,
   data = qdt_2021
 )
@@ -41,7 +41,6 @@ mass_m2021 <- lm(mass_g_m2 ~ -1 + LIT:species:stratum,
 summary(mass_m2021)
 
 # Heterogeneity of variance and lack of normality
-
 opar <- par(mfrow = c(2,2))
 plot(mass_m2021)
 par(opar)
@@ -52,7 +51,7 @@ invBoxCox <- function(x, lambda) {
 }
 
 # Get lambda for st
-mass_lambda <- powerTransform(
+mass_lambda_2021 <- powerTransform(
   lm(mass_g_m2 ~
   -1 + LIT:species:stratum,
   data = qdt_2021
@@ -63,7 +62,7 @@ mass_lambda <- powerTransform(
 
 # Use linear model
 mass_m2021b <- lm(
-  bcPower(mass_g_m2, lambda = mass_lambda) ~
+  bcPower(mass_g_m2, lambda = mass_lambda_2021) ~
   -1 + LIT:species:stratum,
   na.action = na.exclude,
   data = qdt_2021
@@ -72,3 +71,66 @@ mass_m2021b <- lm(
 opar <- par(mfrow = c(2,2))
 plot(mass_m2021b)
 par(opar)
+
+### Get covariance matrix of estimates =====
+
+{
+  vcov_mass_2021 <- vcov(mass_m2021b)
+  
+  colnames(vcov_mass_2021) <-
+    rownames(vcov_mass_2021) <-
+    gsub(
+      "LIT|species|stratum",
+      "",
+      colnames(vcov_mass_2021)
+    )
+  
+  vcov_mass_2021[is.na(vcov_mass_2021)] <- 0
+}
+
+# Covariance is a diagonal.
+sum(round(vcov_mass_2021, 4)) == sum(diag(round(vcov_mass_2021, 4)))
+
+## Make vector of means for LIT:species:stratum (Lss) =====
+
+{
+  mass_Lss_2021 <- coef(mass_m2021b)
+  
+  names(mass_Lss_2021) <- gsub(
+    "LIT|species|stratum",
+    "",
+    names(mass_Lss_2021)
+  )
+  
+  mass_Lss_2021[is.na(mass_Lss_2021)] <- 0
+}
+
+# Simulations have to be done in the transformed dimension
+# and then results need to be back-transformed
+
+
+## Simulate from coef distribution and back-transform =====
+
+sim_massLss_2021 <- invBoxCox(
+  mvrnorm(
+    n = 4000,
+    mu = mass_Lss_2021,
+    Sigma = vcov_mass_2021
+  ),
+  lambda = mass_lambda_2021
+)
+
+sim_massLss_lst_2021 <- unique(qdt_2021$LIT) %>%
+  as.list() %>%
+  set_names(unique(qdt_2021$LIT)) %>%
+  map(.f = ~sim_massLss_2021 %>%
+    as_tibble() %>%
+    dplyr::select(contains(.x))) %>%
+  map(~rename_with(.x, .f = function(z) gsub("^[A-Z]{2,4}:", "", z))) %>%
+  map(~rename_with(.x, .f = function(z) gsub(":", "_", z)))
+
+str(sim_massLss_lst_2021)
+
+
+
+

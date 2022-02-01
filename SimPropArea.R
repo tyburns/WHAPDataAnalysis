@@ -39,7 +39,7 @@ library(styler)
 #  Combine with quadrat simulations to get simulations of mass/area
 
 
-## Data for 2021 =====
+# Data for 2021 =====
 
 vpcp2021 <- read_rds("WHAP2021-22/Output2021/vpcp2021.rds") %>%
   as_tibble() %>%
@@ -86,6 +86,7 @@ ilr_m2021_smry <- tidy(ilr_m2021) %>%
   ) %>%
   dplyr::select(-c(statistic, p.value, term))
 
+# residuals were checked and are acceptable
 
 ### Get covariance matrix of estimates and apply fpcf =====
 
@@ -101,16 +102,16 @@ fpcf_2021 <- vpcp2021 %>%
 # All covariances between different units are zero. Only covariances between
 # components within units are nonzero.
 
-vcov_ilr <- vcovAcomp(ilr_m2021)
-vcov_names <- gsub("subunit_ID", "", attr(vcov_ilr, "dimnames")[[3]])
-attr(vcov_ilr, "dimnames") <- list(NULL, NULL, vcov_names, vcov_names)
+vcov_ilr_2021 <- vcovAcomp(ilr_m2021)
+vcov_names <- gsub("subunit_ID", "", attr(vcov_ilr_2021, "dimnames")[[3]])
+attr(vcov_ilr_2021, "dimnames") <- list(NULL, NULL, vcov_names, vcov_names)
 
-vcov_list <- list()
+vcov_list_2021 <- list()
 for (i in vcov_names) {
-  vcov_list[[i]] <- fpcf_2021[i] * vcov_ilr[, , i, i]
+  vcov_list_2021[[i]] <- fpcf_2021[i] * vcov_ilr_2021[, , i, i]
 }
 
-### Make df of mean vectors
+### Make df of mean vectors =====
 
 mean_df <- ilr_m2021_smry %>%
   dplyr::select(
@@ -124,19 +125,48 @@ mean_df <- ilr_m2021_smry %>%
   ) %>%
   column_to_rownames(var = "response")
 
-### Simulate from distribution of estimated compositions
+### Simulate from distribution of estimated compositions =====
+
 tic()
-if (names(mean_df) == names(vcov_list)) {
-  sim_list <- map2(
+if (setequal(
+  names(mean_df),
+  names(vcov_list_2021)
+)) { # make sure subunits match
+  sim_parea_2021 <- map2(
     .x = mean_df,
-    .y = vcov_list,
+    .y = vcov_list_2021,
     .f = ~ ilrInv(
       mvrnorm(
         n = 4000,
         mu = .x,
         Sigma = .y
-      )
+      ),
+      orig = acomp_2021
     )
-  )
+  ) %>% # to recover names of variables
+    map(.f = ~ as.data.frame.acomp(.x)[, -1]) %>% # rm Other to match mass sims
+    map(~ rename_with(.x, .f = function(z) gsub("^p_", "", z)) %>%
+          as_tibble)
 }
 toc()
+
+str(sim_parea_2021)
+
+# code trying to use a single df
+# did not work because of large size of join with mass file
+# sim_parea_2021 <- sim_parea_2021 %>%
+#   map2(.x = names(sim_parea_2021),
+#        .y = sim_parea_2021,
+#        .f = ~mutate(.y, subunit_ID = .x)) %>%
+#   map_dfr(~as.data.frame(.)) %>%
+#   mutate(simID = 1:nrow(.)) %>%
+#   pivot_longer(cols = starts_with("p_"),
+#                names_to = "spp_strat",
+#                values_to = "p_area",
+#                names_prefix = "p_") %>%
+#   mutate(LIT = str_sub(subunit_ID, 1, 3))
+
+
+
+
+
