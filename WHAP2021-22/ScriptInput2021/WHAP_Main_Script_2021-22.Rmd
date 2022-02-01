@@ -447,7 +447,7 @@ qdt_2021 <- bind_rows(
       LIT_Strat,
       mass_g_m2
     ) %>%
-    mutate(species = "st")),
+    mutate(species = "Swamp_Timothy")),
   (qdt_wg %>%
     dplyr::select(
       LIT,
@@ -456,7 +456,7 @@ qdt_2021 <- bind_rows(
       LIT_Strat,
       mass_g_m2
     ) %>%
-    mutate(species = "wg")),
+    mutate(species = "Watergrass")),
   qdt_sw %>%
     dplyr::select(
       LIT,
@@ -465,7 +465,7 @@ qdt_2021 <- bind_rows(
       LIT_Strat,
       mass_g_m2
     ) %>%
-    mutate(species = "sw")
+    mutate(species = "Smartweed")
 ) %>%
   mutate(species = factor(species))
 

@@ -18,7 +18,16 @@ Revisit the calculation of variance due to estimation of area covered by each sp
 
 Add to main script: compare precision of estimates to objective precision. Report at subunit and refuge level. Detection of change over time. Make a table with achieved precision, desired precision and whether desired was achieved. Make list of possible metrics for defining objectives. Look at Table 1.4 in main framework file. https://doimspp.sharepoint.com/:w:/r/sites/WHAPImplementation/Shared%20Documents/Kern%20NWRC/KRN%20site-specific%20WHAP%20protocol/Kern%20WHAP%20objectives%20table%2020210622.docx?d=w08515c833a0e4a439d5315c125f43afb&csf=1&web=1&e=2eL4cY. Ask Rebeca to
 
-Sampling objetives: +/- 20% with 80% confidence for places with amounts relevant for management and an absolute amount (10 g/m2?) for those that have little amount of the species. Sliding rule based on %of mean? 
+********************************************************************************
+Sampling objetives: +/- 20% with 80% confidence for places with amounts relevant for management and an absolute amount (10 g/m2?) for those that have little amount of the species. Sliding rule based on % of mean?
+
+We do not necessarily want to achieve the same CI width standard in units that produce little than on those that produce a lot or most of the food in the refuge. Factor in the impact of each unit on the total amount of food?
+
+Maybe plot proportion of CI that are acceptable against the proportion of total food accounted for.
+
+Report precision of individual unit and its impact on precision of total food estimate.
+
+********************************************************************************
 
 Management tracking: make example of management data file. Work with Kara on this.
 
