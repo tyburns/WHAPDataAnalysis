@@ -1107,7 +1107,7 @@ qdt_mass_g_m2 %>%
   kable_styling(full_width = FALSE)
 
 write.csv(qdt_mass_g_m2, "../Output2021/qdt_mass_g_m2_2021.txt")
-write.csv(qdt_mass_g_m2, "~/WHAP_Analysis/WHAPDataAnalysis/CompareTreatmentShinyApp/qdt_mass_g_m2_2021.txt")
+#write.csv(qdt_mass_g_m2, "~/WHAP_Analysis/WHAPDataAnalysis/CompareTreatmentShinyApp/qdt_mass_g_m2_2021.txt")
 
 ```
 

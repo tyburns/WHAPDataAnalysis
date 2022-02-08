@@ -131,6 +131,10 @@ sim_massLss_lst_2021 <- unique(qdt_2021$LIT) %>%
 
 str(sim_massLss_lst_2021)
 
+# Summary of simulations of mass per area by LIT spp strat
 
+list_sp_strat_summary <- map(sim_massLss_lst_2021, ~round(colMeans(.x), 0)) %>%
+  bind_rows() %>%
+  mutate(LIT = names(sim_massLss_lst_2021))
 
 

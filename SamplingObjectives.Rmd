@@ -1,0 +1,220 @@
+---
+title: "Sampling Objectives"
+author: "Emilio A. Laca"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(car)
+library(boot)
+library(emmeans)
+library(rsample)
+library(MASS)
+library(ggforce)
+library(knitr)
+library(kableExtra)
+library(measurements)
+library(lubridate)
+library(compositions)
+library(magrittr)
+library(styler)
+
+```
+
+## Introduction
+
+Sampling objectives need to be defined in terms of the precision desired for estimates.
+
+There are several kinds of estimates whose desired precision needs to be defined:
+
+1. Mass of seed heads of each species (find out and use correct term for this) per unit area of each subunit. 
+1. Mass of seed heads of all species per unit area of each subunit.
+1. Mass of seed heads of each species per unit area over all subunits measured in each refuge.
+Mass of seed heads of all species per unit area over all subunits measured in each refuge.
+
+## Example
+
+### Not all units measured
+
+This example aims at clarifying what each estimate is estimating. Imagine that there are two refuges, one with 3 and another with 4 subunits, and with two species. To avoid preconceptions elicited by specific units, I use L2 as units for area and M as units for mass. Any units for area and mass can be substituted for L2 and M. Imagine that we know the following:
+
+```{r simData}
+
+ref_data <- tibble(
+  LIT = c(rep("KRN", 3), rep("MDC", 4)),
+  subunit_ID = c(letters[1:3], letters[1:4]),
+  su_area_L2 = c(1, 10, 100, 2, 40, 100, 200),
+  sh_mass_M = c(10, 20, 100, 10, 20, 100, NA)
+)
+
+kable(ref_data) %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+Mass at the largest subunit, MDC d is not known.
+
+Mass of seed heads per area in each subunit is `sh_mass_M` divided by the corresponding `su_area_L2`. This quantity can be thought as describing an [intensive property](https://en.wikipedia.org/wiki/Intensive_and_extensive_properties) of each subunit, such as concentration. It does not indicate how much food is available, as that depends on the size of the unit. Total food available (column `sh_mass_M`) is an extensive property of the system.
+
+```{r suMassPerArea}
+
+ref_data %>%
+  mutate(sh_M_L2 = sh_mass_M / su_area_L2) %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+
+
+```
+
+Total mass of seed heads per refuge is only known for KRN, although a lower boundary can be calculated for MDC. Note that the calculation only involves summing rows within refuges. When we estimate these quantities, we have direct estimates of mass/area and estimates of total subunit area (assumed to be perfect), therefore the calculation involves the sum of the products of mass/area and subunit area.
+
+```{r massPerLIT}
+
+ref_data %>%
+  group_by(LIT) %>%
+  summarise(
+    area_L2 = sum(su_area_L2, na.rm = TRUE),
+    sh_mass_M = sum(sh_mass_M, na.rm = TRUE)
+  ) %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+We can also calculate the average quality or intensive property for the refuges by dividing total mass by total area. Another quantity that can be calculated is the average of the intensive property of subunits, which gives each subunit equal weight, regardless of size.
+
+```{r massPerLIT2}
+
+ref_data %>%
+  mutate(sh_M_L2 = sh_mass_M / su_area_L2) %>%
+  group_by(LIT) %>%
+  summarise(
+    area_L2 = sum(su_area_L2, na.rm = TRUE),
+    sh_mass_M = sum(sh_mass_M, na.rm = TRUE),
+    sh_M_L2r = round(sh_mass_M/area_L2, 1),
+    `sh_M_L2?` = round(mean(sh_M_L2, na.rm = TRUE), 1)
+  ) %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+So in the end we have two tables with information and can use them to evaluate and compare units and refuges. However, the comparison is not trivial at the refuge level:
+1. We do not know enough about MDC.
+2. Even if we ignore that, refuges differ both in intensive and extensive properties in ways that are different. MDC has the same total food as KRN, but it is spread over a larger area.
+
+Without knowing all units in each refuge or making bold assumptions, it really does not make sense to compare refuges unless all units are measured.
+
+### All units measured
+
+```{r allUnits}
+
+ref_data <- tibble(
+  LIT = c(rep("KRN", 3), rep("MDC", 4)),
+  subunit_ID = c(letters[1:3], letters[1:4]),
+  su_area_L2 = c(1, 10, 100, 2, 40, 100, 200),
+  sh_mass_M = c(10, 20, 100, 10, 20, 100, 100)
+) %>%
+  mutate(sh_M_L2 = sh_mass_M / su_area_L2)
+
+kable(ref_data) %>%
+  kable_styling(full_width = FALSE)
+
+ref_data %>%
+  group_by(LIT) %>%
+  summarise(
+    area_L2 = sum(su_area_L2, na.rm = TRUE),
+    sh_mass_M = sum(sh_mass_M, na.rm = TRUE),
+    sh_M_L2r = round(sh_mass_M/area_L2, 1),
+    `sh_M_L2?` = round(mean(sh_M_L2, na.rm = TRUE), 1)
+  ) %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+
+
+```
+
+
+One way to represent the availability of food is to plot the cumulative food vs the cumulative area after ordering the units by their quality or mass/area:
+
+```{r decreasing_avg}
+
+ref_data <- ref_data %>%
+  arrange(LIT, desc(sh_M_L2)) %>%
+  group_by(LIT) %>%
+  mutate(sum_area = cumsum(su_area_L2),
+         sum_mass = cumsum(sh_mass_M))
+
+ggplot(data = ref_data,
+       aes(y = sum_mass,
+           x = sum_area,
+           groups = LIT,
+           color = LIT)) +
+  geom_line() +
+  xlab("Cumulative area (L2)") +
+  ylab("Cumulative mass (M)")
+
+```
+
+KRN has overall better intensive properties because foragers can find more food per unit area than in MDC, but MDC has a lot more food because it is much larger.
+
+Of course, this ignores the distribution of food at scales smaller than units. It is possible that some large units contain large areas of no food and medium to small areas of concentrated food at the scale at which birds forage. A better approximation can be made with the more granular data from VPs and CPs.
+
+
+Another way to look at availability that focuses more on total food available is to plot in decreasing order of total mass per subunit:
+
+```{r decreasing_tmass}
+
+ref_data <- ref_data %>%
+  arrange(LIT, desc(sh_mass_M)) %>%
+  group_by(LIT) %>%
+  mutate(sum_area = cumsum(su_area_L2),
+         sum_mass = cumsum(sh_mass_M))
+
+ggplot(data = ref_data,
+       aes(y = sum_mass,
+           x = sum_area,
+           groups = LIT,
+           color = LIT)) +
+  geom_line() +
+  xlab("Cumulative area (L2)") +
+  ylab("Cumulative mass (M)")
+
+```
+
+Regarding precision of at the subunit level, the lower boundary of a CI should not be lower than the previous CI. This is a property that should be implicit in simulations, given that mass cannot be negative. Lower CI boundaries should never go down as more subunits are included in the total.
+
+## Proposal for objectives
+
+Given that the areas of refuges and units are "known," the objective precision only needs to be defined for the total mass (by species and by subunit or refuges, as desired). This way, the required precision of units that contribute different amounts to the total is automatically incorporated.
+
+For example: The 90% confidence interval width for total seed mass produced (all species and by species) by a given set of units (that includes the units that contribute the most to total refuge mass) has to be at most 50% of the estimate (within 25% of the estimated mean).
+
+Total seed head mass index is estimated with a CI interval width smaller than 50% of the mean with 90% confidence.
+
+For the individual subunits precision can be determined as follows:
+
+1. Order subunits in decreasing order of total mass.
+2. Calculate the cumulative sum of total mass over subunits.
+3. Each subunit should have sufficient precision to keep the running total estimate within the precision goal.
+
+Performance relative to goals can be performed by using the simulations created to get estimates and variances for the mass per area and total mass at the subunit level.
+
+
+<!-- NOTES -->
+<!-- ******************************************************************************** -->
+<!-- Sampling objectives: +/- 20% with 80% confidence for places with amounts relevant for management and an absolute amount (10 g/m2?) for those that have little amount of the species. Sliding rule based on % of mean? -->
+
+<!-- We do not necessarily want to achieve the same CI width standard in units that produce little than on those that produce a lot or most of the food in the refuge. Factor in the impact of each unit on the total amount of food? -->
+
+<!-- Maybe plot proportion of CI that are acceptable against the proportion of total food accounted for. -->
+
+<!-- Report precision of individual unit and its impact on precision of total food estimate. -->
+
+<!-- Graphs of cumulative food mass vs cumulative area can be made using the within subunit estimates of areas in each sp-strat class, but this would assume that species never overlap. -->
+
+********************************************************************************

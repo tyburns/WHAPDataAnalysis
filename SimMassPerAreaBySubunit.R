@@ -8,7 +8,7 @@ source("SimMassPerAreaByStratum.R")
 ## Order columns within each data frame in both lists =====
 # to be able to use matrix multiplication for calculations
 
-sim_parea_2021 <- sim_parea_2021 %>%
+sim_parea_2021_dr <- sim_parea_2021_dr %>%
   map(~ dplyr::select(
     .x,
     Smartweed_a.Low,
