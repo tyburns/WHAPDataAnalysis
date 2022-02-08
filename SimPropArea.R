@@ -78,7 +78,7 @@ vpcp2021$a_comp <- acomp_2021
 
 ilr_m2021 <- lm(
   ilr(a_comp) ~ -1 + subunit_ID,
-  weights = areaVisible_ac,
+#  weights = areaVisible_ac,
   data = vpcp2021
 )
 

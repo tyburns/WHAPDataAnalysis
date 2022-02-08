@@ -473,7 +473,80 @@ write_rds(qdt_2021, "qdt_2021.rds")
 
 ```
 
+## Subunit sampling summary
 
+Summary at the subunit level that shows the # of quadrats, CPs, and VPs that include each species.
+
+```{r subunit summary}
+
+# quadrat summary
+qdt_sum <- qdt_2021 %>% 
+  group_by(LIT, subunit_ID, species) %>% 
+  summarise(n = n()) %>%
+  pivot_wider(names_from = species, values_from = n) %>%
+  rename(st_qdt = st, wg_qdt = wg, sw_qdt = sw)
+
+# VP summary
+vps_sum <- vps %>%
+  mutate(st_pres = 0, wg_pres = 0, sw_pres = 0)
+  
+for (i in 1:nrow(vps_sum)){
+  
+  row <- vps_sum[i,]
+  # this should be improved by accessing the columns by a standard name and not 
+  # with the numbers 17, 18, and 19
+  vps_sum[i, 17] <- ifelse (row$p_Swamp_Timothy_a.Low != 0 || 
+                             row$p_Swamp_Timothy_b.Med != 0 || 
+                             row$p_Swamp_Timothy_c.High != 0, 1, 0) 
+
+  vps_sum[i, 18] <- ifelse (row$p_Watergrass_a.Low != 0 ||
+                             row$p_Watergrass_b.Med != 0 ||
+                             row$p_Watergrass_c.High != 0, 1, 0)
+
+  vps_sum[i, 19] <- ifelse (row$p_Smartweed_a.Low != 0 || 
+                             row$p_Smartweed_b.Med != 0 || 
+                             row$p_Smartweed_c.High != 0, 1, 0) 
+}
+
+vps_sum <- vps_sum %>% 
+  dplyr::select(LIT, subunit_ID, st_pres, wg_pres, sw_pres) %>%
+  group_by(LIT, subunit_ID) %>%
+  summarise(st_vps = sum(st_pres), wg_vps = sum(wg_pres), sw_vps = sum(sw_pres))
+ 
+# CP summary
+cps_sum <- cps %>%
+  mutate(st_pres = 0, wg_pres = 0, sw_pres = 0)
+  
+for (i in 1:nrow(cps_sum)){
+  
+  row <- cps_sum[i,]
+  
+  cps_sum[i, 17] <- ifelse (row$p_Swamp_Timothy_a.Low != 0 || 
+                             row$p_Swamp_Timothy_b.Med != 0 || 
+                             row$p_Swamp_Timothy_c.High != 0, 1, 0) 
+
+  cps_sum[i, 18] <- ifelse (row$p_Watergrass_a.Low != 0 ||
+                             row$p_Watergrass_b.Med != 0 ||
+                             row$p_Watergrass_c.High != 0, 1, 0)
+
+  cps_sum[i, 19] <- ifelse (row$p_Smartweed_a.Low != 0 || 
+                             row$p_Smartweed_b.Med != 0 || 
+                             row$p_Smartweed_c.High != 0, 1, 0) 
+}
+
+cps_sum <- cps_sum %>% 
+  dplyr::select(LIT, subunit_ID, st_pres, wg_pres, sw_pres) %>%
+  group_by(LIT, subunit_ID) %>%
+  summarise(st_cps = sum(st_pres), wg_cps = sum(wg_pres), sw_cps = sum(sw_pres))
+
+# complete summary
+qdt_vps_sum <- full_join(qdt_sum, vps_sum)
+subunit_sum <- full_join(qdt_vps_sum, cps_sum)
+subunit_sum <- subunit_sum %>% mutate_all(~replace(., is.na(.), 0))
+
+write.csv(subunit_sum, "Subunit_Sampling_Summary2021.txt")
+
+```
 
 ## Area per subunit
 
@@ -1110,6 +1183,49 @@ write.csv(qdt_mass_g_m2, "../Output2021/qdt_mass_g_m2_2021.txt")
 #write.csv(qdt_mass_g_m2, "~/WHAP_Analysis/WHAPDataAnalysis/CompareTreatmentShinyApp/qdt_mass_g_m2_2021.txt")
 
 ```
+
+## Precision graph (subunit CIs vs. number of quadrats taken)
+
+```{r precision graph}
+
+qdt_per_species <- read.csv("qdt_summary_2021.txt") %>%
+  mutate_all(~replace(., is.na(.), 0))
+
+CI_qdt_sum <- full_join(qdt_per_species, qdt_mass_g_m2) %>%
+  mutate(CI_len_ST = CI80upr_st - st_g_m2,
+         CI_len_WG = CI80upr_wg - wg_g_m2,
+         CI_len_SW = CI80upr_sw - sw_g_m2,
+         CI_len_tot = CI80upr - CI80lwr,
+         tot_qdt = st_qdt + wg_qdt + sw_qdt) %>%
+  mutate(CI_prop_st = CI_len_ST / st_g_m2,
+         CI_prop_wg = CI_len_WG / wg_g_m2,
+         CI_prop_sw = CI_len_SW / sw_g_m2) %>%
+  dplyr::select(LIT, subunit_ID, st_qdt, CI80lwr_st, st_g_m2, CI80upr_st, 
+                CI_len_ST, wg_qdt, CI80lwr_wg, wg_g_m2, CI80upr_wg, CI_len_WG,
+                sw_qdt, CI80lwr_sw, sw_g_m2, CI80upr_sw, CI_len_SW, tot_qdt, 
+                CI80lwr, tot_g_m2, CI80upr, CI_len_tot, CI_prop_st, CI_prop_wg,
+                CI_prop_sw)
+
+ggplot(CI_qdt_sum, aes(x = st_qdt, y = CI_prop_st)) +
+  geom_point() + 
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE) +
+  xlab("\nNumber of quadrats with swamp timothy") +
+  ylab("Half CI / seed mass estimate\n")
+
+ggplot(CI_qdt_sum, aes(x = wg_qdt, y = CI_prop_wg)) +
+  geom_point() + 
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE) +
+  xlab("\nNumber of quadrats with watergrass") +
+  ylab("Half CI / seed mass estimate\n")
+
+ggplot(CI_qdt_sum, aes(x = sw_qdt, y = CI_prop_sw)) +
+  geom_point() + 
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE) +
+  xlab("\nNumber of quadrats with smartweed") +
+  ylab("Half CI / seed mass estimate\n")
+
+```
+
 
 ## Graphical display of results (not run) =======
 
