@@ -1,6 +1,6 @@
 # Setup =====
-library(compositions)
 library(tidyverse)
+library(car)
 library(magrittr)
 library(Matrix)
 library(psych)
@@ -11,6 +11,7 @@ library(MASS)
 library(tictoc)
 library(styler)
 library(lme4)
+library(DirichletReg)
 # Simulations Outline =====
 
 # CALCULATIONS ASSUME THAT THERE ARE NO OVERLAP OF SPECIES INTHE ESTIMATES.
@@ -27,22 +28,15 @@ library(lme4)
 ## Pseudocode =====
 # 1. Get vpcp file for current year.
 # 2. Change zeroes to abs(rnorm(mean = 0, sd = 0.0001)).
-# 3. Create acomp() object c_Area with all components.
-# 4. Regress ilr(c_Area) against subunit_ID without intercept as ilr_model.
-# 5. Get vcov1 from ilr_model and transform into cor.
-#   Remember that dim(vcov) = n.subunits * (n.components - 1)
-# 6. Calculate fpcf for each subunit and multiply by vcov1 diagonal.
-# 7. Calculate corrected vcov where variances are multiplied by fpcf.
-# 8. Create mvnorm simulations of estimates using corrected vcov.
-# 9. Backstransform with ilrInv.
-# Then:
+# 3. Use Dirichlet regression to model proportions in each subunit.
+# 4. Get means and vcov in log(alpha) scale into parallel lists
+# 5. Apply fpcf to vcov and Simulate assuming mv normality
+# 6. Backstransform with exp().
+# Then (in SimMassPerAreaBySubunit.R):
 #  Combine with quadrat simulations to get simulations of mass/area
 
-# Check if this approach weights p_area based on areas of VPs and CPs.
-# It should use the weights to match previous approach.
 
-
-# Data for 2021 =====
+## Data for 2021 =====
 
 vpcp2021 <- read_rds("WHAP2021-22/Output2021/vpcp2021.rds") %>%
   as_tibble() %>%
@@ -59,195 +53,71 @@ vpcp2021 <- read_rds("WHAP2021-22/Output2021/vpcp2021.rds") %>%
     t_area_vis = sum(areaVisible_ac),
     wt = areaVisible_ac / t_area_vis,
     fpcf = 1 - t_area_vis / su.area_ac,
-    fpcf = ifelse(fpcf <= 0.00987654321, 0.00987654321, fpcf)
+    fpcf = ifelse(fpcf <= 0.01, 0.01, fpcf)
   ) %>%
   ungroup()
 
-acomp_2021 <- vpcp2021 %>%
-  dplyr::select(starts_with("p_")) %>%
-    as.matrix() %>%
-  # `+`(replicate(10, abs(rnorm(dim(vpcp2021)[1],
-  #   mean = 0.00,
-  #   sd = 0.0001
-  # )))) %>%
-  acomp()
 
-vpcp2021$a_comp <- acomp_2021
+## Function to go from log(alpha) to proportions =====
 
-### Regress acomp() on subunit_ID
+log_alpha2p <- function(x) {
+  a_i <- exp(x)
+  a_0 <- if (is.vector(a_i)) sum(a_i) else rowSums(a_i)
+  return(a_i / a_0)
+}
 
-ilr_m2021 <- lm(
-  ilr(a_comp) ~ -1 + subunit_ID,
-#  weights = areaVisible_ac,
-  data = vpcp2021
-)
 
-ilr_m2021_smry <- tidy(ilr_m2021) %>%
-  mutate(
-    subunit_ID = gsub("subunit_ID", "", term),
-    subunit_ID_Y = paste(subunit_ID,
-      response,
-      sep = "_"
-    )
-  ) %>%
-  dplyr::select(-c(statistic, p.value, term))
-
-# residuals were checked and are acceptable
-
-rsdl <- as.data.frame.rmult(residuals(ilr_m2021)) %>% as.matrix()
-
-# pairs.panels(rsdl, breaks = 20)
-
-### Get covariance matrix of estimates and apply fpcf =====
-
-# Make vector of finite population correction factors.
+## Make vector of finite population correction factors =====
 
 fpcf_2021 <- vpcp2021 %>%
   dplyr::select(subunit_ID, fpcf) %>%
   unique() %>%
   deframe()
 
-# Covariance matrix refers to coefficients for all subunits for each of the 10-1
-# components as a single vector.
-# All covariances between different units are zero. Only covariances between
-# components within units are nonzero.
-
-vcov_ilr_2021 <- vcovAcomp(ilr_m2021)
-vcov_names <- gsub("subunit_ID", "", attr(vcov_ilr_2021, "dimnames")[[3]])
-attr(vcov_ilr_2021, "dimnames") <- list(NULL, NULL, vcov_names, vcov_names)
-
-vcov_list_2021 <- list()
-for (i in vcov_names) {
-  vcov_list_2021[[i]] <- fpcf_2021[i] * vcov_ilr_2021[, , i, i]
-}
-
-### Make df of mean vectors =====
-
-mean_df <- ilr_m2021_smry %>%
-  dplyr::select(
-    response,
-    estimate,
-    subunit_ID
-  ) %>%
-  pivot_wider(
-    names_from = subunit_ID,
-    values_from = estimate
-  ) %>%
-  column_to_rownames(var = "response")
-
-### Simulate from distribution of estimated ilr compositions =====
-
-{tic()
-if (setequal(
-  names(mean_df),
-  names(vcov_list_2021)
-)) { # make sure subunits match
-  sim_parea_2021_ilr <- map2(
-    .x = mean_df,
-    .y = vcov_list_2021,
-    .f = ~ ilrInv(
-      mvrnorm(
-        n = 4000,
-        mu = .x,
-        Sigma = .y
-      ),
-      orig = acomp_2021
-    )
-  ) %>% # to recover names of variables
-    map(.f = ~ as.data.frame.acomp(.x)) %>% 
-    map(.f = ~ dplyr::select(., -p_Other_cover_NA))# rm Other to match mass sims
-    map(.f = ~ rename_with(.x, .f = function(z) gsub("^p_", "", z)))
-}
-toc()
-}
-
-str(sim_parea_2021_ilr)
-
-p_area_summary_ilr <- map(sim_parea_2021_ilr, ~round(colMeans(.x), 2)) %>%
-  bind_rows() %>%
-  mutate(subunit_ID = names(sim_parea_2021_ilr))
-
-
-## Checking source of discrepancy between ilr and direct analysis of p_area
-
-# average proportions
-# these are the same as produced by main script
-(avg_prop_main <- vpcp2021 %>%
-  group_by(subunit_ID) %>%
-  summarise(
-    across(
-      .cols = starts_with("p_"),
-      ~ weighted.mean(.x, w = areaVisible_ac)
-    )
-  )
-)
-
-# estimated means based on lm of ilr
-
-(est_mn_ilr <- ilr_m2021 %>%
-  coef() %>%
-  ilrInv(orig = acomp_2021) %>%
-  as_tibble(rownames = "subunit_ID") %>%
-  mutate(subunit_ID = gsub("subunit_ID", "", subunit_ID))
-)
-
-# data -> ilr -> average -> ilrInv
-
-(irlInv_avg_ilr <- acomp_2021 %>%
-  ilr() %>%
-  as_tibble() %>%
-  mutate(subunit_ID = vpcp2021$subunit_ID,
-         areaVisible_ac = vpcp2021$areaVisible_ac) %>%
-  group_by(subunit_ID) %>%
-  summarise(
-    across(
-      .cols = V1:V9,
-      ~ weighted.mean(.x, w = areaVisible_ac)
-    )
-  ) %>%
-    dplyr::select(V1:V9) %>%
-    ilrInv(orig = acomp_2021)
-)
-
-
-## Dirichlet Regression =====
-## ilr approach produces means quite different from means of untransformed
-## data. Try Dirichlet distribution.
-
-### Regress p_area on subunit_ID =====
+## Dirichlet Regression of p_area on subunit_ID =====
 
 dr_data <- vpcp2021 %>%
   dplyr::select(starts_with("p_")) %>%
   DR_data()
 
-# Common model option of DirichReg
+# Use common model option of DirichReg
 dr_m2021 <- DirichReg(
   dr_data ~ -1 + subunit_ID,
     weights = areaVisible_ac,
   data = vpcp2021
 )
 
-## Get covariance matrix of estimated log(alphas) =====
+# Diagnostic of residuals
 
-# first try commented out:
-# vcov_dr_m2021 <- vcov(dr_m2021) %>%
-#   as_tibble(rownames = "var_suID") %>%
-#   separate(var_suID, c("variable", "subunit_ID"), sep = ":") %>%
-#   mutate(subunit_ID = gsub("subunit_ID", "", subunit_ID)) %>%
-#   arrange(subunit_ID, variable) %>%
-#   rename_with(~ gsub("subunit_ID", "", .x), starts_with("p_")) %>%
-#   rename_with(
-#     ~ paste(
-#       str_split_fixed(.x, ":", 2)[, 2],
-#       ":",
-#       str_split_fixed(.x, ":", 2)[, 1],
-#       sep = ""
-#     ),
-#     starts_with("p_")
-#   ) %>%
-#   dplyr::select(order(colnames(.)))
+{
+  opar <- par(mfrow = c(3, 3))
+  for (i in 2:10) {
+    plot(
+      residuals(dr_m2021,
+        type = "standardized"
+      )[, i] ~
+      fitted(dr_m2021)[, i],
+      col = factor(vpcp2021$LIT),
+      xlab = attr(residuals(dr_m2021), "dim.names")[i]
+    )
+  }
+  par(opar)
+}
 
-# Make list of covariance matrices
+{
+  opar <- par(mfrow = c(3, 3))
+  for (i in 2:10) {
+    qqp(
+      residuals(dr_m2021,
+        type = "standardized"
+      )[, i],
+      xlab = attr(residuals(dr_m2021), "dim.names")[i]
+    )
+  }
+  par(opar)
+}
+
+## Get list of covariance matrices of estimated log(alphas) =====
 
 su_names <- vpcp2021 %>%
   pluck("subunit_ID") %>%
@@ -289,9 +159,18 @@ su_names <- vpcp2021 %>%
   }
 }
 
-# summary(dr_m2021)
+## Apply fpcf to vcov's =====
 
-### Make df of mean vectors in log scale =====
+for (i in su_names) {
+  vcov_dr_list_2021[[i]] <- fpcf_2021[i] * vcov_dr_list_2021[[i]]
+}
+
+# Covariance matrix refers to coefficients for all subunits for each of the 10
+# components as a single vector.
+# All covariances between different units are zero. Only covariances between
+# components within units are nonzero.
+
+## Make df of mean vectors in log(alpha) scale =====
 
 mean_df_dr_2021 <- dr_m2021 %>%
   coef() %>%
@@ -310,19 +189,7 @@ mean_df_dr_2021 <- dr_m2021 %>%
   column_to_rownames(var = "name")
 
 
-### Function to go from log(alpha) to proportions
-
-log_alpha2p <- function(x) {
-  a_i <- exp(x)
-  a_0 <- ifelse(is.vector(a_i),
-    sum(a_i),
-    rowSums(a_i)
-  )
-  return(a_i / a_0)
-}
-
-
-### Simulate from distribution of estimated log(alphas) =====
+## Simulate from distribution of estimated log(alphas) =====
 
 {
   tic()
@@ -344,7 +211,9 @@ log_alpha2p <- function(x) {
         )
       )
     ) %>%
-      map(~ dplyr::select(-p_Other_cover_NA)) %>% # rm Other to match mass sims
+      map(~ as_tibble(.x)) %>%
+      map(~ dplyr::select(.x, .f = -p_Other_cover_NA)) %>%
+      # rm Other to match mass sims
       map(~ rename_with(.x, .f = function(z) gsub("^p_", "", z)))
   } else {
     print("** ERROR: Subunits or spp_strat do not match!!**")
@@ -354,15 +223,61 @@ log_alpha2p <- function(x) {
 
 str(sim_parea_2021_dr)
 
-p_area_summary_dr <- map(sim_parea_2021_dr, ~round(colMeans(.x), 2)) %>%
+
+## Compare Dirichlet estimates and direct averages of p_area =====
+
+# average proportions
+# these are the same as produced by main script
+(avg_prop_main <- vpcp2021 %>%
+  group_by(subunit_ID) %>%
+  summarise(
+    across(
+      .cols = starts_with("p_"),
+      ~ weighted.mean(.x, w = areaVisible_ac)
+    )
+  )
+)
+
+range(as.matrix(avg_prop_main[, 3:11]))
+
+# estimated means based on DirichReg
+
+coef_su <- dr_m2021 %>%
+  coef() %>%
+  `[[`(1) %>%
+  names() %>%
+  gsub("subunit_ID",
+    "",
+    x = .
+  )
+
+(est_mn_dr <- dr_m2021 %>%
+    coef() %>%
+    as_tibble() %>%
+    log_alpha2p() %>%
+    mutate(subunit_ID = coef_su) %>%
+  as_tibble()
+)
+
+range(as.matrix(est_mn_dr[, 2:10]))
+
+## Summary of simulated p_areas =====
+
+(p_area_summary_dr <- map(
+  .x = sim_parea_2021_dr,
+  .f = ~ colMeans(.x)
+) %>%
   bind_rows() %>%
-  mutate(subunit_ID = names(sim_parea_2021_dr))
+  mutate(subunit_ID = names(sim_parea_2021_dr)))
 
+range(as.matrix(p_area_summary_dr[, 1:9]))
 
+mean(abs(as.matrix(avg_prop_main[, 3:11]) - as.matrix(p_area_summary_dr[, 1:9])))
+max(abs(as.matrix(avg_prop_main[, 3:11]) - as.matrix(p_area_summary_dr[, 1:9])))
 
-
-
-
+hist(abs(as.matrix(avg_prop_main[, 3:11]) -
+           as.matrix(p_area_summary_dr[, 1:9])),
+     breaks = 30)
 
 
 

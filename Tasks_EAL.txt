@@ -27,6 +27,15 @@ Maybe plot proportion of CI that are acceptable against the proportion of total 
 
 Report precision of individual unit and its impact on precision of total food estimate.
 
+10 Feb meting:
+
+Make cumulative graphs for all three years.
+Write explanation for new objectives table.
+What is the reporting tool to determine if objectives have been achieved.
+- 1A yes or no
+- 2A yes or no for each subunit.
+Repeat for each species and all together.
+
 ********************************************************************************
 
 Management tracking: make example of management data file. Work with Kara on this.
