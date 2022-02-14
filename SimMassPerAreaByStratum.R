@@ -85,7 +85,7 @@ par(opar)
       colnames(vcov_mass_2021)
     )
   
-  vcov_mass_2021[is.na(vcov_mass_2021)] <- 0
+  vcov_mass_2021[is.na(vcov_mass_2021)] <- 0.001
 }
 
 # Covariance is a diagonal.
@@ -102,7 +102,7 @@ sum(round(vcov_mass_2021, 4)) == sum(diag(round(vcov_mass_2021, 4)))
     names(mass_Lss_2021)
   )
   
-  mass_Lss_2021[is.na(mass_Lss_2021)] <- 0
+  mass_Lss_2021[is.na(mass_Lss_2021)] <- -5 # in BoxCox scale ~ 0 i mass/area
 }
 
 # Simulations have to be done in the transformed dimension

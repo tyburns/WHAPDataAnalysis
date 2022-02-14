@@ -51,7 +51,8 @@ vpcp2021 <- read_rds("WHAP2021-22/Output2021/vpcp2021.rds") %>%
   group_by(LIT, subunit_ID) %>%
   mutate(
     t_area_vis = sum(areaVisible_ac),
-    wt = areaVisible_ac / t_area_vis,
+    nobs = n(),
+    wt = areaVisible_ac * nobs / t_area_vis,
     fpcf = 1 - t_area_vis / su.area_ac,
     fpcf = ifelse(fpcf <= 0.01, 0.01, fpcf)
   ) %>%
@@ -83,7 +84,7 @@ dr_data <- vpcp2021 %>%
 # Use common model option of DirichReg
 dr_m2021 <- DirichReg(
   dr_data ~ -1 + subunit_ID,
-    weights = areaVisible_ac,
+    weights = wt,
   data = vpcp2021
 )
 
