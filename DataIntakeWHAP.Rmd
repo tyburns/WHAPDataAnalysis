@@ -311,3 +311,8 @@ whap_su_years <- bind_rows(df_ls) %>%
   mutate(year = factor(year))
 
 ```
+
+## Number of observations
+
+The total number of rows in vpcp for each subunit_ID should be larger than 2 for calculations to be possible (specifically, vcov of DirichReg in SimPropAreaFun.R).
+Of course, for the vcovs to be useful, a much larger number is desirable, say at least 6.

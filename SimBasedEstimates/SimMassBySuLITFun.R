@@ -154,7 +154,7 @@ cum_mass_LIT <- mass_m2_sims %>%
 ## Plot cumulative mass vs cumulative area and RightCI's =====
 
 cum_tot_plot <- ggplot(
-  data = cum_mass_LIT,
+  data = cum_mass_LIT %>% mutate(lty = (smpl_obj == "Pass") + 1),
   aes(
     y = cum_tot_ton,
     x = cum_area_ha,
@@ -167,12 +167,12 @@ cum_tot_plot <- ggplot(
     aes(
       ymin = ctt_RightCI90_lwr,
       ymax = cum_tot_ton,
-      linetype = smpl_obj
+      linetype = lty
     )
   ) +
   ylab("Cumulative seed head mass index (1000 kg or ton)") +
   xlab("Cumulative area (ha)") +
-  geom_text(x = 20, y = 350, label = "upper 90% CI", color = "black")
+  geom_text(x = 300, y = 40, label = "upper 90% CI", color = "black")
 
 ### Mass of all species by subunit =====
 

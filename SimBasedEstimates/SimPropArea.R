@@ -79,6 +79,9 @@ fpcf_2021 <- vpcp2021 %>%
 
 dr_data <- vpcp2021 %>%
   dplyr::select(starts_with("p_")) %>%
+  `+`((. < 0.001) * exp(rnorm(n = dim(.)[1] * dim(.)[2],
+                               mean = -6,
+                               sd = 0.8))) %>%
   DR_data()
 
 # Use common model option of DirichReg

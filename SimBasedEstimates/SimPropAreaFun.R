@@ -76,10 +76,15 @@
 # estimated parameters have a multivariate normal distribution and simulations 
 # are obtained directly from mvrnorm() using the estimated parameters and their 
 # estimated vcov() matrix.
+# 
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# !! A small random number (see below) is added to zeros to improve DirichReg
+# convergence. Results should not be used to assess presence/absence!!!
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
 ## Pseudocode =====
 # 1. Get vpcp file for current year.
-# 2. Change zeroes to abs(rnorm(mean = 0, sd = 0.0001)).
+# 2. Change 0's to exp(rnorm(n = , mean = -6, sd = 0.7))).
 # 3. Use Dirichlet regression to model proportions in each subunit.
 # 4. Get means and vcov in log(alpha) scale into parallel lists
 # 5. Apply fpcf to vcov and Simulate assuming mv normality
@@ -135,23 +140,32 @@ sim_prop_area <- function(.vpcp_path, .nsim = 1000) {
     deframe()
   
   ## Dirichlet Regression of p_area on subunit_ID =====
-  
+  # A small random lognormal jitter is added to improve convergence.
   dr_data <- vpcp %>%
     dplyr::select(starts_with("p_")) %>%
+    `+`((. < 0.001) * exp(rnorm(n = dim(.)[1] * dim(.)[2],
+                                mean = -6,
+                                sd = 0.7))) %>%
     DR_data()
-  
+
   # Use common model option of DirichReg
   dr_m <- DirichReg(
     dr_data ~ -1 + subunit_ID,
-    weights = areaVisible_ac,
+    weights = wt,
     data = vpcp
   )
+  
   
   ## Create list of vcov's for each subunit =====
   ## 
   vcov_dr <- vcov(dr_m)
   
   vcov_dr_list <- list()
+  
+  su_names <- vpcp %>%
+    pluck("subunit_ID") %>%
+    unique() %>%
+    sort()
   
   for (su_i in su_names) {
     vcov_dr_list[[su_i]] <-

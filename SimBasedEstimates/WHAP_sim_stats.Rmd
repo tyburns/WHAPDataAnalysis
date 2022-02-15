@@ -1,0 +1,371 @@
+---
+title: "Seed mass index in FWS refuges"
+author: "Emilio A. Laca"
+date: "13 Feb 2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+source("SimMassPerAreaFun.R")
+source("SimPropAreaFun.R")
+source("SimMassBySuLITFun.R")
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+
+```
+
+## Perform simulations and calculate results for all years
+
+```{r files, include=FALSE, echo=FALSE}
+
+vpcp_path_2019 <- "inputFiles/vpcp2019.rds"
+vpcp_path_2020 <- "inputFiles/vpcp2020.rds"
+vpcp_path_2021 <- "inputFiles/vpcp2021.rds"
+
+qdt_path_2019 <- "inputFiles/qdt_2019.rds"
+qdt_path_2020 <- "inputFiles/qdt_2020.rds"
+qdt_path_2021 <- "inputFiles/qdt_2021.rds"
+
+```
+
+```{r sims, include=FALSE, echo=FALSE}
+
+set.seed(141416)
+
+shmi_2019 <- sim_mass_su_lit(.vpcp_path = vpcp_path_2019,
+                             .qdt_path = qdt_path_2019,
+                             .nsim = 4000)
+
+write_rds(shmi_2019, "outputFiles/shmi_2019.rds")
+
+
+set.seed(141417)
+
+shmi_2020 <- sim_mass_su_lit(.vpcp_path = vpcp_path_2020,
+                             .qdt_path = qdt_path_2020,
+                             .nsim = 4000)
+
+write_rds(shmi_2020, "outputFiles/shmi_2020.rds")
+
+
+set.seed(141418)
+
+shmi_2021 <- sim_mass_su_lit(.vpcp_path = vpcp_path_2021,
+                             .qdt_path = qdt_path_2021,
+                             .nsim = 4000)
+
+write_rds(shmi_2021, "outputFiles/shmi_2021.rds")
+
+```
+
+## Cumulative seed head mass index
+
+Caption:
+
+Cumulative seed head mass index for each refuge in year yyyy plotted against the corresponding cumulative area of subunits. Downward error bars show the lower confidence limit for a "right-side CI": 90% of the sampling distribution is above the lower extreme of the error bar. Solid error bars indicate that the distance from the estimate to the lower CI extreme is less than 25% of the estimate. Dashed bars indicate that precision is less than that necessary to achieve sampling goals.
+
+```{r cum_shmi_plots, echo=FALSE}
+
+shmi_2019$cum_tot_plot +
+geom_text(x = 250, y = 70, label = "2019", color = "black")
+
+shmi_2020$cum_tot_plot +
+geom_text(x = 250, y = 70, label = "2020", color = "black")
+
+shmi_2021$cum_tot_plot +
+geom_text(x = 250, y = 70, label = "2021", color = "black")
+
+
+```
+
+## Prepare table headers and function
+
+```{r table_hds, echo=FALSE}
+
+tbl_hds1 <- c("Unit",
+             "Mean",
+             "SE",
+             "CI90lwr",
+             "CI90upr",
+             "RtCI90_lwr",
+             "MOE/Mean",
+             "Objective")
+
+tbl_hds2 <- tbl_hds1[1:6]
+
+# mk_kbl <- function(level = 1, yr = 2019, spp = "all") {
+#   if (
+#     !(level %in% c(1, 2)) | !(yr %in% c(2019, 2020, 2021)) 
+#   ) {
+#     stop("level must be 1 for subunits or 2 for refuge, and yr has to be 2019, 2020 or 2021.")
+#   }
+#   
+#   # TBD ...
+#   return( "Hello!")
+# }
+
+```
+
+## Seed head mass index per area for units
+
+### All species together
+
+Caption:
+
+```{r shmi_tables_su_all_sp, echo=FALSE}
+
+shmi_2019$tot_mass_su %>%
+  set_names(nm = tbl_hds1) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2, 0),
+    caption = "Average seed head mass index for all species in 2019 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+shmi_2020$tot_mass_su %>%
+  set_names(nm = tbl_hds1) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2, 0),
+    caption = "Average seed head mass index for all species in 2020 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+
+shmi_2021$tot_mass_su %>%
+  set_names(nm = tbl_hds1) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2, 0),
+    caption = "Average seed head mass index for all species in 2021 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+### Smartweed
+
+Caption:
+
+```{r shmi_tables_su_sw, echo=FALSE}
+
+shmi_2019$sw_mass_m2 %>%
+  set_names(nm = tbl_hds1) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2, 0),
+    caption = "Average seed head mass index for Smartweed in 2019 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+shmi_2020$sw_mass_m2 %>%
+  set_names(nm = tbl_hds1) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2, 0),
+    caption = "Average seed head mass index for Smartweed in 2020 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+
+shmi_2021$sw_mass_m2 %>%
+  set_names(nm = tbl_hds1) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2, 0),
+    caption = "Average seed head mass index for Smartweed in 2021 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+
+### Swamp Timothy
+
+Caption:
+
+```{r shmi_tables_su_st, echo=FALSE}
+
+shmi_2019$st_mass_m2 %>%
+  set_names(nm = tbl_hds1) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2, 0),
+    caption = "Average seed head mass index for Swamp Timothy in 2019 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+shmi_2020$st_mass_m2 %>%
+  set_names(nm = tbl_hds1) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2, 0),
+    caption = "Average seed head mass index for Swamp Timothy in 2020 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+
+shmi_2021$st_mass_m2 %>%
+  set_names(nm = tbl_hds1) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2, 0),
+    caption = "Average seed head mass index for Swamp Timothy in 2021 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+
+### Watergrass
+
+Caption:
+
+```{r shmi_tables_su_wg, echo=FALSE}
+
+shmi_2019$wg_mass_m2 %>%
+  set_names(nm = tbl_hds1) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2, 0),
+    caption = "Average seed head mass index for Watergrass in 2019 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+shmi_2020$wg_mass_m2 %>%
+  set_names(nm = tbl_hds1) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2, 0),
+    caption = "Average seed head mass index for Watergrass in 2020 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+
+shmi_2021$wg_mass_m2 %>%
+  set_names(nm = tbl_hds1) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2, 0),
+    caption = "Average seed head mass index for Watergrass in 2021 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+
+## Seed head mass index per area for refuges
+
+### All species
+
+```{r shmi_table_lit_all_spp, echo=FALSE}
+
+shmi_2019$lit_stats %>%
+  dplyr::select(
+    LIT,
+    starts_with("tot")
+  ) %>%
+  set_names(nm = tbl_hds2) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0),
+    caption = "Average seed head mass index for all species in 2019 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+shmi_2020$lit_stats %>%
+  dplyr::select(
+    LIT,
+    starts_with("tot")
+  ) %>%
+  set_names(nm = tbl_hds2) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0),
+    caption = "Average seed head mass index for all species in 2020 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+shmi_2021$lit_stats %>%
+  dplyr::select(
+    LIT,
+    starts_with("tot")
+  ) %>%
+  set_names(nm = tbl_hds2) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0),
+    caption = "Average seed head mass index for all species in 2021 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+### Smartweed
+
+```{r shmi_table_lit_sw, echo=FALSE}
+
+shmi_2019$lit_stats %>%
+  dplyr::select(
+    LIT,
+    starts_with("sw")
+  ) %>%
+  set_names(nm = tbl_hds2) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0),
+    caption = "Average seed head mass index for Smartweed in 2019 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+shmi_2020$lit_stats %>%
+  dplyr::select(
+    LIT,
+    starts_with("sw")
+  ) %>%
+  set_names(nm = tbl_hds2) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0),
+    caption = "Average seed head mass index for Smartweed in 2020 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+shmi_2021$lit_stats %>%
+  dplyr::select(
+    LIT,
+    starts_with("sw")
+  ) %>%
+  set_names(nm = tbl_hds2) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0),
+    caption = "Average seed head mass index for Smartweed in 2021 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+
+### Swamp Timothy
+
+```{r shmi_table_lit_st, echo=FALSE}
+
+shmi_2019$lit_stats %>%
+  dplyr::select(
+    LIT,
+    starts_with("st")
+  ) %>%
+  set_names(nm = tbl_hds2) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0),
+    caption = "Average seed head mass index for Swamp Timothy in 2019 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+shmi_2020$lit_stats %>%
+  dplyr::select(
+    LIT,
+    starts_with("st")
+  ) %>%
+  set_names(nm = tbl_hds2) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0),
+    caption = "Average seed head mass index for Swamp Timothy in 2020 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+shmi_2021$lit_stats %>%
+  dplyr::select(
+    LIT,
+    starts_with("st")
+  ) %>%
+  set_names(nm = tbl_hds2) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0),
+    caption = "Average seed head mass index for Swamp Timothy in 2021 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+```
+
+### Watergrass
+
+```{r shmi_table_lit_wg, echo=FALSE}
+
+shmi_2019$lit_stats %>%
+  dplyr::select(
+    LIT,
+    starts_with("wg")
+  ) %>%
+  set_names(nm = tbl_hds2) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0),
+    caption = "Average seed head mass index for Watergrass in 2019 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+shmi_2020$lit_stats %>%
+  dplyr::select(
+    LIT,
+    starts_with("wg")
+  ) %>%
+  set_names(nm = tbl_hds2) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0),
+    caption = "Average seed head mass index for Watergrass in 2020 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+shmi_2021$lit_stats %>%
+  dplyr::select(
+    LIT,
+    starts_with("wg")
+  ) %>%
+  set_names(nm = tbl_hds2) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0),
+    caption = "Average seed head mass index for Watergrass in 2021 (g/m2)") %>%
+  kable_styling(full_width = FALSE)
+
+```
+
