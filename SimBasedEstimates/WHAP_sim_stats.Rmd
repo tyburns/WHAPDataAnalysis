@@ -69,19 +69,61 @@ Cumulative seed head mass index for each refuge in year yyyy plotted against the
 
 ```{r cum_shmi_plots, echo=FALSE}
 
-shmi_2019$cum_tot_plot +
-geom_text(x = 250, y = 70, label = "2019", color = "black")
+cum_tot <- bind_rows(
+  shmi_2019$cum_mass_LIT %>% mutate(year = 2019),
+  shmi_2020$cum_mass_LIT %>% mutate(year = 2020),
+  shmi_2021$cum_mass_LIT %>% mutate(year = 2021)
+)
 
-shmi_2020$cum_tot_plot +
-geom_text(x = 250, y = 70, label = "2020", color = "black")
+ggplot(data = cum_tot,
+       aes(
+         y = cum_tot_ton,
+         x = cum_area_ha,
+         groups = LIT,
+         color = LIT
+       )
+) +
+  geom_line(size = 1.0) +
+  geom_errorbar(
+    aes(
+      ymin = ctt_RightCI90_lwr,
+      ymax = cum_tot_ton,
+      linetype = smpl_obj
+    )
+  ) +
+  ylab("Cumulative seed head mass index (1000 kg or ton)") +
+  xlab("Cumulative area (ha)") +
+  geom_text(x = 350, y = 40, label = "Equal scales", color = "black") +
+  facet_grid(rows = vars(year))
 
-shmi_2021$cum_tot_plot +
-geom_text(x = 250, y = 70, label = "2021", color = "black")
 
+ggplot(data = cum_tot,
+       aes(
+         y = cum_tot_ton,
+         x = cum_area_ha,
+         groups = LIT,
+         color = LIT
+       )
+) +
+  geom_line(size = 1.0) +
+  geom_errorbar(
+    aes(
+      ymin = ctt_RightCI90_lwr,
+      ymax = cum_tot_ton,
+      linetype = smpl_obj
+    )
+  ) +
+  ylab("Cumulative seed head mass index (1000 kg or ton)") +
+  xlab("Cumulative area (ha)") +
+  geom_text(x = 350, y = 40,
+            label = "Different scales",
+            color = "black") +
+  facet_grid(rows = vars(year),
+             scales = "free")
 
 ```
 
-## Prepare table headers and function
+Prepare table headers and function
 
 ```{r table_hds, echo=FALSE}
 
@@ -110,6 +152,8 @@ tbl_hds2 <- tbl_hds1[1:6]
 ```
 
 ## Seed head mass index per area for units
+
+All tables have a column for sampling objective based on data from the table. These are just for general information and are not being proposed as tests for the sampling objective. The only test to be considered is in the figures: if the error bar is dashed, the corresponding subunit does not meet precision objectives.
 
 ### All species together
 
