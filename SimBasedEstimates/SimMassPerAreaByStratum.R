@@ -31,7 +31,7 @@ library(car)
 
 # Data for 2021 =====
 
-qdt_2021 <- read_rds("WHAP2021-22/Output2021/qdt_2021.rds")
+qdt_2021 <- read_rds("../WHAP2021-22/Output2021/qdt_2021.rds")
 
 # Model mass per area by LIT:species:stratum
 mass_m2021 <- lm(mass_g_m2 ~ -1 + LIT:species:stratum,

@@ -16,25 +16,27 @@ Double check calculations for MDC 2021. Watergrass was too low?? DONE.
 
 Revisit the calculation of variance due to estimation of area covered by each spp-stratum.DONE
 
-Add to main script: compare precision of estimates to objective precision. Report at subunit and refuge level. Detection of change over time. Make a table with achieved precision, desired precision and whether desired was achieved. Make list of possible metrics for defining objectives. Look at Table 1.4 in main framework file. https://doimspp.sharepoint.com/:w:/r/sites/WHAPImplementation/Shared%20Documents/Kern%20NWRC/KRN%20site-specific%20WHAP%20protocol/Kern%20WHAP%20objectives%20table%2020210622.docx?d=w08515c833a0e4a439d5315c125f43afb&csf=1&web=1&e=2eL4cY. Ask Rebeca to
+Add to main script: compare precision of estimates to objective precision. Report at subunit and refuge level. Detection of change over time. Make a table with achieved precision, desired precision and whether desired was achieved. DONE
+
+Make list of possible metrics for defining objectives. Look at Table 1.4 in main framework file. https://doimspp.sharepoint.com/:w:/r/sites/WHAPImplementation/Shared%20Documents/Kern%20NWRC/KRN%20site-specific%20WHAP%20protocol/Kern%20WHAP%20objectives%20table%2020210622.docx?d=w08515c833a0e4a439d5315c125f43afb&csf=1&web=1&e=2eL4cY. DONE. Use right-side CI in cumulative mass when units are sorted in decreasing total mass contribution.
 
 ********************************************************************************
-Sampling objetives: +/- 20% with 80% confidence for places with amounts relevant for management and an absolute amount (10 g/m2?) for those that have little amount of the species. Sliding rule based on % of mean?
+Sampling objetives: +/- 25% with 90% confidence for places with amounts relevant for management and an absolute amount (10 g/m2?) for those that have little amount of the species. Sliding rule based on % of mean?. DONE. See Simulation based calculations.
 
-We do not necessarily want to achieve the same CI width standard in units that produce little than on those that produce a lot or most of the food in the refuge. Factor in the impact of each unit on the total amount of food?
+We do not necessarily want to achieve the same CI width standard in units that produce little than on those that produce a lot or most of the food in the refuge. Factor in the impact of each unit on the total amount of food?. DONE
 
-Maybe plot proportion of CI that are acceptable against the proportion of total food accounted for.
+Maybe plot proportion of CI that are acceptable against the proportion of total food accounted for. DONE
 
 Report precision of individual unit and its impact on precision of total food estimate.
 
 10 Feb meting:
 
-Make cumulative graphs for all three years.
-Write explanation for new objectives table.
+Make cumulative graphs for all three years. DONE
+Write explanation for new objectives table. 
 What is the reporting tool to determine if objectives have been achieved.
 - 1A yes or no
 - 2A yes or no for each subunit.
-Repeat for each species and all together.
+Repeat for each species and all together. DONE
 
 ********************************************************************************
 
@@ -53,3 +55,24 @@ Check Miro tasks.
 Check GitHub issues.
 
 Kern separate unit 14?
+
+
+
+
+****************** 17 Feb 2022 ***********************************
+New tasks for simulation based precision:
+
+Make figures taller so that bars can be seen 
+
+Add to the cumulative tables pass/fail column for if the cumulative estimate sampling objective is met  
+
+Add star to the graph for if a cumulative refuge estimate passes
+
+
+SOP4 complete just enough to understand what was used in 2019-2021 reports and detailed explanation of what is the simulation based calculation.
+
+Go to WHAP 2 proposal and use to add section headings for SOP4.
+
+SOP 4 – minimum detail on what analysis methods were in WHAP 2021, and short explanation of the new simulation based calculation method WHAP 2022 
+
+– step by step instructions on running the analysis using multiple scripts (modules). New analyses will be added as separate modules.

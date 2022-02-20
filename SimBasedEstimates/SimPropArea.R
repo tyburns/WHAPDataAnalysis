@@ -38,7 +38,7 @@ library(DirichletReg)
 
 ## Data for 2021 =====
 
-vpcp2021 <- read_rds("WHAP2021-22/Output2021/vpcp2021.rds") %>%
+vpcp2021 <- read_rds("../WHAP2021-22/Output2021/vpcp2021.rds") %>%
   as_tibble() %>%
   dplyr::select(
     LIT,

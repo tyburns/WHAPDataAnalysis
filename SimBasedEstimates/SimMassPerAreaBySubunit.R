@@ -229,7 +229,7 @@ tot_mass_su_2021b <- mass_m2_2021_sims %>%
     CI80_upr = quantile(tot_g_m2, 0.90),
   )
 
-qdt_mass_2021 <- read_rds("WHAP2021-22/Output2021/qdt_mass_g_m2_2021.rds")
+qdt_mass_2021 <- read_rds("../WHAP2021-22/Output2021/qdt_mass_g_m2_2021.rds")
 
 tot_mass_su_2021b <- tot_mass_su_2021b %>%
   full_join(qdt_mass_2021 %>%
@@ -255,7 +255,7 @@ ggplot(data = tot_mass_su_2021b,
   geom_abline() +
   ylab("Seed head mass index original main script (g/m2)") +
     xlab("Seed head mass index using simulations (g/m2)") +
-    geom_text(x = 20, y = 350, label = "80% CI's", color = "black")
+    geom_text(x = 20, y = 350, label = "80% CI's \n 2021", color = "black")
 
 
 ### Smartweed mass per subunit =====
