@@ -257,6 +257,35 @@ str(qdt_wg)
 
 ```
 
+
+```{r save_qdt}
+
+qdt_2019 <- bind_rows(
+  (qdt_st %>%
+    dplyr::select(
+      LIT,
+      subunit_ID,
+      stratum = Stratum,
+      LIT_Strat,
+      mass_g_m2
+    ) %>%
+    mutate(species = "Swamp_Timothy")),
+  (qdt_wg %>%
+    dplyr::select(
+      LIT,
+      subunit_ID,
+      stratum = Stratum,
+      LIT_Strat,
+      mass_g_m2
+    ) %>%
+    mutate(species = "Watergrass"))) %>%
+  mutate(species = factor(species))
+
+write_rds(qdt_2019, "../Output2019/qdt_2019.rds")
+
+```
+
+
 ## Area per subunit
 
 ```{r su_areas}

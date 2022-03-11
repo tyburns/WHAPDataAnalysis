@@ -50,28 +50,28 @@ Whenever a different name is encountered for these variables, it will be correct
 
 # Data to create model for ST: mass = f(seed no., seed length)
 # From st_model_creation.R
-st_all_noO <- readRDS("st_all_noO.rds") %>%
+st_d2m_dat <- readRDS("st_d2m_dat.rds") %>%
   rename_with(~gsub(".", "_", .x, fixed = TRUE))
 
 # Data to create model for WG: mass = f(seed no., seed length)
 # From wg_model_creation.R
-wgdat <- readRDS("wgdat.rds") %>%
+wg_d2m_dat <- readRDS("wg_d2m_dat.rds") %>%
   rename_with(~gsub(".", "_", .x, fixed = TRUE))
 
 # Data to create model for SW: mass = f(seed no., seed length)
-sw_dat <- readRDS("swdat.rds")  %>%
+sw_d2m_dat <- readRDS("sw_d2m_dat.rds")  %>%
   rename_with(~gsub(".", "_", .x, fixed = TRUE))
 
 ```
 
-## Models to go from seed dimensions to mass
+## Models to go from seed head dimensions to mass
 
 (Not shown)
 
 ```{r ST_len2mass}
 
 ST_len2mass <- lm(log(mass_mg) ~ log(avg_length_mm) + log(no_sh),
-                  data = st_all_noO)
+                  data = st_d2m_dat)
 
 ```
 
@@ -80,7 +80,7 @@ ST_len2mass <- lm(log(mass_mg) ~ log(avg_length_mm) + log(no_sh),
 WG_len2mass <- lm(log(mass_per_sh_mg  + 20) ~ sh_len_cm +
                     emerged +
                     F2T_cm,
-                  data = wgdat,
+                  data = wg_d2m_dat,
                   na.action = na.exclude)
 
 ```
@@ -89,13 +89,13 @@ WG_len2mass <- lm(log(mass_per_sh_mg  + 20) ~ sh_len_cm +
 
 # Get optimal lambda
 sw_lamb2 <- powerTransform(lm(mass_mg ~ log(length_mm),
-                              data = sw_dat)) %>%
+                              data = sw_d2m_dat)) %>%
   coef(round = TRUE) %>%
   unname()
 
 # Fit model with transformed Y
 SW_dim2mass <- lm(bcPower(mass_mg, lambda = sw_lamb2) ~ log(length_mm),
-                  data = sw_dat)
+                  data = sw_d2m_dat)
 
 ```
 
@@ -140,14 +140,6 @@ cps0 %<>%
 qdt0 %<>%
   mutate(vernacularName = str_replace(vernacularName, " ", "_"))
 
-
-# Fix domain of quadratSize
-
-qdtSizeKey <- c("15x15cm" = "15x15",
-                "30x30cm" = "30x30",
-                "5x5cm" = "5x5")
-
-qdt0$quadratSize <- dplyr::recode(qdt0$quadratSize, !!!qdtSizeKey)
 
 # Fix unit and subunit names
 
@@ -301,8 +293,8 @@ qdt_st <- qdt0 %>%
            quadratSize) %>%
   summarise(avg_length_mm = mean(measurementValue, na.rm = TRUE),
             nSeedHeads = mean(nSeedHeads, na.rm = TRUE)) %>%
-  mutate(qdt_m2 = ifelse(quadratSize == "15x15", 0.15^2,
-                         ifelse(quadratSize == "5x5", 0.05^2, 0.10)),
+  mutate(qdt_m2 = ifelse(quadratSize == "15x15cm", 0.15^2,
+                         ifelse(quadratSize == "5x5cm", 0.05^2, 0.10)),
          n_seed_head_m2 = nSeedHeads / qdt_m2,
          no_sh = n_seed_head_m2) %>%
   dplyr::select(LIT,
@@ -348,8 +340,8 @@ qdt_wg <- qdt0 %>%
                             wgc[2] * sh_length_mm / 10 + # divide by 10 because
                             wgc[3] * sh_emerged_wg + # model data was in cm
                             wgc[4] * f2t_length_mm / 10) - 20) %>%
-  mutate(qdt_m2 = ifelse(quadratSize == "15x15", 0.15^2,
-                         ifelse(quadratSize == "5x5", 0.05^2, 0.10)),
+  mutate(qdt_m2 = ifelse(quadratSize == "15x15cm", 0.15^2,
+                         ifelse(quadratSize == "5x5cm", 0.05^2, 0.10)),
          n_seed_head_m2 = nSeedHeads / qdt_m2) %>%
   group_by(GlobalID,
            LIT,
@@ -408,8 +400,8 @@ qdt_sw <- qdt0 %>%
            quadratSize) %>%
   summarise(length_mm = mean(sh_length_mm, na.rm = TRUE),
             nSeedHeads = mean(nSeedHeads, na.rm = TRUE)) %>%
-  mutate(qdt_m2 = ifelse(quadratSize == "15x15", 0.15^2,
-                         ifelse(quadratSize == "5x5", 0.05^2, 0.10))) %>%
+  mutate(qdt_m2 = ifelse(quadratSize == "15x15cm", 0.15^2,
+                         ifelse(quadratSize == "5x5cm", 0.05^2, 0.10))) %>%
   ungroup() %>%
   dplyr::select(LIT,
                 unitName,
@@ -1180,7 +1172,7 @@ qdt_mass_g_m2 %>%
   kable_styling(full_width = FALSE)
 
 write.csv(qdt_mass_g_m2, "../Output2021/qdt_mass_g_m2_2021.txt")
-write.csv(qdt_mass_g_m2, "~/WHAP_Analysis/WHAPDataAnalysis/CompareTreatmentShinyApp/qdt_mass_g_m2_2021.txt")
+#write.csv(qdt_mass_g_m2, "~/WHAP_Analysis/WHAPDataAnalysis/CompareTreatmentShinyApp/qdt_mass_g_m2_2021.txt")
 
 ```
 

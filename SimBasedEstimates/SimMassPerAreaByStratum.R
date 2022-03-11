@@ -31,7 +31,7 @@ library(car)
 
 # Data for 2021 =====
 
-qdt_2021 <- read_rds("WHAP2021-22/Output2021/qdt_2021.rds")
+qdt_2021 <- read_rds("../WHAP2021-22/Output2021/qdt_2021.rds")
 
 # Model mass per area by LIT:species:stratum
 mass_m2021 <- lm(mass_g_m2 ~ -1 + LIT:species:stratum,
@@ -85,7 +85,7 @@ par(opar)
       colnames(vcov_mass_2021)
     )
   
-  vcov_mass_2021[is.na(vcov_mass_2021)] <- 0
+  vcov_mass_2021[is.na(vcov_mass_2021)] <- 0.001
 }
 
 # Covariance is a diagonal.
@@ -102,7 +102,7 @@ sum(round(vcov_mass_2021, 4)) == sum(diag(round(vcov_mass_2021, 4)))
     names(mass_Lss_2021)
   )
   
-  mass_Lss_2021[is.na(mass_Lss_2021)] <- 0
+  mass_Lss_2021[is.na(mass_Lss_2021)] <- -5 # in BoxCox scale ~ 0 i mass/area
 }
 
 # Simulations have to be done in the transformed dimension
@@ -131,6 +131,10 @@ sim_massLss_lst_2021 <- unique(qdt_2021$LIT) %>%
 
 str(sim_massLss_lst_2021)
 
+# Summary of simulations of mass per area by LIT spp strat
 
+list_sp_strat_summary <- map(sim_massLss_lst_2021, ~round(colMeans(.x), 0)) %>%
+  bind_rows() %>%
+  mutate(LIT = names(sim_massLss_lst_2021))
 
 
