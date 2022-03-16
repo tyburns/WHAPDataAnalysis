@@ -12,6 +12,7 @@ library(tidyverse)
 library(knitr)
 library(kableExtra)
 library(ggforce)
+
 ```
 
 ```{r run_sims, include=FALSE, echo=FALSE, eval=FALSE}
@@ -19,31 +20,24 @@ library(ggforce)
 source("SimMassPerAreaFun.R", local = knitr::knit_global())
 source("SimPropAreaFun.R", local = knitr::knit_global())
 source("SimMassBySuLITFun.R", local = knitr::knit_global())
+
 ```
 
 ## Notes
 
-Review this and report any mistakes to me, please. You can print the html to pdf and use the pdf to comment and mark corrections.
+This document shows the results for all units in all refuges measured each year. The document provides a few points of view of the results, for example, some graphs and tables. All data are saved in files and you can format and view them in any desired way. However, the files are too large to sync with GitHub, so you have to run the code in your computer.
 
-This document shows the results for all units in all refuges measured each year. The document provides a few points of view of the results, for example, some graphs and lots of tables as requested. All data are saved in files and you can format and view them in any desired way. However, the files are too large to sync with GitHub, so you have to run the code in your computer (or tell me where you want me to put the files and go from there).
-
-To make the files with all output in your computer, pull everything from github and open the markdown that created this output:
+To make the files with all output those files, pull everything from github and open the markdown that created this output:
 
 WHAPDataAnalysis/SimBasedEstimates/WHAP_sim_stats.Rmd.
 
-1. Go to the "read_rds" chunk and set it to eval=FALSE.
-2. Go to the "sims" chunk and set it to eval=TRUE.
-3. Knit.
+Go to the "read_rds" chunk and set it to eval=FALSE.
+Go to the "sims" chunk and set it to eval=TRUE.
+Knit.
 
 Output files will be in the outputFiles folder and their names should be evident in the "sims" shunk.
 
-You can copy any of the figures from this document, "as is," simply right-clicking on the figure in the html version and copying the image. If you want to manipulate the graphs, you can copy the ggplot calls from here into a new script and modify them as desired, or you can put the data into your favorite graphing software.
 
-You can manually select and copy the tables and paste them into Excel, Word, etc., and they will be pasted with a table structure that you can then manipulate at will. Or you can manipulate the data in the rds files with R. 
-
-!! When and if you commit in your local git, make sure to gitignore the rds files created!!!
-
-If you do not, GitHub will throw a wrench into your workflow when you push, and you will be stuck until you find the workaround, which is a direct git command in the terminal that I do not remember now.
 
 <!-- Perform simulations and calculate results for all years -->
 
@@ -56,18 +50,20 @@ vpcp_path_2021 <- "inputFiles/vpcp2021.rds"
 qdt_path_2019 <- "inputFiles/qdt_2019.rds"
 qdt_path_2020 <- "inputFiles/qdt_2020.rds"
 qdt_path_2021 <- "inputFiles/qdt_2021.rds"
+
 ```
 
 
 ```{r read_rds, include=FALSE, echo=FALSE, eval=TRUE}
 # Run this to reload results after you have run the simulations below once.
-# Once you have done the simulations once, the following files will be
+# Once you have done the simulations once, the following files will be 
 # available in your local computer.
-# !!! Make sure to gitignore these files or you will
-# mess up your github workflow.!!
+# !!! Make sure to gitignore these files or you will 
+# mess up your github workflow.!! 
 shmi_2019 <- read_rds("outputFiles/shmi_2019.rds")
 shmi_2020 <- read_rds("outputFiles/shmi_2020.rds")
 shmi_2021 <- read_rds("outputFiles/shmi_2021.rds")
+
 ```
 
 
@@ -75,42 +71,37 @@ shmi_2021 <- read_rds("outputFiles/shmi_2021.rds")
 
 set.seed(141416)
 
-shmi_2019 <- sim_mass_su_lit(
-  .vpcp_path = vpcp_path_2019,
-  .qdt_path = qdt_path_2019,
-  .nsim = 4000
-)
+shmi_2019 <- sim_mass_su_lit(.vpcp_path = vpcp_path_2019,
+                             .qdt_path = qdt_path_2019,
+                             .nsim = 4000)
 
 write_rds(shmi_2019, "outputFiles/shmi_2019.rds")
 
 
 set.seed(141417)
 
-shmi_2020 <- sim_mass_su_lit(
-  .vpcp_path = vpcp_path_2020,
-  .qdt_path = qdt_path_2020,
-  .nsim = 4000
-)
+shmi_2020 <- sim_mass_su_lit(.vpcp_path = vpcp_path_2020,
+                             .qdt_path = qdt_path_2020,
+                             .nsim = 4000)
 
 write_rds(shmi_2020, "outputFiles/shmi_2020.rds")
 
 
 set.seed(141418)
 
-shmi_2021 <- sim_mass_su_lit(
-  .vpcp_path = vpcp_path_2021,
-  .qdt_path = qdt_path_2021,
-  .nsim = 4000
-)
+shmi_2021 <- sim_mass_su_lit(.vpcp_path = vpcp_path_2021,
+                             .qdt_path = qdt_path_2021,
+                             .nsim = 4000)
 
 write_rds(shmi_2021, "outputFiles/shmi_2021.rds")
+
 ```
 
 ## Cumulative seed head mass index
 
 Caption:
 
-Cumulative seed head mass index for each refuge in year yyyy plotted against the corresponding cumulative area of subunits. Downward error bars show the lower confidence limit for a "right-side CI": 90% of the sampling distribution is above the lower extreme of the error bar. Solid error bars indicate that the distance from the estimate to the lower CI extreme is less than 25% of the estimate. Dashed bars and asterisks indicate that precision is less than that necessary to achieve sampling goals. Sampling goal at the refuge level is evaluated at the last point of each line, and can be also seen clearly in the first set of three tables, in the last line for each refuge. Equivalent information (scaled to average mass per area for all species across all area measured in each refuge) is presented in the first three tables under the section "Seed head mass index per area for refuges."
+Cumulative seed head mass index for each refuge in year yyyy plotted against the corresponding cumulative area of subunits. Downward error bars show the lower confidence limit for a "right-side CI": 90% of the sampling distribution is above the lower extreme of the error bar. Solid error bars indicate that the distance from the estimate to the lower CI extreme is less than 25% of the estimate. Dashed bars and asterisks indicate that precision is less than that necessary to achieve sampling goals. Sampling goal at the refuge level is evaluated at the last point of each line.
 
 ```{r cum_shmi_plots, echo=FALSE}
 
@@ -120,47 +111,37 @@ cum_tot <- bind_rows(
   shmi_2021$cum_mass_LIT %>% mutate(year = 2021)
 )
 
-for (pg in 1:3) {
-  print(
-    ggplot(
-      data = cum_tot,
-      aes(
-        y = cum_tot_ton,
-        x = cum_area_ha,
-        groups = LIT,
-        color = LIT
-      )
-    ) +
-      geom_line(size = 0.75) +
-      geom_errorbar(
-        aes(
-          ymin = ctt_RightCI90_lwr,
-          ymax = cum_tot_ton,
-          linetype = smpl_obj
-        )
-      ) +
-      geom_point(
-        data = cum_tot %>% dplyr::filter(smpl_obj == "NO"),
-        aes(
-          y = cum_tot_ton + 10,
-          x = cum_area_ha,
-          shape = smpl_obj
-        )
-      ) +
-      scale_shape_manual(values = c(8), guide = "none") +
-      ylab("Cumulative seed head mass index (1000 kg or ton)") +
-      xlab("Cumulative area (ha)") +
-      geom_text(x = 350, y = 40, label = "Equal scales", color = "black") +
-      facet_wrap_paginate(~year,
-        scales = "fixed",
-        nrow = 1,
-        ncol = 1,
-        page = pg
-      )
-  )
-}
+ggplot(data = cum_tot,
+       aes(
+         y = cum_tot_ton,
+         x = cum_area_ha,
+         groups = LIT,
+         color = LIT
+       )
+) +
+  geom_line(size = 0.75) +
+  geom_errorbar(
+    aes(
+      ymin = ctt_RightCI90_lwr,
+      ymax = cum_tot_ton,
+      linetype = smpl_obj
+    )
+  ) +
+  geom_point(data = cum_tot %>% dplyr::filter(smpl_obj == "NO"),
+             aes(
+               y = cum_tot_ton + 10,
+               x = cum_area_ha,
+               shape = smpl_obj)) +
+  scale_shape_manual(values = c(8), guide = "none") +
+  ylab("Cumulative seed head mass index (1000 kg or ton)") +
+  xlab("Cumulative area (ha)") +
+  geom_text(x = 350, y = 40, label = "Equal scales", color = "black") +
+  facet_grid(rows = vars(year))
+
+
 ```
 
+## Bigger figures of the same data
 
 ```{r big_figs, echo=FALSE}
 
@@ -207,6 +188,7 @@ for (pg in 1:3) {
       )
   )
 }
+
 ```
 
 
@@ -214,66 +196,110 @@ for (pg in 1:3) {
 
 ```{r table_hds, echo=FALSE}
 
-tbl_hds0 <- c(
-  "Unit",
-  "RtCI90_lwr",
-  "CI90lwr",
-  "Cumulative Mass (ton)",
-  "CI90upr",
-  "MOE/Mean",
-  "Cumulative Area (ha)",
-  "Objective"
+tbl_hds0 <- c("Unit",
+             "RtCI90_lwr (ton)",
+             "CI90lwr (ton)",
+             "Cumulative Mass (ton)",
+             "CI90upr (ton)",
+             "MOE/Mean",
+             "Cumulative Area (ha)",
+             "Objective",
+             "Mass (g/m2)",
+             "SE (g/m2)",
+             "CI90lwr (g/m2)",
+             "CI90upr (g/m2)"
 )
 
 
-tbl_hds1 <- c(
-  "Unit",
-  "Mass (g/m2)",
-  "SE",
-  "CI90lwr",
-  "CI90upr",
-  "RtCI90_lwr",
-  "MOE/Mean"
-)
+tbl_hds1 <- c("Unit",
+             "Mass (g/m2)",
+             "SE",
+             "CI90lwr",
+             "CI90upr",
+             "RtCI90_lwr",
+             "MOE/Mean")
 
 tbl_hds2 <- c(tbl_hds1, "Objective")
+
 ```
 
 ## Cumulative tables
 
 These tables contain the data used for the figures above. Each unit that has a values equal to "Pass" in the last column meets sampling objectives. Each refuge whose last unit has a value equal to "Pass" also meets sampling objectives. Cumulative mass is calculated by adding mas contributed by each unit within refuges after units are sorted within refuges in decreasing order of total mass contributed.
 
+The following definitions apply to the next three tables:
+
+Unit: identification code for management subunit.
+
+RtCI90_lwr (ton): Lower boundary above which 90% of the sampling distribution of cumulative seed head mass index lies. This is a non-central confidence interval that ranges from RtCI90_lwr to plus infinity.
+
+CI90lwr (ton): Lower boundary of the central 90% confidence interval for the cumulative seed head mass index.
+
+Cumulative Mass (ton): Estimated total seed mass index in all units above and in the line considered. For example, it is estimated that units CLS_T13A_T13A, CLS_T17_T17 and CLS_T15_T15:1 had a total of 339 tons of seed head mass index in 2019. 339 is teh value located in the line for CLS_T15_T15:1 and the column labeled Cumulative Mass (ton).
+
+CI90upr (ton):  Upper boundary of the central 90% confidence interval for the cumulative seed mass index.
+
+MOE/Mean: this equals (Cumulative Mass (ton) - RtCI90_lwr (ton)) / (2 * Cumulative Mass (ton)). It is the ratio of the left margin of error to the estimated cumulative mass.
+
+Cumulative Area (ha): Total area of all units above and in the line considered.
+
+Objective: Indicator of whether the unit meets the desired precision according to sampling objectives.
+
+Mass (g/m2): Estimated seed head mass index per unit area in the subunit.
+
+SE (g/m2): Standard error of the previous column.
+
+CI90lwr (g/m2): Lower boundary of the central 90% confidence interval for the estimated seed head mass index per unit area in the subunit.
+
+CI90upr (g/m2): Upper boundary of the central 90% confidence interval for the estimated seed head mass index per unit area in the subunit.
+
+
+
 ```{r cum_tbl}
 
 shmi_2019$cum_mass_LIT %>%
   ungroup() %>%
+  full_join(shmi_2019$tot_mass_su %>%
+              dplyr::select(subunit_ID,
+                            all_sp_g_m2,
+                            se_g_m2,
+                            CI90_lwr,
+                            CI90_upr)) %>%
   dplyr::select(-LIT) %>%
   set_names(nm = tbl_hds0) %>%
-  kable(
-    digits = c(0, 0, 0, 0, 0, 2, 0, 0),
-    caption = "Cumulative seed head mass index for all species in 2019 (ton)"
-  ) %>%
+  kable(digits = c(0, 0, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0),
+    caption = "Cumulative and individual unit seed head mass index for all species in 2019 (g/m2)") %>%
   kable_styling(full_width = FALSE)
 
 shmi_2020$cum_mass_LIT %>%
   ungroup() %>%
+  full_join(shmi_2020$tot_mass_su %>%
+              dplyr::select(subunit_ID,
+                            all_sp_g_m2,
+                            se_g_m2,
+                            CI90_lwr,
+                            CI90_upr)) %>%
   dplyr::select(-LIT) %>%
   set_names(nm = tbl_hds0) %>%
-  kable(
-    digits = c(0, 0, 0, 0, 0, 2, 0, 0),
-    caption = "Cumulative seed head mass index for all species in 2020 (ton)"
-  ) %>%
+  kable(digits = c(0, 0, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0),
+    caption = "Cumulative and individual unit seed head mass index for all species in 2020 (g/m2)") %>%
   kable_styling(full_width = FALSE)
 
 shmi_2021$cum_mass_LIT %>%
   ungroup() %>%
+  full_join(shmi_2021$tot_mass_su %>%
+              dplyr::select(subunit_ID,
+                            all_sp_g_m2,
+                            se_g_m2,
+                            CI90_lwr,
+                            CI90_upr)) %>%
   dplyr::select(-LIT) %>%
   set_names(nm = tbl_hds0) %>%
-  kable(
-    digits = c(0, 0, 0, 0, 0, 2, 0, 0),
-    caption = "Cumulative seed head mass index for all species in 2021 (ton)"
-  ) %>%
+  kable(digits = c(0, 0, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0),
+    caption = "Cumulative and individual unit seed head mass index for all species in 2021 (g/m2)") %>%
   kable_styling(full_width = FALSE)
+
+
 ```
 
 
@@ -288,29 +314,24 @@ Caption:
 shmi_2019$tot_mass_su %>%
   dplyr::select(-smpl_obj) %>%
   set_names(nm = tbl_hds1) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for all species in 2019 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for all species in 2019 (g/m2)") %>%
   kable_styling(full_width = FALSE)
 
 shmi_2020$tot_mass_su %>%
   dplyr::select(-smpl_obj) %>%
   set_names(nm = tbl_hds1) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for all species in 2020 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for all species in 2020 (g/m2)") %>%
   kable_styling(full_width = FALSE)
 
 shmi_2021$tot_mass_su %>%
   dplyr::select(-smpl_obj) %>%
   set_names(nm = tbl_hds1) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for all species in 2021 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for all species in 2021 (g/m2)") %>%
   kable_styling(full_width = FALSE)
+
 ```
 
 ### Smartweed
@@ -322,11 +343,10 @@ Caption:
 shmi_2021$sw_mass_m2 %>%
   dplyr::select(-smpl_obj) %>%
   set_names(nm = tbl_hds1) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for Smartweed in 2021 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for Smartweed in 2021 (g/m2)") %>%
   kable_styling(full_width = FALSE)
+
 ```
 
 
@@ -339,30 +359,25 @@ Caption:
 shmi_2019$st_mass_m2 %>%
   dplyr::select(-smpl_obj) %>%
   set_names(nm = tbl_hds1) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for Swamp Timothy in 2019 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for Swamp Timothy in 2019 (g/m2)") %>%
   kable_styling(full_width = FALSE)
 
 shmi_2020$st_mass_m2 %>%
   dplyr::select(-smpl_obj) %>%
   set_names(nm = tbl_hds1) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for Swamp Timothy in 2020 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for Swamp Timothy in 2020 (g/m2)") %>%
   kable_styling(full_width = FALSE)
 
 
 shmi_2021$st_mass_m2 %>%
   dplyr::select(-smpl_obj) %>%
   set_names(nm = tbl_hds1) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for Swamp Timothy in 2021 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for Swamp Timothy in 2021 (g/m2)") %>%
   kable_styling(full_width = FALSE)
+
 ```
 
 
@@ -375,30 +390,25 @@ Caption:
 shmi_2019$wg_mass_m2 %>%
   dplyr::select(-smpl_obj) %>%
   set_names(nm = tbl_hds1) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for Watergrass in 2019 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for Watergrass in 2019 (g/m2)") %>%
   kable_styling(full_width = FALSE)
 
 shmi_2020$wg_mass_m2 %>%
   dplyr::select(-smpl_obj) %>%
   set_names(nm = tbl_hds1) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for Watergrass in 2020 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for Watergrass in 2020 (g/m2)") %>%
   kable_styling(full_width = FALSE)
 
 
 shmi_2021$wg_mass_m2 %>%
   dplyr::select(-smpl_obj) %>%
   set_names(nm = tbl_hds1) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for Watergrass in 2021 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for Watergrass in 2021 (g/m2)") %>%
   kable_styling(full_width = FALSE)
+
 ```
 
 
@@ -413,15 +423,11 @@ shmi_2019$lit_stats %>%
     LIT,
     starts_with("tot")
   ) %>%
-  mutate(
-    moe_p = (tot_g_m2_mn - tot_g_m2_RightCI90_lwr) / tot_g_m2_mn,
-    smpl_obj = ifelse(moe_p > 0.25, "NO", "Pass")
-  ) %>%
+  mutate(moe_p = (tot_g_m2_mn - tot_g_m2_RightCI90_lwr) / tot_g_m2_mn,
+         smpl_obj = ifelse(moe_p > 0.25, "NO", "Pass")) %>%
   set_names(nm = tbl_hds2) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2, 0),
-    caption = "Average seed head mass index for all species in 2019 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2, 0),
+    caption = "Average seed head mass index for all species in 2019 (g/m2)") %>%
   kable_styling(full_width = FALSE)
 
 shmi_2020$lit_stats %>%
@@ -429,15 +435,11 @@ shmi_2020$lit_stats %>%
     LIT,
     starts_with("tot")
   ) %>%
-  mutate(
-    moe_p = (tot_g_m2_mn - tot_g_m2_RightCI90_lwr) / tot_g_m2_mn,
-    smpl_obj = ifelse(moe_p > 0.25, "NO", "Pass")
-  ) %>%
+  mutate(moe_p = (tot_g_m2_mn - tot_g_m2_RightCI90_lwr) / tot_g_m2_mn,
+         smpl_obj = ifelse(moe_p > 0.25, "NO", "Pass")) %>%
   set_names(nm = tbl_hds2) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2, 0),
-    caption = "Average seed head mass index for all species in 2020 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2, 0),
+    caption = "Average seed head mass index for all species in 2020 (g/m2)") %>%
   kable_styling(full_width = FALSE)
 
 shmi_2021$lit_stats %>%
@@ -445,16 +447,13 @@ shmi_2021$lit_stats %>%
     LIT,
     starts_with("tot")
   ) %>%
-  mutate(
-    moe_p = (tot_g_m2_mn - tot_g_m2_RightCI90_lwr) / tot_g_m2_mn,
-    smpl_obj = ifelse(moe_p > 0.25, "NO", "Pass")
-  ) %>%
+  mutate(moe_p = (tot_g_m2_mn - tot_g_m2_RightCI90_lwr) / tot_g_m2_mn,
+         smpl_obj = ifelse(moe_p > 0.25, "NO", "Pass")) %>%
   set_names(nm = tbl_hds2) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2, 0),
-    caption = "Average seed head mass index for all species in 2021 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2, 0),
+    caption = "Average seed head mass index for all species in 2021 (g/m2)") %>%
   kable_styling(full_width = FALSE)
+
 ```
 
 ### Smartweed
@@ -468,11 +467,10 @@ shmi_2021$lit_stats %>%
   ) %>%
   mutate(moe_p = (sw_g_m2_mn - sw_g_m2_RightCI90_lwr) / sw_g_m2_mn) %>%
   set_names(nm = tbl_hds2[1:7]) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for Smartweed in 2021 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for Smartweed in 2021 (g/m2)") %>%
   kable_styling(full_width = FALSE)
+
 ```
 
 
@@ -487,10 +485,8 @@ shmi_2019$lit_stats %>%
   ) %>%
   mutate(moe_p = (st_g_m2_mn - st_g_m2_RightCI90_lwr) / st_g_m2_mn) %>%
   set_names(nm = tbl_hds2[1:7]) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for Swamp Timothy in 2019 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for Swamp Timothy in 2019 (g/m2)") %>%
   kable_styling(full_width = FALSE)
 
 shmi_2020$lit_stats %>%
@@ -500,10 +496,8 @@ shmi_2020$lit_stats %>%
   ) %>%
   mutate(moe_p = (st_g_m2_mn - st_g_m2_RightCI90_lwr) / st_g_m2_mn) %>%
   set_names(nm = tbl_hds2[1:7]) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for Swamp Timothy in 2020 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for Swamp Timothy in 2020 (g/m2)") %>%
   kable_styling(full_width = FALSE)
 
 shmi_2021$lit_stats %>%
@@ -513,11 +507,10 @@ shmi_2021$lit_stats %>%
   ) %>%
   mutate(moe_p = (st_g_m2_mn - st_g_m2_RightCI90_lwr) / st_g_m2_mn) %>%
   set_names(nm = tbl_hds2[1:7]) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for Swamp Timothy in 2021 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for Swamp Timothy in 2021 (g/m2)") %>%
   kable_styling(full_width = FALSE)
+
 ```
 
 ### Watergrass
@@ -531,10 +524,8 @@ shmi_2019$lit_stats %>%
   ) %>%
   mutate(moe_p = (wg_g_m2_mn - wg_g_m2_RightCI90_lwr) / wg_g_m2_mn) %>%
   set_names(nm = tbl_hds2[1:7]) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for Watergrass in 2019 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for Watergrass in 2019 (g/m2)") %>%
   kable_styling(full_width = FALSE)
 
 shmi_2020$lit_stats %>%
@@ -544,10 +535,8 @@ shmi_2020$lit_stats %>%
   ) %>%
   mutate(moe_p = (wg_g_m2_mn - wg_g_m2_RightCI90_lwr) / wg_g_m2_mn) %>%
   set_names(nm = tbl_hds2[1:7]) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for Watergrass in 2020 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for Watergrass in 2020 (g/m2)") %>%
   kable_styling(full_width = FALSE)
 
 shmi_2021$lit_stats %>%
@@ -557,9 +546,9 @@ shmi_2021$lit_stats %>%
   ) %>%
   mutate(moe_p = (wg_g_m2_mn - wg_g_m2_RightCI90_lwr) / wg_g_m2_mn) %>%
   set_names(nm = tbl_hds2[1:7]) %>%
-  kable(
-    digits = c(0, 0, 1, 0, 0, 0, 2),
-    caption = "Average seed head mass index for Watergrass in 2021 (g/m2)"
-  ) %>%
+  kable(digits = c(0, 0, 1, 0, 0, 0, 2),
+    caption = "Average seed head mass index for Watergrass in 2021 (g/m2)") %>%
   kable_styling(full_width = FALSE)
+
 ```
+

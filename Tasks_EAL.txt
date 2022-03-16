@@ -76,3 +76,9 @@ Go to WHAP 2 proposal and use to add section headings for SOP4.
 SOP 4 – minimum detail on what analysis methods were in WHAP 2021, and short explanation of the new simulation based calculation method WHAP 2022 
 
 – step by step instructions on running the analysis using multiple scripts (modules). New analyses will be added as separate modules.
+
+**************** 4 Mar 2022 *************************************
+
+Do a table with output of Sim Based estimates.
+Include colummns: g/m2 per unit and the corresponding CI.
+Include definition of all columns.
