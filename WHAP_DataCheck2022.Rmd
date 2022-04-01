@@ -1,0 +1,782 @@
+---
+title: "WHAPDataChecks2022"
+output: html_document
+---
+
+
+```{r packages}
+
+library(tidyverse)
+library(magrittr)
+
+```
+
+### Valid file names
+
+Add code to deal with "Survey record" where valid unit names will be read (and maybe other things).
+
+Include survey record file in the list of files necessary.
+
+
+```{r file_name_check_prep}
+
+# Folder should be selectable in the interactive version.
+
+folder <- "~/My Drive/Documents/PROJECTS========/RefugesIMKaylene/WaterbirdHabitat2017/WHAPDataAnalysis/WHAP2021-22/ScriptInput2021/WHAP_2021_ProcessedData_20210902"
+
+vp_fname_val <- c("WHAP_\\d{4}_VantagePolygons_\\d{8}")
+cp_fname_val <- c("WHAP_\\d{4}_CirclePlots_\\d{8}")
+qdt_fname_val <- c("WHAP_\\d{4}_Quadrats_\\d{8}")
+mu_fname_val <- c("WHAP_\\d{4}_ManagementUnits_\\d{8}")
+
+vp_fname_fuz <- c("[a-zA-Z0-9]*[Vv]anta[a-zA-Z0-9]*|[a-zA-Z0-9]*[Pp]olyg[a-zA-Z0-9]*")
+cp_fname_fuz <- c("[a-zA-Z0-9]*[Cc]anta[a-zA-Z0-9]*|[a-zA-Z0-9]*[Pp]lot[a-zA-Z0-9]*")
+qdt_fname_fuz <- c("[a-zA-Z0-9]*[Qq]uad[a-zA-Z0-9]*|[a-zA-Z0-9]*[Qq]dt[a-zA-Z0-9]*")
+mu_fname_fuz <- c("[a-zA-Z0-9]*[Mm]anag[a-zA-Z0-9]*|[a-zA-Z0-9]*[Uu]nit[a-zA-Z0-9]*")
+
+# File name messages
+
+file_msg_fun <- function() {
+  # arguments are the results of tests
+  # output are "success" and messages indicating what tests failed
+}
+```
+
+```{r file_name_tests}
+
+file_names <- list.files(path = folder) # get file names for tests
+
+# Test presence of each necessary file and number of matches.
+# There should be only one match per test.
+
+vp_fname_match <- str_detect(file_names, vp_fname_val) %>% sum()
+cp_fname_match <- str_detect(file_names, cp_fname_val) %>% sum()
+qdt_fname_match <- str_detect(file_names, qdt_fname_val) %>% sum()
+mu_fname_match <- str_detect(file_names, mu_fname_val) %>% sum()
+
+file_names_pass <- c(
+  vp_fname_match,
+  cp_fname_match,
+  qdt_fname_match,
+  mu_fname_match
+) %>%
+  setequal(c(1, 1, 1, 1))
+
+# If there is more than one match per file then ???
+
+# if there is one or more files without match then ???
+
+vp_fz_fname <- str_detect(file_names, vp_fname_fuz) %>% sum()
+cp_fz_fname <- str_detect(file_names, cp_fname_fuz) %>% sum()
+qdt_fz_fname <- str_detect(file_names, qdt_fname_fuz) %>% sum()
+mu_fz_fname <- str_detect(file_names, mu_fname_fuz) %>% sum()
+
+if (file_names_pass) {
+  print("File names are correct. PASS.")
+} else {
+  print("At least one file name is incorrect. Please, use the correct file names.")
+}
+```
+
+### Read files
+
+```{r read_files}
+
+if (file_names_pass) {
+  vps0 <- read_csv(grep("VantagePolygons",
+    file_names,
+    value = TRUE
+  ))
+
+  cps0 <- read_csv(grep("CirclePlots",
+    file_names,
+    value = TRUE
+  ))
+
+  qdt0 <- read_csv(grep("Quadrats",
+    file_names,
+    value = TRUE
+  ))
+
+  mus0 <- read_csv(grep("ManagementUnits",
+    file_names,
+    value = TRUE
+  ))
+}
+```
+
+```{r check_year}
+
+file_yrs <- str_extract(
+  file_names,
+  "_[:digit:]{4}_"
+) %>%
+  str_remove_all("_") %>%
+  as.numeric()
+
+years_are_equal <- file_yrs %>%
+  unique() %>%
+  length() %>%
+  `==`(1)
+
+if (years_are_equal) {
+  print("All files are for the same year: PASS")
+} else {
+  print("File names indicate they do not refer to the same year. Please, provide the correct files with correct filenames.")
+}
+```
+
+
+### Valid column names
+
+```{r column_name_check_prep}
+
+## vantage polygons
+vps_cols_val <- sort(c( #=====
+  "areaVisible_ac",
+  "decimalLatitude",
+  "decimalLongitude",
+  "eventDate",
+  "eventRemarks",
+  "GlobalID",
+  "LIT",
+  "proportionVisibleArea",
+  "recordedBy",
+  "stratum",
+  "subunitName",
+  "taxonID",
+  "unitName",
+  "vernacularName"
+))
+
+
+## circle plots
+cps_cols_val <- sort(c( #=====
+  "decimalLatitude",
+  "decimalLongitude",
+  "eventDate",
+  "eventRemarks",
+  "GlobalID",
+  "LIT",
+  "plotStatus",
+  "proportionVisibleArea",
+  "recordedBy",
+  "stratum",
+  "subunitName",
+  "taxonID",
+  "unitName",
+  "vernacularName"
+))
+
+
+## quadrats
+qdt_cols_val <- sort(c( #=====
+  "decimalLatitude",
+  "decimalLongitude",
+  "distanceCP_m",
+  "distanceVP_m",
+  "eventDate",
+  "eventRemarks",
+  "GlobalID_CP",
+  "GlobalID",
+  "GlobalID_seed",
+  "GlobalID_VP",
+  "LIT",
+  "managementAction",
+  "measurementType",
+  "measurementValue",
+  "nSeedHeads",
+  "plantHeight",
+  "quadratSize",
+  "recordedBy",
+  "stratum",
+  "subunitName",
+  "taxonID",
+  "unitName",
+  "vernacularName"
+))
+
+
+## management units
+mus_cols_val <- sort(c( #=====
+  "acreage",
+  "LIT",
+  "refugeName",
+  "subunitName",
+  "unitName"
+))
+```
+
+```{r column_name_tests}
+
+# function to find invalid column names
+invalid_cols <- function(df, valid_cols) {
+  cols_in_df <- names(df)
+  cols_in_df_not_valid <- setdiff(cols_in_df, valid_cols) %>%
+    ifelse(length(.) == 0, "None", .)
+  cols_missing_in_df <- setdiff(valid_cols, cols_in_df) %>%
+    ifelse(length(.) == 0, "None", .)
+  out <- list(
+    in_not_valid = cols_in_df_not_valid,
+    missing = cols_missing_in_df
+  )
+}
+
+col_error_vps <- invalid_cols(
+  df = vps0,
+  valid_cols = vps_cols_val
+)
+
+col_error_cps <- invalid_cols(
+  df = cps0,
+  valid_cols = cps_cols_val
+)
+
+col_error_qdt <- invalid_cols(
+  df = qdt0,
+  valid_cols = qdt_cols_val
+)
+
+col_error_mus <- invalid_cols(
+  df = mus0,
+  valid_cols = mus_cols_val
+)
+
+
+
+
+```
+
+The following column name errors were found:
+
+Unrecognized columns in Vantage Points file: `r col_error_vps$in_not_valid`  
+
+Columns missing in Vantage Points file: `r col_error_vps$missing`  
+
+
+### Valid values within columns
+
+```{r valid_column_entries}
+
+## vernacularName #=====
+vernac_name_valid_range <- sort(c(
+  "Other cover",
+  "Watergrass",
+  "Swamp Timothy",
+  "Smartweed"
+))
+
+## LIT codes #=====
+LIT_valid_range <- sort(c(
+  "KRN",
+  "PIX",
+  "MDC",
+  "SAC",
+  "SLW",
+  "CLS"
+))
+
+## stratum #=====
+stratum_valid_range <- sort(c(
+  "high",
+  "medium",
+  "low",
+  "NA"
+))
+
+## taxonID #=====
+taxonID_valid_range <- sort(c(
+  "41605",
+  "502210",
+  "823756"
+))
+
+## plotStatus #=====
+plot_status_valid_range <- sort(c(
+  "Complete",
+  "Inaccessible",
+  "NoFoodVisible"
+))
+
+## managementAction #=====
+management_action_valid_range <- sort(c(
+  "mowed",
+  "none"
+))
+
+## measurementType #=====
+measure_type_valid_range <- sort(c(
+  "sh_length_mm",
+  "sh_width_mm",
+  "f2t_length_mm"
+))
+
+## quadratSize #=====
+qdt_size_valid_range <- sort(c(
+  "15x15cm",
+  "30x30cm",
+  "5x5cm"
+))
+
+## refugeName #=====
+refuge_name_valid_range <- sort(c(
+  "STONE LAKES NATIONAL WILDLIFE REFUGE",
+  "MODOC NATIONAL WILDLIFE REFUGE",
+  "PIXLEY NATIONAL WILDLIFE REFUGE",
+  "KERN NATIONAL WILDLIFE REFUGE"
+))
+
+## unitName #======
+unit_name_valid_range <- sort(c(
+  "Lewis 1",
+  "Lewis 6",
+  "HQ-7",
+  "LIC",
+  "Beach Lake 3",
+  "Beach Lake 1",
+  "HQ-6",
+  "Lewis 2",
+  "Beach Lake 2",
+  "HQ-5",
+  "Grandma Tract 10",
+  "Grandma Tract 2",
+  "Grandma Tract 3",
+  "Grandma Tract 4",
+  "Grandma Tract 7",
+  "Grandma Tract 8",
+  "Grandma Tract 9",
+  "Grandma Tract 11",
+  "Gadwall",
+  "J Pond",
+  "House Field",
+  "Matney 3",
+  "Matney 4 North",
+  "Matney 8",
+  "South Dam Pond",
+  "Matney 6",
+  "Matney 4 South",
+  "Matney 7",
+  "Flournoy Pond",
+  "Duck Ponds",
+  "Upper Goose Pond",
+  "Lower Goose Pond",
+  "Middle Goose Pond",
+  "1",
+  "8B",
+  "6",
+  "7A",
+  "9A",
+  "9B",
+  "8A",
+  "7B",
+  "4",
+  "4A",
+  "3A",
+  "3",
+  "2",
+  "2A",
+  "14",
+  "6A",
+  "5B",
+  "5A",
+  "4B"
+))
+
+## subunitName. #=====
+## Should it be an external file to be updated externally by some SOP?
+subunit_name_valid_range <- sort(c(
+  "22",
+  "27a",
+  "57",
+  "Beach Lake 3",
+  "Beach Lake 1",
+  "HQ-6",
+  "Lewis 2",
+  "Beach Lake 2",
+  "HQ-5",
+  "Grandma Tract 10",
+  "Grandma Tract 2",
+  "Grandma Tract 3",
+  "Grandma Tract 4",
+  "Grandma Tract 7",
+  "Grandma Tract 8",
+  "Grandma Tract 9",
+  "Grandma Tract 11",
+  "Gadwall",
+  "J Pond",
+  "House Field",
+  "Matney 3",
+  "Matney 4 North",
+  "Matney 8",
+  "South Dam Pond",
+  "Matney 6",
+  "Matney 4 South",
+  "Matney 7",
+  "Flournoy Pond",
+  "Duck Ponds",
+  "Upper Goose Pond",
+  "Lower Goose Pond",
+  "Middle Goose Pond",
+  "1",
+  "8B",
+  "6",
+  "7A",
+  "9A",
+  "9B",
+  "8A",
+  "7B",
+  "4",
+  "4A",
+  "3A",
+  "3",
+  "2",
+  "2A",
+  "14-A",
+  "14-B",
+  "14-C",
+  "14-D",
+  "14-E",
+  "14-F",
+  "14-G",
+  "4A-1",
+  "4A-2",
+  "4A-3",
+  "4A-4",
+  "4A-5",
+  "4A-6",
+  "4A-7",
+  "4B-1",
+  "4B-2",
+  "4B-3",
+  "4B-4",
+  "5A-1",
+  "5A-3",
+  "5A-4",
+  "5A-5",
+  "5A-6",
+  "5A-7",
+  "5B-1",
+  "5B-2",
+  "5B-3",
+  "5B-5",
+  "5B-6",
+  "5B-7",
+  "5B-8",
+  "6A-1",
+  "6A-2",
+  "6A-3",
+  "6A-4",
+  "6A-5"
+))
+
+# Event date. # =====
+event_date_valid_range <- c(
+      min_date = as.Date("2019-01-01"),
+      max_date = Sys.Date()
+    )
+
+# Area visible. # =====
+area_visible_valid_range <- c( # in acres
+      min_area_visible_ac = 0,
+      max_area_visible_ac = 40
+    )
+
+# Proportion of area visible. # =====
+prop_visible_area_valid_range <- c(
+      min_prop_visible_area = 0,
+      max_prop_visible_area = 1)
+
+# Plant height. # =====
+plant_height_valid_range <- c( # in cm
+      min_plant_height = 0,
+      max_plant_height = 200
+    )
+
+# Measure value. # =====
+measure_value_valid_range <- list(
+  f2t_length_mm = c(
+    min_measure_value_valid_range = -150,
+    max_measure_value_valid_range = 500
+  ),
+  sh_length_mm = c(
+    min_measure_value_valid_range = 0,
+    max_measure_value_valid_range = 50
+  ),
+  sh_width_mm = c(
+    min_measure_value_valid_range = 0,
+    max_measure_value_valid_range = 50
+  )
+)
+
+# Distance 2 cp. # =====
+dist_cp_valid_range <- c( # assume to be in m
+  min_disp_cp = 0,
+  max_dist_cp = 500
+)
+
+# Distance 2 vp. # =====
+dist_vp_valid_range <- c( # assume to be in m
+  min_disp_cp = 0,
+  max_dist_cp = 500
+)
+
+# Acreage. # =====
+acreage_valid_range <- c( # acre
+  min_disp_cp = 0,
+  max_dist_cp = 500
+)
+
+# nSeedheads. # ====
+nSeedHeads_valid_range <- c(
+      min_seedh_number = 0,
+      max_seedh_number = 300
+)
+
+
+
+
+
+# Make a named list with all valid ranges. # ====
+# For each column name, get() the name from the list and compare to contents
+# map a check function through the columns and the following list? or something like that
+
+valid_domains <- list( #=====
+  LIT = list(
+    class = "character",
+    range = LIT_valid_range
+  ),
+  unitName = list(
+    class = "character",
+    range = unit_name_valid_range
+  ),
+  subunitName = list(
+    class = "character",
+    range = subunit_name_valid_range
+  ),
+  eventDate = list(
+    class = "date",
+    range = event_date_valid_range
+  ),
+  areaVisible_ac = list(
+    class = "numeric",
+    range = area_visible_valid_range
+  ),
+  taxonID = list(
+    class = "character",
+    range = taxonID_valid_range
+  ),
+  vernacularName = list(
+    class = "character",
+    range = vernac_name_valid_range
+  ),
+  stratum = list(
+    class = "character",
+    range = stratum_valid_range
+  ),
+  proportionVisibleArea = list(
+    class = "numeric",
+    range = prop_visible_area_valid_range
+  ),
+  plotStatus = list(
+    class = "character",
+    range = plot_status_valid_range
+  ),
+  quadratSize = list(
+    class = "character",
+    range = qdt_size_valid_range
+  ),
+  managementAction = list(
+    class = "character",
+    range = management_action_valid_range
+  ),
+  plantHeight = list(
+    class = "numeric",
+    range = plant_height_valid_range
+  ),
+  nSeedHeads = list(
+    class = "numeric",
+    range = nSeedHeads_valid_range
+  ),
+  measurementType = list(
+    class = "character",
+    range = measure_type_valid_range
+    ),
+  measurementValue = list(
+    class = "numeric",
+    range = measure_value_valid_range
+    ),
+  distanceCP_m = list(
+    class = "numeric",
+    range = dist_cp_valid_range
+    ),
+  distanceVP_m = list(
+    class = "numeric",
+    range = dist_vp_valid_range
+    ),
+  refugeName = list(
+    class = "character",
+    range = refuge_name_valid_range
+    ),
+  acreage = list(
+    class = "numeric",
+    range = acreage_valid_range
+    )
+)
+
+
+
+
+
+```
+
+```{r check_col_ranges}
+
+# TBD
+
+
+```
+
+
+
+
+```{r check_column_ranges, eval=FALSE}
+
+# check vernacular names
+setdiff(
+  unique(vps0$vernacularName),
+  vernac_names
+)
+setdiff(
+  unique(cps0$vernacularName),
+  vernac_names
+)
+setdiff(
+  unique(qdt0$vernacularName),
+  vernac_names
+)
+
+# check LIT codes
+setdiff(
+  unique(vps0$LIT),
+  LIT_codes
+)
+setdiff(
+  unique(cps0$LIT),
+  LIT_codes
+)
+setdiff(
+  unique(qdt0$LIT),
+  LIT_codes
+)
+setdiff(
+  unique(mus0$LIT),
+  LIT_codes
+)
+
+# check strata
+setdiff(
+  unique(vps0$stratum),
+  strata
+)
+setdiff(
+  unique(cps0$stratum),
+  strata
+)
+setdiff(
+  unique(qdt0$stratum),
+  strata
+)
+
+# check Taxon ID
+setdiff(
+  unique(vps0$taxonID),
+  taxonIDs
+)
+setdiff(
+  unique(cps0$taxonID),
+  taxonIDs
+)
+setdiff(
+  unique(qdt0$taxonID),
+  taxonIDs
+)
+
+# check plot status
+setdiff(
+  unique(cps0$plotStatus),
+  plot_status
+)
+
+# check management actions
+setdiff(
+  unique(qdt0$managementAction),
+  mgt_actions
+)
+
+# check measurement type
+setdiff(
+  unique(qdt0$measurementType),
+  meas_types
+)
+
+# check quadrat size
+setdiff(
+  unique(qdt0$quadratSize),
+  qdt_sizes
+)
+
+# check refuge name
+setdiff(
+  unique(mus0$refugeName),
+  refuge_names
+)
+
+# check unit names
+setdiff(
+  unique(vps0$unitName),
+  unit_names
+)
+setdiff(
+  unique(cps0$unitName),
+  unit_names
+)
+setdiff(
+  unique(qdt0$unitName),
+  unit_names
+)
+setdiff(
+  unique(mus0$unitName),
+  unit_names
+)
+
+# check subunit names
+setdiff(
+  unique(vps0$subunitName),
+  subunit_names
+)
+setdiff(
+  unique(cps0$subunitName),
+  subunit_names
+)
+setdiff(
+  unique(qdt0$subunitName),
+  subunit_names
+)
+setdiff(
+  unique(mus0$subunitName),
+  subunit_names
+)
+```
+
+
+### Check closure and etc.
+
+### Check that area visible total per subunit 25% to 100 of total
+
+### get list of subunits intended to be surveyed from Survey record
+
+### Get list of units used for each numeric column in each file (SOP table to be completed by Rebeca)
+
+### Check that LIT_strat match needed values for calculations
+
+

@@ -79,6 +79,13 @@ SOP 4 – minimum detail on what analysis methods were in WHAP 2021, and short e
 
 **************** 4 Mar 2022 *************************************
 
-Do a table with output of Sim Based estimates.
-Include colummns: g/m2 per unit and the corresponding CI.
-Include definition of all columns.
+Do a table with output of Sim Based estimates. DONE
+Include colummns: g/m2 per unit and the corresponding CI. DONE
+Include definition of all columns. DONE
+
+********* WHAP 2 ***************
+
+make model d2 mass generic as a function of dimensions.
+Provide examples and refrences of d2mass models.
+(Consider examples of species to model)
+Use d2mass_model object in script assumnig it responds well to predict.
