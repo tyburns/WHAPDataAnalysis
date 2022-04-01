@@ -26,11 +26,10 @@ vignettes/*.pdf
 *.knit.md
 # R Environment Variables
 .Renviron
-<<<<<<< HEAD
+
 .DS_Store
-=======
+
 CompareYears.html
 WHAP_viability_graphs_tables.html
->>>>>>> 3983314341be4d0d7ba6bbfb8f3b90ff68c6216e
 DirichREg_Diagnostics.pdf
 WHAP_DataCheck2022.html
