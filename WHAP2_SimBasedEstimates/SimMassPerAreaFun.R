@@ -79,7 +79,7 @@
 # 1. Get qdt_yyyy file
 # 2. Model mass_g_m2 as an lm() of LIT:species:stratum
 # 3. Get estimates and vcov
-# 4.Simulate 4000 realizations of estimates and back-transform.
+# 4. Simulate 4000 realizations of estimates and back-transform.
 
 ## Function definition =====
 
@@ -179,7 +179,7 @@ sim_mass_area <- function(.qdt_path, .nsim = 1000) {
     map(~ rename_with(.x, .f = function(z) gsub(":", "_", z))) %>%
     map(~ dplyr::select(
       .x,
-      any_of(
+      any_of( # these need to be created programmatically for new species
         c(
           "Smartweed_a.Low",
           "Smartweed_b.Med",

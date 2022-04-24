@@ -29,7 +29,7 @@ This document shows the results for all units in all refuges measured each year.
 
 To make the files with all output those files, pull everything from github and open the markdown that created this output:
 
-WHAPDataAnalysis/SimBasedEstimates/WHAP_sim_stats.Rmd.
+WHAPDataAnalysis/SimBasedEstimates/WHAP2_sim_stats.Rmd.
 
 Go to the "read_rds" chunk and set it to eval=FALSE.
 Go to the "sims" chunk and set it to eval=TRUE.

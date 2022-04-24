@@ -1,0 +1,908 @@
+---
+title: "WHAP Data Checks"
+output: html_document
+---
+
+
+```{r packages, echo=FALSE, message=FALSE}
+
+library(tidyverse)
+library(magrittr)
+library(knitr)
+library(kableExtra)
+```
+
+### Valid file names
+
+<!-- Add code to deal with "Survey record" where valid unit names will be read (and maybe other things). -->
+
+<!-- Include survey record file in the list of files necessary. -->
+
+<!-- Include a file with the valid species vernacularNames and taxon_ID's. -->
+<!-- User input necessary: -->
+<!--  1. List of LIT, units and subunits that should be in the files. See unit_name_valid_range and subunit_name_valid_range below. Code needs to be modified to check validity of LIT-unit-subunit triplets. -->
+<!--  2. List of species that should be in the files. See vernac_name_valid_range and taxonID_valid_range below. -->
+
+```{r file_name_check_prep, echo=FALSE, message=FALSE}
+
+# Folder should be selected in the interactive version.
+
+folder <- "~/My Drive/Documents/PROJECTS========/RefugesIMKaylene/WaterbirdHabitat2017/WHAPDataAnalysis/WHAP2021-22/ScriptInput2021/WHAP_2021_ProcessedData_20210902"
+
+vp_fname_val <- c("WHAP_\\d{4}_VantagePolygons_\\d{8}")
+cp_fname_val <- c("WHAP_\\d{4}_CirclePlots_\\d{8}")
+qdt_fname_val <- c("WHAP_\\d{4}_Quadrats_\\d{8}")
+mu_fname_val <- c("WHAP_\\d{4}_ManagementUnits_\\d{8}")
+
+df_names <- c("vps0", "cps0", "qdt0", "mus0")
+```
+
+```{r file_name_tests, echo=FALSE, message=FALSE}
+
+file_names <- list.files(path = folder) # get file names for tests
+
+# Test presence of each necessary file and number of matches.
+# There should be only one match per test.
+
+vp_fname_match <- str_detect(file_names, vp_fname_val) %>% sum()
+cp_fname_match <- str_detect(file_names, cp_fname_val) %>% sum()
+qdt_fname_match <- str_detect(file_names, qdt_fname_val) %>% sum()
+mu_fname_match <- str_detect(file_names, mu_fname_val) %>% sum()
+
+file_name_matches <- c(
+  vp_fname_match,
+  cp_fname_match,
+  qdt_fname_match,
+  mu_fname_match
+)
+
+df2read <- df_names[file_name_matches == 1]
+
+file_names_pass <- file_name_matches %>%
+  setequal(c(1, 1, 1, 1))
+```
+
+```{r file_name_results, echo=FALSE, message=FALSE, results='asis'}
+
+if (file_names_pass) {
+  cat("File names are correct. PASS.")
+} else {
+  cat("At least one file name is incorrect. Please, use the correct file names.  \n")
+  map2(
+    file_name_matches[file_name_matches != 1],
+    df_names[file_name_matches != 1],
+    ~ cat(paste(
+      "There are ",
+      .x,
+      " files that could be ",
+      .y,
+      " files. Exactly one is needed. \n"
+    ))
+  )
+}
+```
+
+### Read files
+
+```{r read_files, echo=FALSE, message=FALSE}
+
+if ("vps0" %in% df2read) {
+  vps0 <- read_csv(grep("VantagePolygons",
+    paste(folder, file_names, sep = "/"),
+    value = TRUE
+  ),
+  show_col_types = FALSE
+  ) %>%
+    mutate(
+      eventDate = as.Date(eventDate,
+        tryFormats = c("%m/%d/%Y")
+      ),
+      taxonID = as.character(taxonID)
+    )
+}
+
+if ("cps0" %in% df2read) {
+  cps0 <- read_csv(grep("CirclePlots",
+    paste(folder, file_names, sep = "/"),
+    value = TRUE
+  ),
+  show_col_types = FALSE
+  ) %>%
+    mutate(
+      eventDate = as.Date(eventDate,
+        tryFormats = c("%m/%d/%Y")
+      ),
+      taxonID = as.character(taxonID)
+    )
+}
+
+if ("qdt0" %in% df2read) {
+  qdt0 <- read_csv(grep("Quadrats",
+    paste(folder, file_names, sep = "/"),
+    value = TRUE
+  ),
+  show_col_types = FALSE
+  ) %>%
+    mutate(
+      eventDate = as.Date(eventDate,
+        tryFormats = c("%m/%d/%Y")
+      ),
+      taxonID = as.character(taxonID)
+    )
+}
+
+if ("mus0" %in% df2read) {
+  mus0 <- read_csv(grep("ManagementUnits",
+    paste(folder, file_names, sep = "/"),
+    value = TRUE
+  ),
+  show_col_types = FALSE
+  )
+}
+```
+
+```{r check_year, echo=FALSE, message=FALSE, results='asis'}
+
+file_yrs <- str_extract(
+  file_names,
+  "_[:digit:]{4}_"
+) %>%
+  str_remove_all("_") %>%
+  as.numeric()
+
+years_are_equal <- file_yrs %>%
+  unique() %>%
+  length() %>%
+  `==`(1)
+
+if (years_are_equal) {
+  cat("All files are for the same year: PASS.  \n")
+} else {
+  cat("File names indicate they do not refer to the same year. Please, provide the correct files with correct filenames.  \n")
+}
+```
+
+
+### Valid column names
+
+```{r column_name_check_prep, echo=FALSE, message=FALSE}
+
+## vantage polygons #=====
+vps0_cols_val <- sort(c(
+  "areaVisible_ac",
+  "decimalLatitude",
+  "decimalLongitude",
+  "eventDate",
+  "eventRemarks",
+  "GlobalID",
+  "LIT",
+  "proportionVisibleArea",
+  "recordedBy",
+  "stratum",
+  "subunitName",
+  "taxonID",
+  "unitName",
+  "vernacularName"
+),
+na.last = TRUE
+)
+
+
+## circle plots #=====
+cps0_cols_val <- sort(c(
+  "decimalLatitude",
+  "decimalLongitude",
+  "eventDate",
+  "eventRemarks",
+  "GlobalID",
+  "LIT",
+  "plotStatus",
+  "proportionVisibleArea",
+  "recordedBy",
+  "stratum",
+  "subunitName",
+  "taxonID",
+  "unitName",
+  "vernacularName"
+),
+na.last = TRUE
+)
+
+
+## quadrats #=====
+qdt0_cols_val <- sort(c(
+  "decimalLatitude",
+  "decimalLongitude",
+  "distanceCP_m",
+  "distanceVP_m",
+  "eventDate",
+  "eventRemarks",
+  "GlobalID_CP",
+  "GlobalID",
+  "GlobalID_seed",
+  "GlobalID_VP",
+  "LIT",
+  "managementAction",
+  "measurementType",
+  "measurementValue",
+  "nSeedHeads",
+  "plantHeight",
+  "quadratSize",
+  "recordedBy",
+  "stratum",
+  "subunitName",
+  "taxonID",
+  "unitName",
+  "vernacularName"
+),
+na.last = TRUE
+)
+
+
+## management units #=====
+mus0_cols_val <- sort(c(
+  "acreage",
+  "LIT",
+  "refugeName",
+  "subunitName",
+  "unitName"
+),
+na.last = TRUE
+)
+```
+
+```{r column_name_test, echo=FALSE, message=FALSE}
+
+# Function to find invalid column names
+invalid_cols <- function(df_nm) {
+  th_df <- get(df_nm)
+  valid_cols <- get(paste0(df_nm, "_cols_val"))
+  cols_in_df <- names(th_df)
+  cols_in_df_not_valid <- setdiff(cols_in_df, valid_cols) %>%
+    ifelse(length(.) == 0, "None", .)
+  cols_missing_in_df <- setdiff(valid_cols, cols_in_df) %>%
+    ifelse(length(.) == 0, "None", .)
+  out <- list(
+    in_not_valid = cols_in_df_not_valid,
+    missing = cols_missing_in_df
+  )
+}
+
+col_errors <- map(
+  df2read,
+  ~ invalid_cols(.x)
+) %>%
+  set_names(df2read)
+```
+
+### Checking column names
+
+```{r column_name_results, echo=FALSE, message=FALSE, results='asis'}
+
+for (df_nm in df2read) {
+  cat(paste("#### Unrecognized columns in ", df_nm, ":  \n"))
+  cat(col_errors[[df_nm]][["in_not_valid"]])
+  cat("\n\n")
+  cat(paste("#### Missing columns in ", df_nm, ":  \n"))
+  cat(col_errors[[df_nm]][["missing"]])
+  cat("\n\n")
+}
+```
+
+
+### Valid values within columns
+
+Look at these in the raw code or modify code to output them, for example, by changing echo from FALSE to TRUE.
+
+```{r valid_column_entries, echo=FALSE, message=FALSE}
+
+## vernacularName #=====
+vernac_name_valid_range <- sort(c(
+  "Other cover",
+  "Watergrass",
+  "Swamp Timothy",
+  "Smartweed"
+))
+
+## LIT codes #=====
+LIT_valid_range <- sort(c(
+  "KRN",
+  "PIX",
+  "MDC",
+  "SAC",
+  "SLW",
+  "CLS"
+))
+
+## stratum #=====
+stratum_valid_range <- sort(c(
+  "high",
+  "medium",
+  "low",
+  NA
+),
+na.last = TRUE
+)
+
+## taxonID #=====
+taxonID_valid_range <- sort(c(
+  "41605",
+  "502210",
+  "823756",
+  NA
+),
+na.last = TRUE
+)
+
+## plotStatus #=====
+plot_status_valid_range <- sort(c(
+  "Complete",
+  "Inaccessible",
+  "NoFoodVisible"
+),
+na.last = TRUE
+)
+
+## managementAction #=====
+management_action_valid_range <- sort(c(
+  "mowed",
+  "none"
+),
+na.last = TRUE
+)
+
+## measurementType #=====
+measure_type_valid_range <- sort(c(
+  "sh_length_mm",
+  "sh_width_mm",
+  "f2t_length_mm"
+),
+na.last = TRUE
+)
+
+## quadratSize #=====
+qdt_size_valid_range <- sort(c(
+  "15x15cm",
+  "30x30cm",
+  "5x5cm"
+),
+na.last = TRUE
+)
+
+## refugeName #=====
+refuge_name_valid_range <- sort(c(
+  "STONE LAKES NATIONAL WILDLIFE REFUGE",
+  "MODOC NATIONAL WILDLIFE REFUGE",
+  "PIXLEY NATIONAL WILDLIFE REFUGE",
+  "KERN NATIONAL WILDLIFE REFUGE"
+),
+na.last = TRUE
+)
+
+## unitName #======
+unit_name_valid_range <- sort(c(
+  "Lewis 1",
+  "Lewis 6",
+  "HQ-7",
+  "LIC",
+  "Beach Lake 3",
+  "Beach Lake 1",
+  "HQ-6",
+  "Lewis 2",
+  "Beach Lake 2",
+  "HQ-5",
+  "Grandma Tract 10",
+  "Grandma Tract 2",
+  "Grandma Tract 3",
+  "Grandma Tract 4",
+  "Grandma Tract 7",
+  "Grandma Tract 8",
+  "Grandma Tract 9",
+  "Grandma Tract 11",
+  "Gadwall",
+  "J Pond",
+  "House Field",
+  "Matney 3",
+  "Matney 4 North",
+  "Matney 8",
+  "South Dam Pond",
+  "Matney 6",
+  "Matney 4 South",
+  "Matney 7",
+  "Flournoy Pond",
+  "Duck Ponds",
+  "Upper Goose Pond",
+  "Lower Goose Pond",
+  "Middle Goose Pond",
+  "1",
+  "8B",
+  "6",
+  "7A",
+  "9A",
+  "9B",
+  "8A",
+  "7B",
+  "4",
+  "4A",
+  "3A",
+  "3",
+  "2",
+  "2A",
+  "14",
+  "6A",
+  "5B",
+  "5A",
+  "4B"
+),
+na.last = TRUE
+)
+
+## subunitName. #=====
+## Should it be an external file to be updated externally by some SOP?
+subunit_name_valid_range <- sort(c(
+  "22",
+  "27a",
+  "57",
+  "Beach Lake 3",
+  "Beach Lake 1",
+  "HQ-6",
+  "Lewis 2",
+  "Beach Lake 2",
+  "HQ-5",
+  "Grandma Tract 10",
+  "Grandma Tract 2",
+  "Grandma Tract 3",
+  "Grandma Tract 4",
+  "Grandma Tract 7",
+  "Grandma Tract 8",
+  "Grandma Tract 9",
+  "Grandma Tract 11",
+  "Gadwall",
+  "J Pond",
+  "House Field",
+  "Matney 3",
+  "Matney 4 North",
+  "Matney 8",
+  "South Dam Pond",
+  "Matney 6",
+  "Matney 4 South",
+  "Matney 7",
+  "Flournoy Pond",
+  "Duck Ponds",
+  "Upper Goose Pond",
+  "Lower Goose Pond",
+  "Middle Goose Pond",
+  "1",
+  "8B",
+  "6",
+  "7A",
+  "9A",
+  "9B",
+  "8A",
+  "7B",
+  "4",
+  "4A",
+  "3A",
+  "3",
+  "2",
+  "2A",
+  "14-A",
+  "14-B",
+  "14-C",
+  "14-D",
+  "14-E",
+  "14-F",
+  "14-G",
+  "4A-1",
+  "4A-2",
+  "4A-3",
+  "4A-4",
+  "4A-5",
+  "4A-6",
+  "4A-7",
+  "4B-1",
+  "4B-2",
+  "4B-3",
+  "4B-4",
+  "5A-1",
+  "5A-3",
+  "5A-4",
+  "5A-5",
+  "5A-6",
+  "5A-7",
+  "5B-1",
+  "5B-2",
+  "5B-3",
+  "5B-5",
+  "5B-6",
+  "5B-7",
+  "5B-8",
+  "6A-1",
+  "6A-2",
+  "6A-3",
+  "6A-4",
+  "6A-5",
+  NA
+), na.last = TRUE)
+
+# Event date. # =====
+event_date_valid_range <- c(
+  min_date = as.Date("2019-01-01"),
+  max_date = Sys.Date()
+)
+
+# Area visible. # =====
+area_visible_valid_range <- c( # in acres
+  min_area_visible_ac = 0.5,
+  max_area_visible_ac = 15
+)
+
+# Proportion of area visible. # =====
+prop_visible_area_valid_range <- c(
+  min_prop_visible_area = 0,
+  max_prop_visible_area = 1
+)
+
+# Plant height. # =====
+plant_height_valid_range <- c( # in cm
+  min_plant_height = 0,
+  max_plant_height = 200
+)
+
+# Measure value. # =====
+measure_value_valid_range <- data.frame(
+  vernacularName = c("Smartweed", "Swamp Timothy", "Watergrass"),
+  min_sh_length_mm = c(1, 1, 1), # combinations of spp and measure that should
+  max_sh_length_mm = c(150, 100, 400), # not have measurements are given impossible
+  min_sh_width_mm = c(1, 1000, 1000), # ranges with a min greater than max.
+  max_sh_width_mm = c(30, -1000, -1000),
+  min_f2t_length_mm = c(1000, 1000, -150),
+  max_f2t_length_mm = c(-1000, -1000, 600)
+)
+
+# Distance 2 cp. # =====
+dist_cp_valid_range <- c( # assume to be in m
+  min_disp_cp = 0,
+  max_dist_cp = 500
+)
+
+# Distance 2 vp. # =====
+dist_vp_valid_range <- c( # assume to be in m
+  min_disp_cp = 0,
+  max_dist_cp = 500
+)
+
+# Acreage. # =====
+acreage_valid_range <- c( # acre
+  min_disp_cp = 0,
+  max_dist_cp = 500
+)
+
+# nSeedheads. # ====
+nSeedHeads_valid_range <- c(
+  min_seedh_number = 0,
+  max_seedh_number = 300
+)
+
+
+
+
+
+# Valid range list. #=====
+valid_ranges <- list(
+  LIT = list(
+    class = "character",
+    range = LIT_valid_range
+  ),
+  unitName = list(
+    class = "character",
+    range = unit_name_valid_range
+  ),
+  subunitName = list(
+    class = "character",
+    range = subunit_name_valid_range
+  ),
+  eventDate = list(
+    class = "date",
+    range = event_date_valid_range
+  ),
+  areaVisible_ac = list(
+    class = "numeric",
+    range = area_visible_valid_range
+  ),
+  taxonID = list(
+    class = "character",
+    range = taxonID_valid_range
+  ),
+  vernacularName = list(
+    class = "character",
+    range = vernac_name_valid_range
+  ),
+  stratum = list(
+    class = "character",
+    range = stratum_valid_range
+  ),
+  proportionVisibleArea = list(
+    class = "numeric",
+    range = prop_visible_area_valid_range
+  ),
+  plotStatus = list(
+    class = "character",
+    range = plot_status_valid_range
+  ),
+  quadratSize = list(
+    class = "character",
+    range = qdt_size_valid_range
+  ),
+  managementAction = list(
+    class = "character",
+    range = management_action_valid_range
+  ),
+  plantHeight = list(
+    class = "numeric",
+    range = plant_height_valid_range
+  ),
+  nSeedHeads = list(
+    class = "numeric",
+    range = nSeedHeads_valid_range
+  ),
+  measurementType = list(
+    class = "character",
+    range = measure_type_valid_range
+  ),
+  distanceCP_m = list(
+    class = "numeric",
+    range = dist_cp_valid_range
+  ),
+  distanceVP_m = list(
+    class = "numeric",
+    range = dist_vp_valid_range
+  ),
+  refugeName = list(
+    class = "character",
+    range = refuge_name_valid_range
+  ),
+  acreage = list(
+    class = "numeric",
+    range = acreage_valid_range
+  )
+)
+```
+
+
+```{r column_range_test_function, echo=FALSE, message=FALSE}
+
+# Function to check valid ranges. # ====
+check_col_range <- function(v_rng_list = valid_ranges, the_df) {
+  cols_to_check <- intersect(
+    names(v_rng_list),
+    names(the_df)
+  )
+  if (length(cols_to_check) == 0) {
+    return("No indentifiable columns are present to be checked.")
+  } else {
+    result <- map2(
+      .x = the_df[cols_to_check],
+      .y = v_rng_list[cols_to_check],
+      .f = ~ if (.y$class == "character") {
+        if (length(setdiff(unique(.x), .y$range)) == 0) {
+          "PASS"
+        } else {
+          setdiff(unique(.x), .y$range)
+        }
+      } else {
+        ifelse(all(.x >= .y$range[1]) & all(.x <= .y$range[2]),
+          "PASS",
+          "VALUES OUT OF VALID RANGE DETECTED"
+        )
+      }
+    )
+    return(result)
+  }
+}
+```
+
+```{r measure_range_test_function, echo=FALSE, message=FALSE}
+
+# Function to get f of a vector when it is not all NA's
+
+xtreme <- function(x, f = min) {
+  ifelse(
+    all(is.na(x)),
+    NA,
+    f(x, na.rm = TRUE)
+  )
+}
+
+# Function to check that all measure types in qdt0 have valid ranges
+
+check_measure_range <- function(v_rng = measure_value_valid_range,
+                                the_df = qdt0) {
+  spp_with_defined_range <- setdiff(
+    valid_ranges$vernacularName$range,
+    c("Other cover")
+  )
+
+  obs_ranges <- the_df %>%
+    dplyr::select(
+      GlobalID_seed,
+      vernacularName,
+      measurementType,
+      measurementValue
+    ) %>%
+    pivot_wider(
+      names_from = measurementType,
+      values_from = measurementValue
+    ) %>%
+    group_by(vernacularName) %>%
+    summarise(
+      min_sh_length_mm = xtreme(sh_length_mm, min),
+      max_sh_length_mm = xtreme(sh_length_mm, max),
+      min_sh_width_mm = xtreme(sh_width_mm, min),
+      max_sh_width_mm = xtreme(sh_width_mm, max),
+      min_f2t_length_mm = xtreme(f2t_length_mm, min),
+      max_f2t_length_mm = xtreme(f2t_length_mm, max)
+    )
+
+  result <- bind_cols(
+    v_rng["vernacularName"],
+    ifelse((obs_ranges %>%
+      dplyr::select(starts_with("min"))) >=
+      (v_rng %>%
+        dplyr::select(starts_with("min"))),
+    "PASS",
+    "FAIL"
+    ),
+    ifelse((obs_ranges %>%
+      dplyr::select(starts_with("max"))) <=
+      (v_rng %>%
+        dplyr::select(starts_with("max"))),
+    "PASS",
+    "FAIL"
+    )
+  )
+
+  return(result)
+}
+```
+
+### Check validity of values in each column
+
+```{r check_col_values,echo=FALSE, message=FALSE, results='asis'}
+
+for (df_nm in df2read) {
+  col_check <- check_col_range(
+    v_rng_list = valid_ranges,
+    the_df = get(df_nm)
+  )
+
+  cat(paste0("#### Results of checking column ranges of ", df_nm, "  \n \n"))
+  cat("Values other than PASS indicate unrecognized values present in the corresponding column.  \n \n")
+  print(col_check)
+}
+```
+
+
+#### Results of checking validity of measurement values in qdt0
+
+```{r check_qdt0_values, echo=FALSE, message=FALSE}
+
+# Check measurement values in qdt0
+
+if (exists("qdt0")) {
+qdt0_val_check <- check_measure_range()
+
+kable(qdt0_val_check,
+  caption = "Validation of measurement values for each species in qdt0. PASS indicates all values present are valid. FAIL indicates that some values are below the minimum or above the maximum allowed, or presence of values in a variable that should not be measured for the species. <NA> indicates correct absence of values."
+) %>%
+  kable_styling(full_width = FALSE)
+} else{
+  cat("A valid qdt0 file was not found.")
+}
+```
+
+### Check LIT_strat combinations
+
+All LIT_strat combinations that appear in vps0 or cps0 should also appear in qdt0. Each combination should appear at least 3 times in qdt0.
+
+```{r check_LIT_strat, echo=FALSE, message=FALSE}
+
+if (exists("vps0") &
+  exists("cps0") &
+  exists("qdt0")) {
+  spp_LIT_strat_vpcp <- vps0 %>%
+    dplyr::select(
+      LIT,
+      vernacularName,
+      stratum
+    ) %>%
+    unique() %>%
+    bind_rows(cps0 %>%
+      dplyr::select(
+        LIT,
+        vernacularName,
+        stratum
+      )) %>%
+    unique() %>%
+    dplyr::filter(vernacularName != "Other cover") %>%
+    arrange(
+      LIT,
+      vernacularName,
+      stratum
+    )
+
+  spp_LIT_strat_qdt <- qdt0 %>%
+    dplyr::select(
+      LIT,
+      vernacularName,
+      stratum
+    ) %>%
+    group_by(
+      LIT,
+      vernacularName,
+      stratum
+    ) %>%
+    summarize(n = n())
+
+
+  qdt_counts <- full_join(spp_LIT_strat_vpcp, spp_LIT_strat_qdt) %>%
+    arrange(
+      LIT,
+      vernacularName,
+      stratum
+    )
+
+  kable(qdt_counts,
+    caption = "Number of quadrats observed for each combination of LIT, species and stratum. Values lower than 3 and NA's indicate a deficiency in the data."
+  ) %>%
+    kable_styling(full_width = FALSE)
+} else {
+  cat("Validated files present are insufficient to conduct this test.")
+}
+```
+
+The following combinations of refuge, species and stratum were observed in vantage points and circle plots but are missing from the quadrat information. Get quadrats for them or make sure it is OK to ignore the areas with these characteristics observed in vantage points and circle plots.
+
+```{r miss_strat_table, echo=FALSE, message=FALSE}
+if (exists("qdt_counts")) {
+  missing_spp_LIT_strat <- qdt_counts %>%
+    dplyr::filter(n < 3 | is.na(n))
+
+  kable(missing_spp_LIT_strat,
+    caption = "Combinations of LIT, species and stratum present in vantage points and circle plots that are missing in the quadrat data."
+  ) %>%
+    kable_styling(full_width = FALSE)
+} else {
+  cat("Validated files present are insufficient to conduct this test.")
+}
+```
+
+### Check uniqueness of species-stratum combinations in each CP and VP
+
+<!-- I just noticed that GlobalID for vps0 repeats within each VP. I am using lat-long to identify individual vps but this does not meet normal forms. Normal forms should be applied to field data. EAL. -->
+
+```{r check_spp_strat_by_VPCP, echo=FALSE, message=FALSE}
+
+if (exists("vps0")) {
+  spp_strat_dups <- vps0 %>%
+    group_by(LIT,
+             unitName,
+             subunitName,
+             lat = decimalLatitude,
+             long = decimalLongitude,
+             spp = vernacularName,
+             stratum) %>%
+    summarise(n = n()) %>%
+    dplyr::filter(n > 1)
+  if (nrow(spp_strat_dups) > 0) {
+    kable(spp_strat_dups, caption = "Vantage polygons and combinations of species-stratum that have duplicates in the vps0 file. Each species-stratum combination should appear only once in the file. Consolidate observations before proceeding with data analysis.") %>%
+      kable_styling(full_width = FALSE)
+  } else {
+    cat("No duplicated spp_stratum combinations found.")
+  }
+} else {
+  cat("Validated files present are insufficient to conduct this test.")
+}
+
+```
+
