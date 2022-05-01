@@ -6,10 +6,10 @@ output: html_document
 
 ```{r packages, echo=FALSE, message=FALSE}
 
-library(tidyverse)
-library(magrittr)
-library(knitr)
-library(kableExtra)
+require(tidyverse, quietly = TRUE)
+require(magrittr, quietly = TRUE)
+require(knitr, quietly = TRUE)
+require(kableExtra, quietly = TRUE)
 ```
 
 ### Valid file names
@@ -27,7 +27,7 @@ library(kableExtra)
 
 # Folder should be selected in the interactive version.
 
-folder <- "~/My Drive/Documents/PROJECTS========/RefugesIMKaylene/WaterbirdHabitat2017/WHAPDataAnalysis/WHAP2021-22/ScriptInput2021/WHAP_2021_ProcessedData_20210902"
+folder <- "./ProcessedFieldFiles/"
 
 vp_fname_val <- c("WHAP_\\d{4}_VantagePolygons_\\d{8}")
 cp_fname_val <- c("WHAP_\\d{4}_CirclePlots_\\d{8}")
@@ -903,6 +903,18 @@ if (exists("vps0")) {
 } else {
   cat("Validated files present are insufficient to conduct this test.")
 }
+
+```
+
+
+### Check measurement types are correct for each species
+
+The data entry app should require users to enter all and only those measurement types needed for each species. On 26 Apr 2022 I noticed that the quadrats file has values for f2t_length_mm in Smartweed. The corresponding values for sh_width_mm are missing. Entered in the wrong field??
+
+
+```{r check_valid_measure_types}
+
+
 
 ```
 

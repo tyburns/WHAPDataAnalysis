@@ -13,59 +13,67 @@
 #
 #
 #
-#               |======================================|
+#               |--------------------------------------|
 #               |WHAP_yyyy_VantagePolygons_yyyymmdd.csv|
 # survey-123 -> |WHAP_yyyy_CirclePlots_yyyymmdd.csv    |
 #               |WHAP_yyyy_Quadrats_yyyymmdd.csv       |
 #               |WHAP_yyyy_ManagementUnits_yyyymmdd.csv|
-#               |======================================|
-#                                     \
+#               |--------------------------------------|
+#                                      |
 #                                      \
 #                                      V
 #                            WHAP2_DataChecks.Rmd
 #                                       \
+#                                       |
+#                                       \
 #                                       V
-#                                |=================|            |==========|
-#                                |                 |            | vpcpyyyy |
+#                               Validated field files
+#                                       \
+#                                       V
+#                                                               |----------|
+#                                |-----------------|            | vpcpyyyy |
 # ->  ->  ->  ->   ->   ->   ->  |WHAP2_DataPrep.R | -> ->  ->  | qdt_yyyy |
-#                           _->  |  (This file)    |            |==========|
-#                         |      |=================|                |
-#                       /                                           |
+#                           _->  |  (This file)    |            |----------|
+#                         |      |-----------------|                |
+#                       /                                           \
 #          d2m_models_list.rds                                      V
 #                 ^                                       WHAP2_sim_stats.Rmd
-#               /
-#     d2m_modeling.R
-#           /
-#         /
-#   d2m_data.rds
-# d2m_data_yyyy.csv
+#               /                                                  /\
+#     d2m_modeling.R                                             ^  ^
+#           /                                                  /     \
+#         /                                           \
+#   d2m_data.rds                                           \
+# d2m_data_yyyy.csv                                           \
+#                                           \
 #
 #
-#
-#
+#SimMassBySuLITFun
+#SimMassPerAreaFun
+#SimPropAreaFun
 
 # Setup ======
 
-library(tidyverse)
-library(car)
-library(boot)
-library(emmeans)
-library(rsample)
-library(MASS)
-library(ggforce)
-library(knitr)
-library(kableExtra)
-library(measurements)
-library(lubridate)
-library(compositions)
-library(magrittr)
+require(tidyverse, quietly = TRUE)
+require(car, quietly = TRUE)
+require(measurements, quietly = TRUE)
+require(lubridate, quietly = TRUE)
+require(mgcv, quietly = TRUE)
+
+# setwd("WHAP2_SimBasedEstimates")
 
 
-spp_prefix <- c(
-  `Swamp Timothy` = "st", # may not be necessary. check later.
-  Watergrass = "wg",
-  Smartweed = "sw"
-)
+# Define function to invert the Box-Cox transformation =======
+invBoxCox <- function(x, lambda) {
+  if (lambda == 0) exp(x) else (lambda * x + 1)^(1 / lambda)
+}
+
+
+#
+# spp_prefix <- c(
+#   `Swamp Timothy` = "st", # may not be necessary. check later.
+#   Watergrass = "wg",
+#   Smartweed = "sw"
+# )
 
 # Read d2m models ================
 
@@ -73,12 +81,12 @@ spp_prefix <- c(
 # determining what species are valid, i.e., have models to use in this script
 # d2m models should be named and retrieved programmatically using a list.
 # d2m data files should follow a name convention to be found.
-# d2m model list elements are named with species vernacularName:
+# d2m models has a column with species vernacularName:
 # "Swamp_Timothy", "Watergrass", "Smartweed", etc.
 
-d2m_models_list <- read_rds("d2m_models_list.rds")
+d2m_models_list <- read_rds("./d2mFiles/d2m_models_list.rds")
 
-# This list must have elements named "Watergrass", "Swamp_Timothy",
+# This nested tibble must have elements named "Watergrass", "Swamp_Timothy",
 # "Smartweed", etc.
 
 # Data are assumed to have passed WHAP_DataChecks.Rmd
@@ -87,53 +95,120 @@ d2m_models_list <- read_rds("d2m_models_list.rds")
 
 # Read data files =====
 
-# User input: path to folder with file locations
 # Only one year at a time is allowed in this code
 
-vps0 <- read.csv(
-  "WHAP_2021_ProcessedData_20210902/WHAP_2021_VantagePolygons_20210831.csv",
-  stringsAsFactors = FALSE
-) %>%
-  mutate(
-    eventDate = as.Date(eventDate,
-      tryFormats = c("%m/%d/%Y")
-    ),
-    taxonID = as.character(taxonID)
-  )
+pff_path <- "./ProcessedFieldData/"
 
+while (!exists("year2analyze") ||
+  !(is.integer(year2analyze) &
+    year2analyze > 2018)) {
+  the_prompt <- "Enter year to analyze (integer greater than 2018; yyyy): "
+  year2analyze <- readline(prompt = the_prompt) %>%
+    as.integer()
+}
 
-cps0 <- read.csv(
-  "WHAP_2021_ProcessedData_20210902/WHAP_2021_CirclePlots_20210901.csv",
-  stringsAsFactors = FALSE
-) %>%
-  mutate(
-    eventDate = as.Date(eventDate,
-      tryFormats = c("%m/%d/%Y")
-    ),
-    taxonID = as.character(taxonID)
-  )
-
-
-qdt0 <- read.csv(
-  "WHAP_2021_ProcessedData_20210902/WHAP_2021_Quadrats_20210923.csv",
-  stringsAsFactors = FALSE
-) %>%
-  mutate(
-    eventDate = as.Date(eventDate,
-      tryFormats = c("%m/%d/%Y")
-    ),
-    taxonID = as.character(taxonID)
-  )
-
-
-mus0 <- read.csv(
-  "WHAP_2021_ProcessedData_20210902/WHAP_2021_ManagementUnits_20210902.csv",
-  stringsAsFactors = FALSE
+file_names <- paste0( # necessary??
+  pff_path,
+  list.files(path = pff_path)
 )
+
+vps_path <- paste0(
+  pff_path,
+  "WHAP_",
+  year2analyze,
+  "_VantagePolygons_",
+  year2analyze,
+  "\\d{4}.csv"
+) %>%
+  grep(file_names,
+    value = TRUE
+  )
+
+cps_path <- paste0(
+  pff_path,
+  "WHAP_",
+  year2analyze,
+  "_CirclePlots_",
+  year2analyze,
+  "\\d{4}.csv"
+) %>%
+  grep(file_names,
+    value = TRUE
+  )
+
+qdt_path <- paste0(
+  pff_path,
+  "WHAP_",
+  year2analyze,
+  "_Quadrats_",
+  year2analyze,
+  "\\d{4}.csv"
+) %>%
+  grep(file_names,
+    value = TRUE
+  )
+
+mus_path <- paste0(
+  pff_path,
+  "WHAP_",
+  year2analyze,
+  "_ManagementUnits_",
+  year2analyze,
+  "\\d{4}.csv"
+) %>%
+  grep(file_names,
+    value = TRUE
+  )
+
+vps0 <- read_csv(
+  vps_path,
+  show_col_types = FALSE
+) %>%
+  mutate(
+    eventDate = as.Date(eventDate,
+      tryFormats = c("%m/%d/%Y")
+    ),
+    taxonID = as.character(taxonID),
+    LIT = factor(LIT)
+  )
+
+
+cps0 <- read_csv(
+  cps_path,
+  show_col_types = FALSE
+) %>%
+  mutate(
+    eventDate = as.Date(eventDate,
+      tryFormats = c("%m/%d/%Y")
+    ),
+    taxonID = as.character(taxonID),
+    LIT = factor(LIT)
+  )
+
+
+qdt0 <- read_csv(
+  qdt_path,
+  show_col_types = FALSE
+) %>%
+  mutate(
+    eventDate = as.Date(eventDate,
+      tryFormats = c("%m/%d/%Y")
+    ),
+    taxonID = as.character(taxonID),
+    LIT = factor(LIT)
+  )
+
+
+mus0 <- read_csv(
+  mus_path,
+  show_col_types = FALSE
+) %>%
+  mutate(LIT = factor(LIT))
+
 
 # Fix vernacular names =====
 
-vps0 %<>%
+vps0 <- vps0 %>%
   mutate(
     vernacularName =
       str_replace(
@@ -143,7 +218,7 @@ vps0 %<>%
       )
   )
 
-cps0 %<>%
+cps0 <- cps0 %>%
   mutate(
     vernacularName =
       str_replace(
@@ -152,8 +227,7 @@ cps0 %<>%
         "_"
       )
   )
-
-qdt0 %<>%
+qdt0 <- qdt0 %>%
   mutate(
     vernacularName =
       str_replace(
@@ -172,7 +246,7 @@ mus0 <- mus0 %>%
   mutate(
     subunitName =
       ifelse(
-        subunitName == "",
+        (subunitName == "" | is.na(subunitName)),
         unitName,
         subunitName
       )
@@ -182,7 +256,7 @@ vps0 <- vps0 %>%
   mutate(
     subunitName =
       ifelse(
-        subunitName == "",
+        (subunitName == "" | is.na(subunitName)),
         unitName,
         subunitName
       )
@@ -192,7 +266,7 @@ cps0 <- cps0 %>%
   mutate(
     subunitName =
       ifelse(
-        subunitName %in% c("0", ""),
+        subunitName %in% c("0", "", NA),
         unitName,
         subunitName
       )
@@ -202,7 +276,7 @@ qdt0 <- qdt0 %>%
   mutate(
     subunitName =
       ifelse(
-        subunitName == "",
+        (subunitName == "" | is.na(subunitName)),
         unitName,
         subunitName
       )
@@ -211,26 +285,24 @@ qdt0 <- qdt0 %>%
 
 # Get list of valid species and eliminate others from data =======
 
-spp_valid <- names(d2m_models_list)
+spp_valid <- d2m_models_list %>%
+  pull(vernacularName) %>%
+  c("Other_cover")
 
 vps0 <- vps0 %>%
-  dplyr(filter(
+  dplyr::filter(
     vernacularName %in% spp_valid
-  ))
+  )
 
 cps0 <- cps0 %>%
-  dplyr(filter(
+  dplyr::filter(
     vernacularName %in% spp_valid
-  ))
+  )
 
 qdt0 <- qdt0 %>%
-  dplyr(filter(
+  dplyr::filter(
     vernacularName %in% spp_valid
-  ))
-
-# Get year of data ======
-
-data_year <- year(vps0$eventDate[1])
+  )
 
 
 # Prepare column names necessary =====
@@ -302,7 +374,7 @@ closure_proportions <- function(df, .in_cols, .out_cols) {
 }
 
 
-# Create vps form vps0. Vantage polygons. =======================
+# Create vps from vps0. Vantage polygons. =======================
 
 vps <- vps0 %>%
   dplyr::select(
@@ -438,12 +510,13 @@ vpcp <- bind_rows(
 
 # Set output folder path & save vpcpyyyy.rds ===========
 
-path_out <- "path relative to wherever this will run"
+path_out <- "./inputFiles/"
 
 out_vpcp_name <- paste0(
   path_out,
   "vpcp",
-  data_year
+  year2analyze,
+  ".rds"
 )
 
 write_rds(vpcp, out_vpcp_name)
@@ -452,7 +525,7 @@ write_rds(vpcp, out_vpcp_name)
 # Process quadrat information ====================
 
 # Predict mass for each sh using d2m_model_list and sh dimensions.
-# Average sh mass per quadrat, multiply by sh density in
+# Average sh mass per quadrat, multiply by sh density
 
 qdt <- qdt0 %>%
   pivot_wider(
@@ -469,91 +542,56 @@ qdt <- qdt0 %>%
     quadratSize,
     managementAction,
     nSeedHeads,
+    vernacularName,
     sh_length_mm,
     f2t_length_mm,
     sh_width_mm
-  )
-
-
-# ST quadrat info -> table with LIT, stratum and mass of seed per m2
-
-qdt_st <- qdt0 %>%
-  dplyr::filter(vernacularName == "Swamp_Timothy" & stratum != "") %>%
-  group_by(
-    GlobalID,
-    LIT,
-    unitName,
-    subunitName,
-    stratum,
-    quadratSize
-  ) %>%
-  summarise(
-    avg_length_mm = mean(measurementValue, na.rm = TRUE),
-    nSeedHeads = mean(nSeedHeads, na.rm = TRUE) # all values are repeated anyway
   ) %>%
   mutate(
-    qdt_m2 = ifelse(quadratSize == "15x15cm", 0.15^2,
-      ifelse(quadratSize == "5x5cm", 0.05^2, 0.10)
-    ),
-    n_seed_head_m2 = nSeedHeads / qdt_m2,
-    no_sh = n_seed_head_m2
+    emerged = f2t_length_mm / sh_length_mm,
+    LIT_group = factor(
+      ifelse(
+        LIT == "MDC",
+        "MDC",
+        "not_MDC"
+      )
+    )
   ) %>%
-  dplyr::select(
-    LIT,
-    unitName,
-    subunitName,
-    stratum,
-    avg_length_mm,
-    n_seed_head_m2,
-    no_sh
+  group_by(vernacularName) %>%
+  nest() %>%
+  left_join({
+    d2m_models_list %>%
+      dplyr::select(-data)
+  }) %>%
+  dplyr::mutate(
+    sh_mass_mg = pmap(
+      .l = list(
+        ..1 = models,
+        ..2 = data,
+        ..3 = lambdas,
+        ..4 = max_sh_length_mm
+      ),
+      .f = ~ ifelse(
+        ..2$sh_length_mm > ..4,
+        NA,
+        invBoxCox(
+          predict(
+            object = ..1,
+            newdata = ..2
+          ),
+          lambda = ..3
+        )
+      )
+    )
   ) %>%
-  na.omit() %>%
-  ungroup() %>%
+  unnest(cols = c(data, sh_mass_mg)) %>%
   mutate(
-    mass_g_m2 = unname(exp(predict(ST_len2mass, newdata = .)) / 1000),
-    mass_g_m2 = ifelse(n_seed_head_m2 == 0, 0, mass_g_m2)
-  ) %>% # making sure it handles quadrats where no_sh == 0
-  dplyr::filter(mass_g_m2 < 2000) %>%
-  mutate(
-    stratum = dplyr::recode(stratum,
-      `low` = "a.Low",
-      `medium` = "b.Med",
-      `high` = "c.High"
-    ),
-    stratum = factor(as.character(stratum)),
-    subunit_ID = paste(LIT, unitName, subunitName, sep = "_"),
-    LIT_Strat = factor(paste(LIT, stratum, sep = "_"))
-  ) %>%
-  arrange(LIT, unitName, subunitName, stratum)
-
-str(qdt_st)
-
-
-
-
-# WG quadrat info -> table with LIT, stratum and mass of seed per m2
-
-wgc <- unname(coef(WG_len2mass)) # update this line for new model list
-
-qdt_wg <- qdt0 %>%
-  dplyr::filter(vernacularName == "Watergrass" &
-    stratum != "") %>%
-  pivot_wider(
-    names_from = measurementType,
-    values_from = measurementValue
-  ) %>%
-  arrange(GlobalID_seed) %>%
-  dplyr::filter(sh_length_mm < 250) %>% # remove seed heads beyond model scope
-  mutate(
-    sh_emerged_wg = f2t_length_mm / sh_length_mm,
-    sh_mass_mg = exp(wgc[1] +
-      wgc[2] * sh_length_mm / 10 + # divide by 10 because
-      wgc[3] * sh_emerged_wg + # model data was in cm
-      wgc[4] * f2t_length_mm / 10) - 20
-  ) %>%
-  mutate(
-    qdt_m2 = ifelse(quadratSize == "15x15cm", 0.15^2,
-      ifelse(quadratSize == "5x5cm", 0.05^2, 0.10)
+    qdt_m2 = ifelse(
+      quadratSize == "15x15cm",
+      0.15^2,
+      ifelse(quadratSize == "5x5cm",
+             0.05^2,
+             0.10)
     ),
     n_seed_head_m2 = nSeedHeads / qdt_m2
   ) %>%
@@ -562,136 +600,48 @@ qdt_wg <- qdt0 %>%
     LIT,
     unitName,
     subunitName,
+    vernacularName,
     stratum,
-    quadratSize
+    quadratSize,
+    managementAction
   ) %>%
   summarize(
     sh_mass_mg = mean(sh_mass_mg, na.rm = TRUE),
-    n_seed_head_m2 = mean(n_seed_head_m2, na.rm = TRUE)
+    n_seed_head_m2 = mean(n_seed_head_m2, na.rm = TRUE),
+    .groups = "drop"
   ) %>%
   mutate(
     mass_g_m2 = n_seed_head_m2 * sh_mass_mg / 1000,
     sh_mass_mg = ifelse(is.nan(sh_mass_mg), NA, sh_mass_mg)
   ) %>%
-  dplyr:::select(
-    LIT,
-    unitName,
-    subunitName,
-    stratum,
-    n_seed_head_m2,
-    sh_mass_mg,
-    mass_g_m2
-  ) %>%
   na.omit() %>%
   mutate(
     stratum = dplyr::recode(stratum,
-      `low` = "a.Low",
-      `medium` = "b.Med",
-      `high` = "c.High"
+                            `low` = "a.Low",
+                            `medium` = "b.Med",
+                            `high` = "c.High"
     ),
     stratum = factor(as.character(stratum)),
     subunit_ID = paste(LIT, unitName, subunitName, sep = "_"),
     LIT_Strat = factor(paste(LIT, stratum, sep = "_"))
   ) %>%
   arrange(LIT, unitName, subunitName, stratum) %>%
+  dplyr:::select(
+    LIT,
+    subunit_ID,
+    stratum,
+    LIT_Strat,
+    vernacularName,
+    n_seed_head_m2,
+    sh_mass_mg,
+    mass_g_m2,
+    managementAction
+  ) %>%
   ungroup()
 
-str(qdt_wg)
 
+# Save qdt in inputFiles folder as qdt_yyyy.rds
 
+qdt_file_path <- paste0("./inputFiles/qdt_", year2analyze, ".rds")
 
-# Define function to invert the Box-Cox transformation
-invBoxCox <- function(x, lambda) {
-  if (lambda == 0) exp(x) else (lambda * x + 1)^(1 / lambda)
-}
-
-
-# SW quadrat info -> table with LIT, stratum and mass of seed per m2
-# Why is this only passing MDC???
-
-qdt_sw <- qdt0 %>%
-  dplyr::filter(vernacularName == "Smartweed" & stratum != "") %>%
-  pivot_wider(
-    names_from = measurementType,
-    values_from = measurementValue
-  ) %>%
-  arrange(GlobalID_seed) %>%
-  # mutate(vol_mm3 = pi * (sh_width_mm/2)^2 * sh_length_mm) %>%
-  group_by(
-    GlobalID,
-    LIT,
-    unitName,
-    subunitName,
-    stratum,
-    quadratSize
-  ) %>%
-  summarise(
-    length_mm = mean(sh_length_mm, na.rm = TRUE),
-    nSeedHeads = mean(nSeedHeads, na.rm = TRUE)
-  ) %>%
-  mutate(qdt_m2 = ifelse(quadratSize == "15x15cm", 0.15^2,
-    ifelse(quadratSize == "5x5cm", 0.05^2, 0.10)
-  )) %>%
-  ungroup() %>%
-  dplyr::select(
-    LIT,
-    unitName,
-    subunitName,
-    stratum,
-    qdt_m2,
-    nSeedHeads,
-    length_mm
-  ) %>%
-  na.omit() %>%
-  mutate(
-    sh_mass_mg = unname(invBoxCox(predict(SW_dim2mass, newdata = .),
-      lambda = sw_lamb2
-    )),
-    mass_g_m2 = nSeedHeads * sh_mass_mg / (1000 * qdt_m2),
-    stratum = dplyr::recode(stratum,
-      `low` = "a.Low",
-      `medium` = "b.Med",
-      `high` = "c.High"
-    ),
-    stratum = factor(as.character(stratum)),
-    subunit_ID = paste(LIT, unitName, subunitName, sep = "_"),
-    LIT_Strat = factor(paste(LIT, stratum, sep = "_"))
-  ) %>%
-  arrange(LIT, unitName, subunitName, stratum)
-
-str(qdt_sw)
-
-
-
-qdt_2021 <- bind_rows(
-  (qdt_st %>%
-    dplyr::select(
-      LIT,
-      subunit_ID,
-      stratum,
-      LIT_Strat,
-      mass_g_m2
-    ) %>%
-    mutate(species = "Swamp_Timothy")),
-  (qdt_wg %>%
-    dplyr::select(
-      LIT,
-      subunit_ID,
-      stratum,
-      LIT_Strat,
-      mass_g_m2
-    ) %>%
-    mutate(species = "Watergrass")),
-  qdt_sw %>%
-    dplyr::select(
-      LIT,
-      subunit_ID,
-      stratum,
-      LIT_Strat,
-      mass_g_m2
-    ) %>%
-    mutate(species = "Smartweed")
-) %>%
-  mutate(species = factor(species))
-
-write_rds(qdt_2021, "qdt_2021.rds")
+write_rds(qdt, qdt_file_path)

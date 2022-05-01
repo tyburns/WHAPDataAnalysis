@@ -130,7 +130,7 @@ LitKey <- c(CLS = "CLS",
 d2m_data$LIT <- dplyr::recode(d2m_data$LIT, !!!LitKey)
 
 # Create a grouping variable for LIT and year
-d2m_data %<>% mutate(LIT_yr = paste(LIT, year, sep = "_"),
+d2m_data <- d2m_data %>% mutate(LIT_yr = paste(LIT, year, sep = "_"),
                      log_mass_mg = log(mass_mg),
                      log_length_mm = log(length_mm),
                      log_f2t_length_mm = log(f2t_length_mm + 120))
@@ -1307,7 +1307,7 @@ wg_rslts$v_fig
 
 <br>
 
-Wategrass models have excellent precision in corss-validation due to the much large sample sizes than for Swamp Timothy. MDC_2021 exhibits a bit of negative bias and suprisingl heavy seed heads, more than 5 times heavier than the heaviest seed heads collected in other groups. This data set has to be revisited and checked.
+Wategrass models have excellent precision in cross-validation due to the much large sample sizes than for Swamp Timothy. MDC_2021 exhibits a bit of negative bias and suprisingl heavy seed heads, more than 5 times heavier than the heaviest seed heads collected in other groups. This data set has to be revisited and checked.
 
 External validation shows dramatic biases introduced when making predictions for groups not included in the training sample. Mosf of the bias is introduced by MDC_2021. Those data have to be checked and a larger set of groups has to be sampled to determine the need for group-specific d2m sampling in the future. Without this information, the present conclusion is to obtain group specific samples in the future.
 

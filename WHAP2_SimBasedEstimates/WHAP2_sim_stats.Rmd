@@ -35,7 +35,7 @@ Go to the "read_rds" chunk and set it to eval=FALSE.
 Go to the "sims" chunk and set it to eval=TRUE.
 Knit.
 
-Output files will be in the outputFiles folder and their names should be evident in the "sims" shunk.
+Output files will be in the outputFiles folder and their names should be evident in the "sims" chunk.
 
 
 
