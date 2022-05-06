@@ -1,12 +1,12 @@
 # FUNCTION TO SIMULATE PROPORTIONS OF AREA COVERED
-# 
+#
 ## Arguments ======
-## 
+##
 # This function takes two arguments: the .vpcp_path to a vpcpyyyy.rds file containing
 # the parsed information about VP's and CP's for year yyyy, and the number of
 # simulations desired, .nsim.
 # This file has to have the following structure:
-# 
+#
 # tibble [443 × 17] (S3: tbl_df/tbl/data.frame)
 # $ LIT                   : chr [1:443] "KRN" "KRN" "KRN" "KRN" ...
 # $ unitName              : chr [1:443] "4B" "4B" "4B" "4B" ...
@@ -27,9 +27,11 @@
 # $ su.area_ac            : num [1:443] 46.9 46.9 46.9 21.3 48.5 ...
 # - attr(*, "na.action")= 'omit' Named int [1:22] 444 445 446 447 448 449 450 451 452 453 ...
 # ..- attr(*, "names")= chr [1:22] "444" "445" "446" "447" ...
+#
+# Additional columns for other species are accepted transparently
 
 ## Value =====
-## 
+##
 # The object returned is a list of tibbles with as many elements as there are
 # subunits in vpcp. Each tibble has nsim rows with 9 columns. Each row is a random simulation of proportion of area in each of the nine species-stratum
 # combinations, as shown below for n = 4000.
@@ -55,10 +57,10 @@
 # ..$ Watergrass_a.Low    : num [1:4000] 0.0376 0.0308 0.0349 0.0398 0.0303 ...
 # ..$ Watergrass_b.Med    : num [1:4000] 0.0395 0.0441 0.0294 0.0345 0.0382 ...
 # ..$ Watergrass_c.High   : num [1:4000] 0.0355 0.0238 0.0311 0.0257 0.0574 ...
-# 
+#
 ## Details =====
 ##
-# CALCULATIONS ASSUME THAT THERE ARE NO OVERLAP OF SPECIES INTHE ESTIMATES.
+# CALCULATIONS ASSUME THAT THERE ARE NO OVERLAP OF SPECIES IN THE ESTIMATES.
 # WHEN SPECIES OVERLAP IN THE FIELD, OBSERVERS HAVE TO "MENTALLY" SEPARATE
 # SPECIES INTO DIFFERENT AREAS AND CORRECT DENSITY ACCORDINGLY.
 
@@ -67,20 +69,20 @@
 # Each composition is a vector of 10 numbers: 3 strata * 3 species + other.
 # Each set of estimates or simulation has one row per subunit_ID and one
 # column per component.
-# 
-# # Proportions of area covered by each species:stratum combination are 
-# simulated using a model fitted to the .vpcp_path file. Estimated model 
-# parameters are the logs of Dirichlet's alphas in the common parameterization. 
-# These are back-transformed into the estimates of interest (proportion of area 
-# covered by each species:stratum in each subunit). It is assumed that the 
-# estimated parameters have a multivariate normal distribution and simulations 
-# are obtained directly from mvrnorm() using the estimated parameters and their 
+#
+# # Proportions of area covered by each species:stratum combination are
+# simulated using a model fitted to the .vpcp_path file. Estimated model
+# parameters are the logs of Dirichlet's alphas in the common parameterization.
+# These are back-transformed into the estimates of interest (proportion of area
+# covered by each species:stratum in each subunit). It is assumed that the
+# estimated parameters have a multivariate normal distribution and simulations
+# are obtained directly from mvrnorm() using the estimated parameters and their
 # estimated vcov() matrix.
-# 
+#
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # !! A small random number (see below) is added to zeros to improve DirichReg
 # convergence. Results should not be used to assess presence/absence!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
 ## Pseudocode =====
 # 1. Get vpcp file for current year.
@@ -88,28 +90,29 @@
 # 3. Use Dirichlet regression to model proportions in each subunit.
 # 4. Get means and vcov in log(alpha) scale into parallel lists
 # 5. Apply fpcf to vcov and Simulate assuming mv normality
-# 6. Backstransform with exp().
+# 6. Backstransform with exp() using log_alpha2p().
 
 ## Function definition =====
 
 sim_prop_area <- function(.vpcp_path, .nsim = 1000) {
-  
+
   ## Set up packages needed
-  
+
   require(DirichletReg, quietly = TRUE)
   require(tidyverse, quietly = TRUE)
   require(MASS, quietly = TRUE)
-  
-  
-  ## Function to go from log(alpha) to proportions =====
-  
+
+
+  ## Function to go from log(alpha) to proportions ========
+  ## This is a change in the paramtereization of Dirichlet
+
   log_alpha2p <- function(x) {
     a_i <- exp(x)
     a_0 <- if (is.vector(a_i)) sum(a_i) else rowSums(a_i)
     return(a_i / a_0)
   }
-  
-  
+
+
   ## Read and wrangle data
   vpcp <- read_rds(.vpcp_path) %>%
     as_tibble() %>%
@@ -130,22 +133,24 @@ sim_prop_area <- function(.vpcp_path, .nsim = 1000) {
       fpcf = ifelse(fpcf <= 0.01, 0.01, fpcf)
     ) %>%
     ungroup()
-  
-  
+
+
   ## Make vector of finite population correction factors =====
-  
+
   fpcf <- vpcp %>%
     dplyr::select(subunit_ID, fpcf) %>%
     unique() %>%
     deframe()
-  
+
   ## Dirichlet Regression of p_area on subunit_ID =====
   # A small random lognormal jitter is added to improve convergence.
   dr_data <- vpcp %>%
     dplyr::select(starts_with("p_")) %>%
-    `+`((. < 0.001) * exp(rnorm(n = dim(.)[1] * dim(.)[2],
-                                mean = -6,
-                                sd = 0.7))) %>%
+    `+`((. < 0.001) * exp(rnorm(
+      n = dim(.)[1] * dim(.)[2],
+      mean = -6,
+      sd = 0.7
+    ))) %>%
     DR_data()
 
   # Use common model option of DirichReg
@@ -154,61 +159,70 @@ sim_prop_area <- function(.vpcp_path, .nsim = 1000) {
     weights = wt,
     data = vpcp
   )
-  
-  
-  ## Create list of vcov's for each subunit =====
-  ## 
+
+
+  ## Create list of vcov's for each subunit =========
+  ## vcov of a DR model is a sparse a x a matrix with a = number of variables
+  ## (in this case number of spp-stratum combos) x number of subunits (groups).
+  ## However, covariances between variables in different units are zero.
+  ## I parsed the large sparse matrix into a list of dense matrices, one
+  ## matrix for each subunit.
+
   vcov_dr <- vcov(dr_m)
-  
+
   vcov_dr_list <- list()
-  
+
   su_names <- vpcp %>%
     pluck("subunit_ID") %>%
     unique() %>%
     sort()
-  
+
   for (su_i in su_names) {
     vcov_dr_list[[su_i]] <-
       vcov_dr[
         (vcov_dr %>%
-           rownames() %>%
-           str_split_fixed(., ":", 2) %>%
-           `[`(, 2) %>%
-           gsub("subunit_ID", "", x = .) == su_i),
-        
+          rownames() %>%
+          str_split_fixed(., ":", 2) %>%
+          `[`(, 2) %>%
+          gsub("subunit_ID", "", x = .) == su_i),
+
         (vcov_dr %>%
-           colnames() %>%
-           str_split_fixed(., ":", 2) %>%
-           `[`(, 2) %>%
-           gsub("subunit_ID", "", x = .) == su_i)
+          colnames() %>%
+          str_split_fixed(., ":", 2) %>%
+          `[`(, 2) %>%
+          gsub("subunit_ID", "", x = .) == su_i)
       ]
-    
+
     colnames(vcov_dr_list[[su_i]]) <- vcov_dr_list[[su_i]] %>%
       colnames() %>%
       str_split_fixed(":", 2) %>%
       `[`(, 1) %>%
       as.character()
-    
+
     rownames(vcov_dr_list[[su_i]]) <- vcov_dr_list[[su_i]] %>%
       rownames() %>%
       str_split_fixed(":", 2) %>%
       `[`(, 1) %>%
       as.character()
   }
+
+  rm(vcov_dr)
   
-  ## Apply fpcf to vcov's =====
-  
+  ## Apply fpcf to vcov's =========
+  ## This assumes that sampling of VPs and CPs were without replacement.
+  ## This approximation ignores the fact that many CPs were inside a VP.
+
   for (i in su_names) {
     vcov_dr_list[[i]] <- fpcf[i] * vcov_dr_list[[i]]
   }
-  
+
   # Covariance matrix refers to coefficients for all subunits for each of the 10
   # components as a single vector.
   # All covariances between different units are zero. Only covariances between
   # components within units are nonzero.
-  
+
   ## Make df of mean vectors in log(alpha) scale =====
-  
+
   mean_df_dr <- dr_m %>%
     coef() %>%
     bind_cols() %>%
@@ -221,21 +235,21 @@ sim_prop_area <- function(.vpcp_path, .nsim = 1000) {
     ) %>%
     pivot_longer(-subunit_ID) %>%
     pivot_wider(names_from = subunit_ID, values_from = value) %>%
-    map(~unname(.x)) %>%
+    map(~ unname(.x)) %>%
     as_tibble() %>%
     column_to_rownames(var = "name")
-  
-  
+
+
   ## Simulate from distribution of estimated log(alphas) =====
-  
+
   {
-    if (setequal(
+    if (setequal( # ensure match of subunits and spp_strat
       names(mean_df_dr),
       names(vcov_dr_list)
     ) & setequal(
       rownames(mean_df_dr),
       rownames(vcov_dr_list[[1]])
-    )) { # ensure match of subunits and spp_strat
+    )) {
       sim_parea_dr <- map2(
         .x = mean_df_dr,
         .y = vcov_dr_list,
@@ -249,31 +263,18 @@ sim_prop_area <- function(.vpcp_path, .nsim = 1000) {
       ) %>%
         map(~ as_tibble(.x)) %>%
         map(~ dplyr::select(.x, .f = -p_Other_cover_NA)) %>%
-        # rm p_Other_cover_NA to match mass sims
-        map(~ rename_with(.x, .f = function(z) gsub("^p_", "", z)))
+        # remove p_Other_cover_NA to match mass sims
+        map(~ rename_with(.x, .f = function(z) gsub("^p_", "", z))) %>%
+        map(~ dplyr::select(
+          .x,
+          sort(
+            names(.x)
+          )
+        ))
     } else {
       print("** ERROR: Subunits or spp_strat do not match!!**")
     }
   }
-  
-  sim_parea_dr <- sim_parea_dr %>%
-    map(~ dplyr::select(
-      .x,
-      any_of(
-        c(
-          "Smartweed_a.Low",
-          "Smartweed_b.Med",
-          "Smartweed_c.High",
-          "Swamp_Timothy_a.Low",
-          "Swamp_Timothy_b.Med",
-          "Swamp_Timothy_c.High",
-          "Watergrass_a.Low",
-          "Watergrass_b.Med",
-          "Watergrass_c.High"
-        )
-      )
-    ))
-  
+
   return(sim_parea_dr)
-  
 }

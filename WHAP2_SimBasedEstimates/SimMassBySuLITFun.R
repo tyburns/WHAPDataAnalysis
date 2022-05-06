@@ -26,16 +26,60 @@
 ##
 # TBD
 
-## Function definition =====
+## Define function to sum over strata within each species ======
+
+sum_strt_fun <- function(.df, .spp) {
+  mass_col_names <- .spp %>%
+    paste0("_g_m2")
+
+  for (spp in .spp) {
+    assign(
+      paste0(spp, "_g_m2"),
+      (dplyr::select(.df, starts_with(spp)) %>%
+        rowSums())
+    )
+  }
+
+  df_out <- mget(mass_col_names) %>%
+    as_tibble() %>%
+    mutate(tot_g_m2 = rowSums(.)) %>%
+    round(digits = 1)
+
+  return(df_out)
+}
+
+### Define function to get summary per subunit by spp or total =====
+
+mass_by_su_smmry <- function(.mass_sims = mass_m2_sims, .spp) {
+  mass_col <- paste0(.spp, "_g_m2")
+
+  mass_m2_by_su <- .mass_sims %>%
+    dplyr::select(
+      subunit_ID,
+      mass_g_m2
+    ) %>%
+    unnest(cols = c(mass_g_m2)) %>%
+    group_by(subunit_ID) %>%
+    summarise(
+      g_m2 = mean(get(mass_col)),
+      se_g_m2 = sd(get(mass_col)),
+      CI90_lwr = quantile(get(mass_col), 0.05),
+      CI90_upr = quantile(get(mass_col), 0.95),
+      RightCI90_lwr = quantile(get(mass_col), 0.10),
+      left_moe_p = (g_m2 - RightCI90_lwr) / g_m2,
+      smpl_obj = ifelse(left_moe_p < 0.25,
+        "Pass",
+        "NO"
+      )
+    )
+  return(mass_m2_by_su)
+}
+
+
+
+## sim_mass_su_lit Function definition =====
 
 sim_mass_su_lit <- function(.vpcp_path, .qdt_path, .nsim = 1000) {
-
-  ## Set up packages needed =====
-
-  require(measurements)
-
-  source("SimMassPerAreaFun.R")
-  source("SimPropAreaFun.R")
 
   sim_parea_dr <- sim_prop_area(
     .vpcp_path = .vpcp_path,
@@ -68,10 +112,19 @@ sim_mass_su_lit <- function(.vpcp_path, .qdt_path, .nsim = 1000) {
   # in the corresponding LIT:spp:stratum and then, amounts are summed
   # over strata to obtain mass per area by species and total of all species.
 
+  spp_names <- names(sim_parea_dr[[1]]) %>%
+    gsub(
+      "_a.Low|_b.Med|_c.High",
+      "",
+      x = .
+    ) %>%
+    unique()
+
+
   mass_m2_sims <- map2(
     .x = sim_parea_dr,
     .y = names(sim_parea_dr),
-    ~ (.x * sim_massLss_lst[[substr(.y, 1, 3)]]) %>%
+    .f = ~ (.x * sim_massLss_lst[[substr(.y, 1, 3)]]) %>%
       mutate(subunit_ID = .y)
   ) %>%
     bind_rows() %>%
@@ -81,20 +134,7 @@ sim_mass_su_lit <- function(.vpcp_path, .qdt_path, .nsim = 1000) {
       mass_g_m2 =
         map(
           .x = data,
-          ~ mutate(
-            .x,
-            sw_g_m2 = (dplyr::select(., starts_with("Smart")) %>% rowSums()),
-            st_g_m2 = (dplyr::select(., starts_with("Swamp")) %>% rowSums()),
-            wg_g_m2 = (dplyr::select(., starts_with("Water")) %>% rowSums()),
-            tot_g_m2 = sw_g_m2 + st_g_m2 + wg_g_m2
-          ) %>%
-            dplyr::select(
-              sw_g_m2,
-              st_g_m2,
-              wg_g_m2,
-              tot_g_m2
-            ) %>%
-            round(1)
+          .f = ~ sum_strt_fun(.df = .x, .spp = spp_names)
         )
     ) %>% # Add subunit areas to calculate refuge stats
     full_join(su_areas,
@@ -152,14 +192,14 @@ sim_mass_su_lit <- function(.vpcp_path, .qdt_path, .nsim = 1000) {
       cum_area_ha = accumulate(su_area_ha, `+`),
       smpl_obj = factor(
         ifelse(left_moe_p < 0.25,
-               "Pass",
-               "NO"
+          "Pass",
+          "NO"
         ),
         levels = c("Pass", "NO")
       )
     ) %>%
     dplyr::select(-su_area_ha)
-  
+
 
   ## Plot cumulative mass vs cumulative area and RightCI's =====
 
@@ -183,6 +223,8 @@ sim_mass_su_lit <- function(.vpcp_path, .qdt_path, .nsim = 1000) {
     ylab("Cumulative seed head mass index (1000 kg or ton)") +
     xlab("Cumulative area (ha)") +
     geom_text(x = 350, y = 40, label = "upper 90% CI", color = "black")
+
+
 
   ### Mass of all species by subunit =====
 
@@ -210,74 +252,13 @@ sim_mass_su_lit <- function(.vpcp_path, .qdt_path, .nsim = 1000) {
     )
 
 
-  ### Smartweed mass per subunit =====
+  ## Mass per subunit by species stats =======
 
-  sw_mass_m2 <- mass_m2_sims %>%
-    dplyr::select(
-      subunit_ID,
-      mass_g_m2
-    ) %>%
-    unnest(cols = c(mass_g_m2)) %>%
-    group_by(subunit_ID) %>%
-    summarise(
-      g_m2 = mean(sw_g_m2),
-      se_g_m2 = sd(sw_g_m2),
-      CI90_lwr = quantile(sw_g_m2, 0.05),
-      CI90_upr = quantile(sw_g_m2, 0.95),
-      RightCI90_lwr = quantile(sw_g_m2, 0.10),
-      left_moe_p = (g_m2 - RightCI90_lwr) / g_m2,
-      smpl_obj = ifelse(left_moe_p < 0.25,
-        "Pass",
-        "NO"
-      )
-    )
-
-
-  ### Swamp Timothy mass per subunit =====
-
-  st_mass_m2 <- mass_m2_sims %>%
-    dplyr::select(
-      subunit_ID,
-      mass_g_m2
-    ) %>%
-    unnest(cols = c(mass_g_m2)) %>%
-    group_by(subunit_ID) %>%
-    summarise(
-      g_m2 = mean(st_g_m2),
-      se_g_m2 = sd(st_g_m2),
-      CI90_lwr = quantile(st_g_m2, 0.05),
-      CI90_upr = quantile(st_g_m2, 0.95),
-      RightCI90_lwr = quantile(st_g_m2, 0.10),
-      left_moe_p = (g_m2 - RightCI90_lwr) / g_m2,
-      smpl_obj = ifelse(left_moe_p < 0.25,
-        "Pass",
-        "NO"
-      )
-    )
-
-
-  ### Watergrass mass per subunit =====
-
-  wg_mass_m2 <- mass_m2_sims %>%
-    dplyr::select(
-      subunit_ID,
-      mass_g_m2
-    ) %>%
-    unnest(cols = c(mass_g_m2)) %>%
-    group_by(subunit_ID) %>%
-    summarise(
-      g_m2 = mean(wg_g_m2),
-      se_g_m2 = sd(wg_g_m2),
-      CI90_lwr = quantile(wg_g_m2, 0.05),
-      CI90_upr = quantile(wg_g_m2, 0.95),
-      RightCI90_lwr = quantile(wg_g_m2, 0.10),
-      left_moe_p = (g_m2 - RightCI90_lwr) / g_m2,
-      smpl_obj = ifelse(left_moe_p < 0.25,
-        "Pass",
-        "NO"
-      )
-    )
-
+  mass_by_su_spp_stats <- map(
+    .x = spp_names,
+    .f = ~ mass_by_su_smmry(.mass_sims = mass_m2_sims, .spp = .x)
+  ) %>%
+    set_names(nm = spp_names)
 
   # Mass per area by refuge =====
 
@@ -331,9 +312,9 @@ sim_mass_su_lit <- function(.vpcp_path, .qdt_path, .nsim = 1000) {
   cum_tot_plot_def <- "Plot of cumulative seed head mass index over subunits ordered by decreasing mass contributed to the total of each refuge vs. cumulative area. Each point has a downward vertical bar representing the left margin of error that leaves 10% of the simulation below. Dashed error bars indicate subunits and points that meet the desirable sampling objective of moe < 0.25 * mean. Solid error bars indicate that the moe is larger than desired."
 
   tot_mass_su_def <- "Tibble with estimated means, se and CI's for g/m2 of all species together by subunit. left_moe_p is as in mass_m2_sims_def, and smpl_obj states if sampling objective is met based on this left_moe_p."
-  sw_mass_m2_def <- "Same as tot_mass_su_def but only for Smartweed."
-  st_mass_m2_def <- "Same as tot_mass_su_def but only for Swamp Timothy."
-  wg_mass_m2_def <- "Same as tot_mass_su_def but only for Watergrass."
+
+  mass_by_su_spp_stats_def <- "A list with an element for each species (vernacularName). Each list element is named with the species name and has the same information as tot_mass_su_def but only for the species."
+
   lit_stats_def <- "means, se's and CI's of mass/m2 averaged at the refuge level."
 
   ## Prepare output list and return =====
@@ -346,12 +327,8 @@ sim_mass_su_lit <- function(.vpcp_path, .qdt_path, .nsim = 1000) {
     cum_tot_plot_def = cum_tot_plot_def,
     tot_mass_su = tot_mass_su,
     tot_mass_su_def = tot_mass_su_def,
-    sw_mass_m2 = sw_mass_m2,
-    sw_mass_m2_def = sw_mass_m2_def,
-    st_mass_m2 = st_mass_m2,
-    st_mass_m2_def = st_mass_m2_def,
-    wg_mass_m2 = wg_mass_m2,
-    wg_mass_m2_def = wg_mass_m2_def,
+    mass_by_su_spp_stats = mass_by_su_spp_stats,
+    mass_by_su_spp_stats_def = mass_by_su_spp_stats_def,
     lit_stats = lit_stats,
     lit_stats_def = lit_stats_def
   )

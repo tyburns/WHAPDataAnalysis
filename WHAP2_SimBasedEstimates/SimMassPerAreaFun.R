@@ -9,9 +9,9 @@
 
 # tibble [526 × 6] (S3: tbl_df/tbl/data.frame)
 # $ LIT       : chr [1:526] "KRN" "KRN" "KRN" "KRN" ...
-# $ subunit_ID: chr [1:526] "KRN_4A_4A-1" "KRN_4A_4A-1" "KRN_4A_4A-1" "KRN_4A_4A-1" ...
+# $ subunit_ID: chr [1:526] "KRN_4A_4A-1" "KRN_4A_4A-1" "KRN_4A_4A-1" ...
 # $ stratum   : Factor w/ 3 levels "a.Low","b.Med",..: 1 1 1 2 3 3 1 2 2 2 ...
-# $ LIT_Strat : Factor w/ 12 levels "KRN_a.Low","KRN_b.Med",..: 1 1 1 2 3 3 1 2 2 2 ...
+# $ LIT_Strat : Factor w/ 12 levels "KRN_a.Low","KRN_b.Med",..: 1 1 1 2 3 3 ...
 # $ mass_g_m2 : num [1:526] 68.9 23.5 76.7 56 506.1 ...
 # $ species   : Factor w/ 3 levels "Swamp_Timothy",..: 1 1 1 1 1 1 1 1 1 1 ...
 #
@@ -68,16 +68,16 @@
 # Simulations Outline =====
 
 # Mass per unit area for each species in each stratum and refuge are
-# simulated using a model fitted to the .qdt_path file. Estimated model 
-# parameters are the estimates of interest (seed head mass index per unit area 
-# for each LIT:species:stratum combination). It is assumed that the estimated 
-# parameters have a multivariate normal distribution and simulations are obtained directly from mvrnorm() using the estimated parameters and their estimated 
+# simulated using a model fitted to the .qdt_path file. Estimated model
+# parameters are the estimates of interest (seed head mass index per unit area
+# for each LIT:vernacularName:stratum combination). It is assumed that the estimated
+# parameters have a multivariate normal distribution and simulations are obtained directly from mvrnorm() using the estimated parameters and their estimated
 # vcov() matrix.
 
 ## Pseudocode =====
 
 # 1. Get qdt_yyyy file
-# 2. Model mass_g_m2 as an lm() of LIT:species:stratum
+# 2. Model mass_g_m2 as an lm() of LIT:vernacularName:stratum
 # 3. Get estimates and vcov
 # 4. Simulate 4000 realizations of estimates and back-transform.
 
@@ -96,17 +96,17 @@ sim_mass_area <- function(.qdt_path, .nsim = 1000) {
   require(tidyverse, quietly = TRUE)
   require(MASS, quietly = TRUE)
   require(car, quietly = TRUE)
-  
+
   ## Read and wrangle data =====
 
   qdt <- read_rds(.qdt_path)
 
-  # Model mass per area by LIT:species:stratum =====
+  # Model mass per area by LIT:vernacularName:stratum =====
 
   # Get lambda for st
   mass_lambda <- powerTransform(
     lm(mass_g_m2 ~
-    -1 + LIT:species:stratum,
+    -1 + LIT:vernacularName:stratum,
     data = qdt
     )
   ) %>%
@@ -116,7 +116,7 @@ sim_mass_area <- function(.qdt_path, .nsim = 1000) {
   # Use linear model
   mass_m <- lm(
     bcPower(mass_g_m2, lambda = mass_lambda) ~
-    -1 + LIT:species:stratum,
+    -1 + LIT:vernacularName:stratum,
     na.action = na.exclude,
     data = qdt
   )
@@ -130,67 +130,65 @@ sim_mass_area <- function(.qdt_path, .nsim = 1000) {
     colnames(vcov_mass) <-
       rownames(vcov_mass) <-
       gsub(
-        "LIT|species|stratum",
+        "LIT|vernacularName|stratum",
         "",
         colnames(vcov_mass)
       )
 
-    vcov_mass[is.na(vcov_mass)] <- 0.001
+    vcov_mass[is.na(vcov_mass)] <- 0.00001
   }
 
   # Covariance is a diagonal.
   sum(round(vcov_mass, 4)) == sum(diag(round(vcov_mass, 4)))
 
-  ## Make vector of means for LIT:species:stratum (Lss) =====
+  ## Make vector of means for LIT:vernacularName:stratum (Lss) =====
 
   {
     mass_Lss <- coef(mass_m)
 
     names(mass_Lss) <- gsub(
-      "LIT|species|stratum",
+      "LIT|vernacularName|stratum",
       "",
       names(mass_Lss)
     )
 
-    mass_Lss[is.na(mass_Lss)] <- -5 # in BoxCox scale ~ 0 i mass/area
+    ## Some combinations may not be present, so there may be NA's that
+    ## are transformed into practical 0's
+    mass_Lss[is.na(mass_Lss)] <- -5 # in BoxCox scale ~ 0 in mass/area
   }
 
-  # Simulations have to be done in the BC transformed dimension
+  # Simulations have to be done in the Box-Cox transformed dimension
   # and then results need to be back-transformed
 
   ## Simulate from coef distribution and back-transform =====
 
   sim_massLss <- invBoxCox(
     mvrnorm(
-      n = 4000,
+      n = .nsim,
       mu = mass_Lss,
       Sigma = vcov_mass
     ),
     lambda = mass_lambda
   )
 
+
   sim_massLss_lst <- unique(qdt$LIT) %>%
+    as.character() %>%
     as.list() %>%
     set_names(unique(qdt$LIT)) %>%
-    map(.f = ~ sim_massLss %>%
+    map(.f = ~ (sim_massLss %>%
       as_tibble() %>%
-      dplyr::select(contains(.x))) %>%
+      dplyr::select(contains(.x)))) %>%
     map(~ rename_with(.x, .f = function(z) gsub("^[A-Z]{3}:", "", z))) %>%
     map(~ rename_with(.x, .f = function(z) gsub(":", "_", z))) %>%
+    # This part has to set column order as in SimPropAreaFun.R
     map(~ dplyr::select(
       .x,
-      any_of( # these need to be created programmatically for new species
-        c(
-          "Smartweed_a.Low",
-          "Smartweed_b.Med",
-          "Smartweed_c.High",
-          "Swamp_Timothy_a.Low",
-          "Swamp_Timothy_b.Med",
-          "Swamp_Timothy_c.High",
-          "Watergrass_a.Low",
-          "Watergrass_b.Med",
-          "Watergrass_c.High"
-        )
+      sort(
+        names(.x)
       )
     ))
+  
+  
+  return(sim_massLss_lst)
 }

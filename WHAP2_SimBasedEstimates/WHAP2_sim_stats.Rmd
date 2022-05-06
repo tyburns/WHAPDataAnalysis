@@ -1,17 +1,17 @@
 ---
 title: "Seed mass index in FWS refuges"
 author: "Emilio A. Laca"
-date: "13 Feb 2022"
+date: "2 May 2022"
 output: html_document
 ---
 
 ```{r setup, include=FALSE, eval=TRUE}
 
 knitr::opts_chunk$set(echo = FALSE)
-library(tidyverse)
-library(knitr)
-library(kableExtra)
-library(ggforce)
+require(tidyverse, quietly = TRUE)
+require(knitr, quietly = TRUE)
+require(kableExtra, quietly = TRUE)
+require(ggforce, quietly = TRUE)
 
 ```
 
@@ -27,7 +27,7 @@ source("SimMassBySuLITFun.R", local = knitr::knit_global())
 
 This document shows the results for all units in all refuges measured each year. The document provides a few points of view of the results, for example, some graphs and tables. All data are saved in files and you can format and view them in any desired way. However, the files are too large to sync with GitHub, so you have to run the code in your computer.
 
-To make the files with all output those files, pull everything from github and open the markdown that created this output:
+To make the files with all output those files, pull everything from github and open the markdown file:
 
 WHAPDataAnalysis/SimBasedEstimates/WHAP2_sim_stats.Rmd.
 
@@ -54,12 +54,11 @@ qdt_path_2021 <- "inputFiles/qdt_2021.rds"
 ```
 
 
-```{r read_rds, include=FALSE, echo=FALSE, eval=TRUE}
+```{r read_rds, include=FALSE, echo=FALSE, eval=FALSE}
 # Run this to reload results after you have run the simulations below once.
 # Once you have done the simulations once, the following files will be 
 # available in your local computer.
-# !!! Make sure to gitignore these files or you will 
-# mess up your github workflow.!! 
+# !!! Make sure to gitignore these files!! 
 shmi_2019 <- read_rds("outputFiles/shmi_2019.rds")
 shmi_2020 <- read_rds("outputFiles/shmi_2020.rds")
 shmi_2021 <- read_rds("outputFiles/shmi_2021.rds")
@@ -67,7 +66,7 @@ shmi_2021 <- read_rds("outputFiles/shmi_2021.rds")
 ```
 
 
-```{r sims, include=FALSE, echo=FALSE, eval=FALSE}
+```{r sims, include=FALSE, echo=FALSE, eval=TRUE}
 
 set.seed(141416)
 
@@ -334,6 +333,9 @@ shmi_2021$tot_mass_su %>%
 
 ```
 
+<!-- FROM HERE ******** -->
+
+
 ### Smartweed
 
 Caption:
@@ -456,6 +458,11 @@ shmi_2021$lit_stats %>%
 
 ```
 
+
+<!-- FROM HERE ******** -->
+
+
+
 ### Smartweed
 
 ```{r shmi_table_lit_sw, echo=FALSE}
@@ -463,7 +470,7 @@ shmi_2021$lit_stats %>%
 shmi_2021$lit_stats %>%
   dplyr::select(
     LIT,
-    starts_with("sw")
+    starts_with("Smartweed")
   ) %>%
   mutate(moe_p = (sw_g_m2_mn - sw_g_m2_RightCI90_lwr) / sw_g_m2_mn) %>%
   set_names(nm = tbl_hds2[1:7]) %>%
@@ -481,7 +488,7 @@ shmi_2021$lit_stats %>%
 shmi_2019$lit_stats %>%
   dplyr::select(
     LIT,
-    starts_with("st")
+    starts_with("Swamp_Timothy")
   ) %>%
   mutate(moe_p = (st_g_m2_mn - st_g_m2_RightCI90_lwr) / st_g_m2_mn) %>%
   set_names(nm = tbl_hds2[1:7]) %>%
@@ -520,7 +527,7 @@ shmi_2021$lit_stats %>%
 shmi_2019$lit_stats %>%
   dplyr::select(
     LIT,
-    starts_with("wg")
+    starts_with("Watergrass")
   ) %>%
   mutate(moe_p = (wg_g_m2_mn - wg_g_m2_RightCI90_lwr) / wg_g_m2_mn) %>%
   set_names(nm = tbl_hds2[1:7]) %>%

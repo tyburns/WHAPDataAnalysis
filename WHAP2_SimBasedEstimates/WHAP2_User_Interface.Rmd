@@ -1,0 +1,116 @@
+---
+title: "WHAP2 User Interface"
+author: "Emilio A. Laca"
+date: "`r format(Sys.time(), '%a %d %b %Y %X')`"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+*Original date: 3 May 2022*
+
+This user interface should have sections that parallel the scope of work. The user should have options to select years, refuges, subunits, etc. to be included in the report.
+
+1. Data intake and validation.
+2. Calculations for any number of species and refuges.
+3. Analysis of temporal trends in any subset of subunits.
+4. Comparison of groups of subunits that had different management.
+
+Data intake and validation is covered in WHAP2_DataChecks.Rmd, which should probably be transformed into .R, maybe as a function.  
+
+Calculations are performed through:
+
+d2m_modeling.R
+SimMassBySuLITFun.R
+SimMassPerAreaFun.R
+SimPropAreaFun.R
+WHAP2_DataPrep.R
+WHAP2_sim_stats.Rmd
+
+The directory organization that has to be preserved for the software to work is:
+
+WHAP2_SimBasedEstimates (folder)
+.
+|____inputFiles (folder)
+|  |____qdt_2021.rds
+|  |____qdt_2020.rds
+|  |____qdt_2019.rds
+|  |____vpcp2019.rds
+|  |____vpcp2020.rds
+|  |____vpcp2021.rds
+|
+|____SimPropAreaFun.R
+|
+|____outputFiles (folder)
+|  |____shmi_2020.rds
+|  |____shmi_2021.rds
+|  |____shmi_2019.rds
+|
+|____d2mFiles (folder)
+|  |____files_already_processed.rds
+|  |____d2m_models_list.rds
+|  |____d2m_data.rds
+|
+|____WHAP2_DataPrep.R
+|____WHAP2_sim_stats.Rmd
+|____d2m_modeling.R
+|____SimMassPerAreaFun.R
+|____WHAP2_User_Interface.Rmd
+|
+|____ProcessedFieldData (folder)
+|  |____WHAP_2021_VantagePolygons_20210831.csv
+|  |____WHAP_2021_Quadrats_20210923.csv
+|  |____WHAP_2021_CirclePlots_20210901.csv
+|  |____WHAP_2021_ManagementUnits_20210902.csv
+|
+|____SimMassBySuLITFun.R
+|____WHAP2_DataChecks.Rmd
+
+
+
+## Inputs and Outputs
+
+You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
+
+```{r eruptions, echo=FALSE}
+inputPanel(
+  selectInput("n_breaks", label = "Number of bins:",
+              choices = c(10, 20, 35, 50), selected = 20),
+  
+  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
+              min = 0.2, max = 2, value = 1, step = 0.2)
+)
+
+renderPlot({
+  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
+       xlab = "Duration (minutes)", main = "Geyser eruption duration")
+  
+  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
+  lines(dens, col = "blue")
+})
+```
+
+## Embedded Application
+
+It's also possible to embed an entire Shiny application within an R Markdown document using the `shinyAppDir` function. This example embeds a Shiny application located in another directory:
+
+```{r tabsets, echo=FALSE}
+shinyAppDir(
+  system.file("examples/06_tabsets", package = "shiny"),
+  options = list(
+    width = "100%", height = 550
+  )
+)
+```
+
+Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
+
+You can also use the `shinyApp` function to define an application inline rather then in an external directory.
+
+In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
+
+
+
