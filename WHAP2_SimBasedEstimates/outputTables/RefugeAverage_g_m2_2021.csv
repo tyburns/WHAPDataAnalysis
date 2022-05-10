@@ -1,0 +1,17 @@
+Refuge,Species,Mass (g/m2),SE (g/m2),CI90lwr (g/m2),CI90upr (g/m2),RtCI90_lwr (g/m2),MOE/Mean
+KRN,Smartweed,0,0,0,0,0,NA
+MDC,Smartweed,58.2,13.28,39.55,82.75,42.62,0.268
+PIX,Smartweed,0,0,0,0,0,NA
+SLW,Smartweed,0,0,0,0,0,NA
+KRN,Swamp_Timothy,69.5,7.12,58.48,81.98,60.78,0.125
+MDC,Swamp_Timothy,42,5.92,32.9,52.41,34.63,0.175
+PIX,Swamp_Timothy,28.6,5.96,20.36,39.54,21.68,0.242
+SLW,Swamp_Timothy,11.7,4.38,6.62,20.05,7.31,0.375
+KRN,tot,70.3,7.11,59.25,82.76,61.53,0.125
+MDC,tot,103.6,14.32,82.93,129.07,86.64,0.164
+PIX,tot,33.6,6.17,24.85,44.56,26.43,0.213
+SLW,tot,15.1,4.73,9.37,23.81,10.21,0.324
+KRN,Watergrass,0.8,0.36,0.34,1.44,0.4,0.5
+MDC,Watergrass,3.5,1.08,2.05,5.45,2.26,0.354
+PIX,Watergrass,4.9,1.65,2.74,8.09,3.07,0.373
+SLW,Watergrass,3.5,1.78,1.39,6.71,1.66,0.526

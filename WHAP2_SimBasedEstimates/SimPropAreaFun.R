@@ -207,7 +207,7 @@ sim_prop_area <- function(.vpcp_path, .nsim = 1000) {
   }
 
   rm(vcov_dr)
-  
+
   ## Apply fpcf to vcov's =========
   ## This assumes that sampling of VPs and CPs were without replacement.
   ## This approximation ignores the fact that many CPs were inside a VP.
@@ -275,6 +275,9 @@ sim_prop_area <- function(.vpcp_path, .nsim = 1000) {
       print("** ERROR: Subunits or spp_strat do not match!!**")
     }
   }
+
+
+  rm(lastFuncGrad, lastFuncParam)
 
   return(sim_parea_dr)
 }

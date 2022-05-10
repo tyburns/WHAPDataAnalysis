@@ -1,4 +1,4 @@
-
+#  CONTROL THE CREATION OR RECREATION OF D2M MODELS
 # Read seed head dimensions and mass data ================
 # d2m_data.rds already exists and contains all data collected by May 2022.
 # Additional data, if any are available, should be provided in a file named
@@ -16,6 +16,7 @@
 # vernacularName has to be the same as in field data, but with _ instead of spaces.
 # All added d2m files post 2022 should remain in the folder for future use.
 
+
 # Set paths and get file names ======
 
 folder <- "./d2mFiles/"
@@ -30,7 +31,6 @@ d2m_models_exist <- list.files(path = folder) %>%
 
 
 # Determine if it is necessary to recreate d2m models ==========
-# This section should be moved to the controlling script
 
 files_processed <- read_rds(
   paste0(
@@ -40,19 +40,21 @@ files_processed <- read_rds(
 )
 
 need2run_d2m <- !(d2m_models_exist &
-  setequal(csv_files, files_processed))
+                    setequal(csv_files, files_processed))
+
+# Recreate models or issue message that models are already present ======
 
 if (need2run_d2m) {
-
-  # Read original and additional data files ==============
-
+  
+  ## Read original and additional data files ==============
+  
   d2m_data <- read_rds(
     paste0(
       folder,
       "d2m_data.rds"
     )
   )
-
+  
   for (fname in csv_files) {
     d2m_data <- bind_rows(
       d2m_data,
@@ -66,7 +68,7 @@ if (need2run_d2m) {
       )
     )
   }
-
+  
   d2m_data <- d2m_data %>%
     mutate(
       emerged = f2t_length_mm / sh_length_mm,
@@ -78,10 +80,10 @@ if (need2run_d2m) {
         )
       )
     )
-
-
-  # Fit models by vernacularName ==================
-
+  
+  
+  ## Fit models by vernacularName ==================
+  
   # Pseudocode for modeling
   # Group data by species and nest.
   # Map over data column in nested tibble:
@@ -89,10 +91,10 @@ if (need2run_d2m) {
   # Create a gam formula with those predictors including interactions.
   # Fit the gam model
   # Save nested tibble with models
-
-
+  
+  
   ## Create column with models ======
-
+  
   d2m_models_list <- d2m_data %>%
     group_by(vernacularName) %>%
     nest() %>%
@@ -107,7 +109,8 @@ if (need2run_d2m) {
       models = map(models, ~ .x[[2]]),
       max_sh_length_mm = map(data, ~ max(.x$sh_length_mm, na.rm = TRUE))
     )
-
+  
+  ## Save models object with a column for each vernacularName =====
   write_rds(
     d2m_models_list,
     paste0(
@@ -115,8 +118,9 @@ if (need2run_d2m) {
       "d2m_models_list.rds"
     )
   )
-
-
+  
+  ## Save a list of the d2m files already processed ======
+  
   write_rds(
     csv_files,
     paste0(
@@ -127,3 +131,4 @@ if (need2run_d2m) {
 } else {
   print("d2m models already exists. To force recalculation, remove d2m_models_list.rds from the d2mFiles folder.")
 }
+

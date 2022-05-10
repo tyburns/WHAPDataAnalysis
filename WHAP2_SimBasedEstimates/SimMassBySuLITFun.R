@@ -315,7 +315,7 @@ sim_mass_su_lit <- function(.vpcp_path, .qdt_path, .nsim = 1000) {
 
   mass_by_su_spp_stats_def <- "A list with an element for each species (vernacularName). Each list element is named with the species name and has the same information as tot_mass_su_def but only for the species."
 
-  lit_stats_def <- "means, se's and CI's of mass/m2 averaged at the refuge level."
+  lit_stats_def <- "Means, se's and CI's of mass/m2 averaged at the refuge level. Each table with nsim simulations of g_m2 for each species in each subunit was multiplied by the proportion of total subunit area represented by the subunit and added over subunits to obtain nsim simulations of average g_m2 of each species at the refuge level (refuge means subunits measured). Standard errors and confidence intervals were calculated from those simulations."
 
   ## Prepare output list and return =====
   outlist <- list(

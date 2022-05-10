@@ -89,3 +89,7 @@ make model d2 mass generic as a function of dimensions.
 Provide examples and refrences of d2mass models.
 (Consider examples of species to model)
 Use d2mass_model object in script assumnig it responds well to predict.
+
+9 May 2022
+
+Refactorize all WHAP2 to avoid use of assign().
