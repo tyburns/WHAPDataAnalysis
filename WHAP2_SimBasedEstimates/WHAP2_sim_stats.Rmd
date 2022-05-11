@@ -7,7 +7,7 @@ output: html_document
 
 Original draft date: 2 May 2022.
 
-```{r setup, include=FALSE, eval=TRUE}
+```{r setup, include=FALSE, eval=TRUE, message=FALSE}
 
 knitr::opts_chunk$set(echo = FALSE)
 require(tidyverse, quietly = TRUE)
@@ -20,8 +20,8 @@ require(DirichletReg, quietly = TRUE)
 require(car, quietly = TRUE)
 require(mgcv, quietly = TRUE)
 require(measurements, quietly = TRUE)
-require(conflicted, quietly = TRUE)
-conflict_prefer_all("dplyr", quiet = TRUE)
+# require(conflicted, quietly = TRUE)
+# conflict_prefer_all("dplyr", quiet = TRUE)
 
 
 ```
@@ -78,7 +78,7 @@ rm(list = ls())
 ```
 
 
-# Step 2: Prepare input files from field data
+## Step 2: Prepare input files from field data
 
 ```{r data_prepr}
 
@@ -94,7 +94,7 @@ rm(list = ls(all.names = TRUE))
 ```
 
 
-# Step 3: Determine years for simulations, simluate and create shmi_yyyy lists.
+## Step 3: Simulate and create shmi_yyyy lists.
 
 
 ```{r load_funcs, include=FALSE, echo=FALSE, eval=TRUE}
@@ -250,7 +250,7 @@ ggplot(
   geom_text(x = 350, y = 40, label = "Equal scales", color = "black") +
   facet_grid(rows = vars(year))
 
-rm(cum_tot)
+
 ```
 
 ## Bigger figures of the same data
@@ -300,6 +300,8 @@ for (pg in 1:3) {
       )
   )
 }
+
+rm(cum_tot)
 ```
 
 
@@ -346,7 +348,7 @@ tbl_hds2 <- c(tbl_hds1, "Objective")
 # output should include a .csv file for user
 #
 
-mk_tbl_fun1 <- function(shmi_nm) {
+mk_tbl_fun1 <- function(shmi_nm) { # mk_tbl_fun1 =========================
   shmi_nm <- gsub(".rds", "", shmi_nm)
 
   data4tbl <- get(shmi_nm)$cum_mass_LIT %>%
@@ -408,15 +410,6 @@ mk_tbl_fun1 <- function(shmi_nm) {
 
   dgts <- c(0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0)
 
-  print(
-    kable(
-      x = data4tbl,
-      digits = dgts,
-      caption = cptn
-    ) %>%
-      kable_styling(full_width = FALSE)
-  )
-
   write_csv(
     x = data4tbl,
     file = paste0(
@@ -425,9 +418,19 @@ mk_tbl_fun1 <- function(shmi_nm) {
       ".csv"
     )
   )
+
+  print(
+    kable(
+      x = data4tbl,
+      digits = dgts,
+      caption = cptn
+    ) %>%
+      kable_styling(full_width = FALSE)
+  )
 }
 
-mk_tbl_fun2 <- function(shmi_nm) {
+mk_tbl_fun2 <- function(shmi_nm) { # mk_tbl_fun2 =========================
+  
   shmi_nm <- gsub(".rds", "", shmi_nm)
 
   data4tbl <- get(shmi_nm)$tot_mass_su %>%
@@ -453,15 +456,6 @@ mk_tbl_fun2 <- function(shmi_nm) {
 
   dgts <- c(0, 0, 1, 0, 0, 0, 2)
 
-  print(
-    kable(
-      x = data4tbl,
-      digits = dgts,
-      caption = cptn
-    ) %>%
-      kable_styling(full_width = FALSE)
-  )
-
   write_csv(
     x = data4tbl,
     file = paste0(
@@ -470,9 +464,18 @@ mk_tbl_fun2 <- function(shmi_nm) {
       ".csv"
     )
   )
+
+  print(
+    kable(
+      x = data4tbl,
+      digits = dgts,
+      caption = cptn
+    ) %>%
+      kable_styling(full_width = FALSE)
+  )
 }
 
-mk_tbl_fun3 <- function(shmi_nm) {
+mk_tbl_fun3 <- function(shmi_nm) { # mk_tbl_fun3 =========================
   
   shmi_nm <- gsub(".rds", "", shmi_nm)
   
@@ -506,15 +509,6 @@ mk_tbl_fun3 <- function(shmi_nm) {
 
   dgts <- c(0, 0, 1, 0, 0, 0, 2)
 
-  print(
-    kable(
-      x = data4tbl,
-      digits = dgts,
-      caption = cptn
-    ) %>%
-      kable_styling(full_width = FALSE)
-  )
-
   write_csv(
     x = data4tbl,
     file = paste0(
@@ -523,12 +517,21 @@ mk_tbl_fun3 <- function(shmi_nm) {
       ".csv"
     )
   )
-    }
+    
+  print(
+    kable(
+      x = data4tbl,
+      digits = dgts,
+      caption = cptn
+    ) %>%
+      kable_styling(full_width = FALSE)
+  )
+}
   )
 
 }
 
-mk_tbl_fun4 <- function(shmi_nm) {
+mk_tbl_fun4 <- function(shmi_nm) { # mk_tbl_fun4 =========================
   shmi_nm <- gsub(".rds", "", shmi_nm)
 
   list_of_spp_tbls <- get(shmi_nm)$mass_by_su_spp_stats
@@ -564,15 +567,6 @@ mk_tbl_fun4 <- function(shmi_nm) {
 
   dgts <- c(0, 0, 0, 1, 0, 0, 0, 2)
 
-  print(
-    kable(
-      x = lit_data,
-      digits = dgts,
-      caption = cptn
-    ) %>%
-      kable_styling(full_width = FALSE)
-  )
-
   write_csv(
     x = lit_data,
     file = paste0(
@@ -580,6 +574,15 @@ mk_tbl_fun4 <- function(shmi_nm) {
       yr,
       ".csv"
     )
+  )
+
+  print(
+    kable(
+      x = lit_data,
+      digits = dgts,
+      caption = cptn
+    ) %>%
+      kable_styling(full_width = FALSE)
   )
 }
 
@@ -622,7 +625,7 @@ CI90upr (g/m2): Upper boundary of the central 90% confidence interval for the es
 
 
 
-```{r cum_tbl, echo=FALSE, include=FALSE}
+```{r cum_tbl, echo=FALSE, message=FALSE, results='asis'}
 
 for (shmi in shmi_files) {
   mk_tbl_fun1(shmi_nm = shmi)
@@ -640,7 +643,7 @@ MOE/Mean: this equals (Mass (g/m2) - RtCI90_lwr (g/m2)) / (2 * Mass (g/m2)). It 
 
 Some of the columns in these tables were also included in the previous tables.
 
-```{r avg_tables_su_all_sp, echo=FALSE, include=FALSE}
+```{r avg_tables_su_all_sp, echo=FALSE, message=FALSE, results='asis'}
 
 for (shmi in shmi_files) {
   mk_tbl_fun2(shmi_nm = shmi)
@@ -653,7 +656,7 @@ for (shmi in shmi_files) {
 
 This set of tables shows information analogous to the previous set, but instead of showing the summ for all species, it shows one species in each table.
 
-```{r shmi_tables_su_spp, echo=FALSE}
+```{r shmi_tables_su_spp, echo=FALSE, message=FALSE, results='asis'}
 
 for (shmi in shmi_files) {
   mk_tbl_fun3(shmi_nm = shmi)
@@ -663,7 +666,7 @@ for (shmi in shmi_files) {
 
 ## Seed head mass index per area for refuges
 
-```{r shmi_table_lit, echo=FALSE, message=FALSE}
+```{r shmi_table_lit, echo=FALSE, message=FALSE, results='asis'}
 
 for (shmi in shmi_files) {
   mk_tbl_fun4(shmi_nm = shmi)
