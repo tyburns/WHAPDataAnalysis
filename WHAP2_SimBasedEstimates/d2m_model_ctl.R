@@ -15,14 +15,15 @@
 
 # vernacularName has to be the same as in field data, but with _ instead of spaces.
 # All added d2m files post 2022 should remain in the folder for future use.
-
+# 
+# require(tidyverse, quietly = TRUE)
 
 # Set paths and get file names ======
 
 folder <- "./d2mFiles/"
 
 csv_files <- list.files(path = folder) %>%
-  grep("d2m_data_\\d{4}.csv", ., value = TRUE) %>%
+  str_subset(pattern = "d2m_data_\\d{4}.csv") %>%
   str_remove(".csv")
 
 d2m_models_exist <- list.files(path = folder) %>%

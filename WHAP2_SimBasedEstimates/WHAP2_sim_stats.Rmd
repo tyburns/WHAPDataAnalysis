@@ -14,6 +14,16 @@ require(tidyverse, quietly = TRUE)
 require(knitr, quietly = TRUE)
 require(kableExtra, quietly = TRUE)
 require(ggforce, quietly = TRUE)
+require(MASS, quietly = TRUE)
+require(DirichletReg, quietly = TRUE)
+# require(sets, quietly = TRUE) # conflicts with %>% persistently!
+require(car, quietly = TRUE)
+require(mgcv, quietly = TRUE)
+require(measurements, quietly = TRUE)
+require(conflicted, quietly = TRUE)
+conflict_prefer_all("dplyr", quiet = TRUE)
+
+
 ```
 
 ## Steps
@@ -101,15 +111,23 @@ source("Create_d2m_model_Fun.R", local = knitr::knit_global())
 
 # Determine what input and output files are available now for final processing.
 
-input_files <- list.files(path = "./inputFiles/") %>%
-  grep("qdt_|vpcp\\d{4}.rds", ., value = TRUE)
+input_files <- 
+  grep(pattern = "qdt_|vpcp\\d{4}.rds",
+       x = list.files(path = "./inputFiles/"),
+       value = TRUE)
 
-output_files <- list.files(path = "./outputFiles/") %>%
-  grep("shmi_\\d{4}.rds", ., value = TRUE)
+output_files <- 
+  grep(pattern = "shmi_\\d{4}.rds",
+       x = list.files(path = "./outputFiles/"),
+       value = TRUE)
 
 years2run <- setdiff(
-  gsub("qdt_|vpcp|.rds", "", input_files) %>% unique(),
-  gsub("shmi_|.rds", "", output_files)
+  unique(gsub(pattern = "qdt_|vpcp|.rds",
+       replacement = "",
+       input_files)),
+  gsub(pattern = "shmi_|.rds",
+      replacement = "",
+      output_files)
 )
 ```
 

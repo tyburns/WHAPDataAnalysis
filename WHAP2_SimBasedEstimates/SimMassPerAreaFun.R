@@ -93,9 +93,9 @@ sim_mass_area <- function(.qdt_path, .nsim = 1000) {
 
   ## Set up packages needed =====
 
-  require(tidyverse, quietly = TRUE)
-  require(MASS, quietly = TRUE)
-  require(car, quietly = TRUE)
+  # require(MASS, quietly = TRUE)
+  # require(car, quietly = TRUE)
+  # require(tidyverse, quietly = TRUE)
 
   ## Read and wrangle data =====
 

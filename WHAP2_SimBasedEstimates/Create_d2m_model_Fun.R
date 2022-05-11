@@ -26,11 +26,11 @@
 
 
 # Setup =============
-
-require(sets, quietly = TRUE) # load first to avoid %>% conflicts
-require(car, quietly = TRUE)
-require(mgcv, quietly = TRUE)
-require(tidyverse, quietly = TRUE)
+# 
+# require(sets, quietly = TRUE) # load first to avoid %>% conflicts
+# require(car, quietly = TRUE)
+# require(mgcv, quietly = TRUE)
+# require(tidyverse, quietly = TRUE)
 
 
 ## Define function to create model formulas and fit models ======
@@ -49,7 +49,7 @@ create_d2m_model <- function(.xdata) {
   
   n_LITg_gt_1 <- length(unique(.xdata$LIT_group)) > 1
   
-  rhs <- set_power(predictors) %>%
+  rhs <- sets::set_power(predictors) %>%
     lapply(as.character) %>%
     `[`(-1) %>%
     map_chr(~ paste(.x, collapse = ", ")) %>%

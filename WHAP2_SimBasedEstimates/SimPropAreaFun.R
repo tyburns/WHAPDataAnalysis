@@ -98,13 +98,12 @@ sim_prop_area <- function(.vpcp_path, .nsim = 1000) {
 
   ## Set up packages needed
 
-  require(DirichletReg, quietly = TRUE)
-  require(tidyverse, quietly = TRUE)
-  require(MASS, quietly = TRUE)
-
+  # require(DirichletReg, quietly = TRUE)
+  # require(MASS, quietly = TRUE)
+  # require(tidyverse, quietly = TRUE)
 
   ## Function to go from log(alpha) to proportions ========
-  ## This is a change in the paramtereization of Dirichlet
+  ## This is a change in the parameterization of Dirichlet
 
   log_alpha2p <- function(x) {
     a_i <- exp(x)
