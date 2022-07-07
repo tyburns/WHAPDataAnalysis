@@ -1,0 +1,218 @@
+---
+title: "Compare subunits across years by species"
+author: "Rebeca Becdach"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# CREATE A GRAPH WITH CI's FOR YIELD IN EACH SUBUNIT EACH YEAR BY SPECIES 
+# AND REFUGE
+
+## CI graphs
+
+Create graphs for showing estimated means and CIs for subunits. One graph is
+generated for each refuge and each species included in the survey. Each graph 
+shows estimates from all years WHAP has been implemented. Graphs include all 
+subunits surveyed in WHAP, including subunits that were not surveyed in one of 
+the years on the graph.
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(rmarkdown)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(purrr)
+library(data.table)
+library(janitor)
+
+```
+
+
+```{r prepData}
+
+st_files <- list.files(path = "./outputTables/.",
+                       pattern = "Swamp_TimothySppTbl_g_m2_\\d{4}\\.csv",
+                       full.names = T)
+wg_files <- list.files(path = "./outputTables/.",
+                       pattern = "WatergrassSppTbl_g_m2_\\d{4}\\.csv",
+                       full.names = T)
+sw_files <- list.files(path = "./outputTables/.",
+                       pattern = "SmartweedSppTbl_g_m2_\\d{4}\\.csv",
+                       full.names = T)
+
+whap_data <- mapply(c, st_files, wg_files, sw_files, SIMPLIFY = FALSE) %>%
+  flatten() %>%
+  set_names() %>%
+  map_dfr(
+    ~ read_csv(.x, col_types = cols(), col_names = TRUE),
+    .id = "file_name"
+  ) %>%
+  mutate(species = str_extract(file_name, "Swamp_Timothy|Watergrass|Smartweed"),
+         year = str_extract(file_name, "\\d{4}")) %>%
+  separate(Unit, c("LIT", "unit", "subunit"), sep = "_") %>%
+  # line below is a temp fix; SLW subunit names have repeats and are uninformative
+  mutate(subunit = ifelse(LIT == "SLW", unit, subunit)) %>%
+  clean_names() 
+
+```
+
+
+```{r viabilityClasses}
+
+viaClass <- read.csv("WHAP_Viability.csv") %>%
+  pivot_longer(cols = c(Poor, Fair, Good, Very_Good),
+               names_to = "class",
+               values_to = "lower_bound") %>%
+  pivot_wider(names_from = LIT,
+              values_from = lower_bound) %>%
+  mutate(class = fct_reorder(class, KRN, mean),
+         class_color = case_when(
+           startsWith(as.character(class), "Poor") ~ "red",
+           startsWith(as.character(class), "Fair") ~ "yellow",
+           startsWith(as.character(class), "Good") ~ "chartreuse",
+           startsWith(as.character(class), "Very_Good") ~ "chartreuse3"),
+         class = factor(class, ordered = TRUE))
+
+```
+
+
+```{r CIPlot}
+
+plot_years <- function(spp = c("total"),
+                       data = whap_data) {
+  
+  for (i in unique(data$lit)) {
+    
+    data_i <- data %>% dplyr::filter(lit == i)
+    
+    for (j in unique(data_i$species)) {
+      
+      data_ij <- data_i %>% dplyr::filter(species == j)
+      
+      viaClass_j <- viaClass %>% dplyr::filter(Species == j)
+      
+      year_plot <-
+        ggplot(data = data_ij %>% arrange(mass_g_m2),
+               aes(x = subunit,
+                   y = mass_g_m2,
+                   color = year)) +
+        scale_color_manual(values = c("2019" = "deepskyblue",
+                                      "2020" = "dodgerblue3",
+                                      "2021" = "midnightblue")) +
+        labs(color = "year") +
+        geom_rect(data = viaClass_j,
+                  inherit.aes = FALSE,
+                  aes(NULL,
+                      NULL,
+                      xmin = 0,
+                      xmax = Inf,
+                      fill = class),
+                  ymin = unlist(viaClass_j[, i]),
+                  ymax = unlist(c(viaClass_j[-1, i], Inf))) +
+        scale_fill_manual(values = alpha(c("red",
+                                           "yellow",
+                                           "chartreuse",
+                                           "chartreuse3"),
+                                         0.2)) +
+        geom_point(size = 3) +
+        xlab('Subunit\n') +
+        ylab(paste("\n", j, "seed head mass index (g/m^2)")) +
+        geom_errorbar(aes(ymin = ifelse(ci90lwr_g_m2 < 0, 0, ci90lwr_g_m2),
+                                   ymax = ci90upr_g_m2),
+                      width = 0.3,
+                      cex = 0.75) +
+        theme(plot.title = element_text(size = 16, face = "bold"),
+              axis.ticks.y = element_blank(),
+              axis.text.x = element_text(face = "bold"),
+              axis.title = element_text(size = 12,
+                                        face = "bold"),
+              strip.text.y = element_text(hjust = 0,
+                                          vjust = 1,
+                                          angle = 180,
+                                          face = "bold")) +
+        coord_flip()
+
+    print(year_plot)
+    }
+  }
+}
+plot_years()
+
+```
+
+
+# CREATE A GRAPH WITH CI's FOR YIELD IN EACH SUBUNIT EACH YEAR BY SPECIES 
+# AND REFUGE (ADD TO NEW FILE?)
+
+## Seed head mass index bar charts
+
+Create bar charts showing seed production by species and year for each refuge. 
+
+```{r barchart}
+
+# load in files
+kgLIT_2021 <- read.csv("WHAP2021-22/ScriptInput2021/mass_kg_LIT_2021.txt")
+
+kgLIT_2020 <- read.csv("WHAP2020-21/ScriptInput2020/mass_kg_LIT_2020.txt")
+
+kgLIT_2019 <- read.csv("MainScriptDataOutput/mass_kg_LIT_2019.txt")
+
+
+# prep data
+gm2_LIT <- bind_rows(kgLIT_2019, kgLIT_2020, kgLIT_2021) %>%
+  mutate(year = factor(year),
+         st_g.m2 = st_kg.ha / 10,
+         wg_g.m2 = wg_kg.ha / 10,
+         sw_g.m2 = sw_kg.ha / 10) %>%
+  dplyr::select(LIT, st_g.m2, wg_g.m2, sw_g.m2, year) %>%
+  pivot_longer(cols = ends_with("g.m2"),
+               names_to = "species",
+               values_to = "g.m2",
+               values_drop_na = TRUE)
+
+gm2_LIT$species[gm2_LIT$species == "st_g.m2"] <- "swamp timothy"
+
+gm2_LIT$species[gm2_LIT$species == "wg_g.m2"] <- "watergrass"
+
+gm2_LIT$species[gm2_LIT$species == "sw_g.m2"] <- "smartweed"
+
+# gm2_LIT <- gm2_LIT[-c(14), ]
+
+
+# plot the bar charts
+plot_gm2_LIT <- function(data = gm2_LIT) {
+  
+  year_bar_plots <- list()
+  
+  for (i in unique(data$LIT)) {
+    
+    data_i <- data %>% dplyr::filter(LIT == i)
+    
+    year_bar_plots[[i]] <-
+                 ggplot(data = data_i,
+                        aes(x = species,
+                            y = g.m2,
+                            fill = year)) +
+                 # ylim(0, 250) + #set the same y-axis range for KRN and PIX
+                 geom_bar(stat="identity", position=position_dodge()) +
+                 scale_fill_manual(values = c("2019" = "deepskyblue",
+                                              "2020" = "blue",
+                                              "2021" = "darkblue")) +
+                 xlab('\nspecies') +
+                 ylab("seed head mass index (g/m2)\n") +
+                 theme_minimal()
+                
+    print(year_bar_plots[[i]])
+  }
+  return(year_bar_plots)
+}
+
+plot_gm2_LIT()
+
+
+```
+
