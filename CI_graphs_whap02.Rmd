@@ -85,7 +85,7 @@ viaClass <- read.csv("WHAP_Viability.csv") %>%
 plot_years <- function(spp = c("total"),
                        data = whap_data) {
   
-  my_palette <- brewer.pal(name = "Dark2", n = 8)[2:4]
+  # my_palette <- brewer.pal(name = "Dark2", n = 8)[2:4]
   
   for (i in unique(data$lit)) {
     
@@ -102,11 +102,10 @@ plot_years <- function(spp = c("total"),
                aes(x = subunit,
                    y = mass_g_m2,
                    color = year)) +
-        scale_color_manual(values = my_palette) +
-        # scale_color_brewer(palette = "BuPu", direction = 1) +
-        # scale_color_manual(values = c("2019" = "deepskyblue",
-        #                               "2020" = "dodgerblue3",
-        #                               "2021" = "midnightblue")) +
+        # scale_color_manual(values = my_palette) +
+        scale_color_manual(values = c("2019" = "deepskyblue",
+                                      "2020" = "dodgerblue3",
+                                      "2021" = "midnightblue")) +
         labs(color = "year") +
         geom_rect(data = viaClass_j,
                   inherit.aes = FALSE,
